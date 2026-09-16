@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="hero"><view class="h1">关于与诊断</view><view class="sub">出现问题时复制诊断信息，方便定位版本和环境。</view></view>
+  <view class="card">
+    <view class="list-item row"><view class="label">客户端版本</view><view class="value">{{local.appVersion}}</view></view>
+    <view class="list-item row"><view class="label">客户端 Schema</view><view class="value">v{{local.schemaVersion}}</view></view>
+    <view class="list-item row"><view class="label">运行环境</view><view class="value">{{local.envVersion}}</view></view>
+    <view class="list-item row"><view class="label">云环境</view><view class="value diagnostic-value">{{local.cloudEnv}}</view></view>
+    <view class="list-item row"><view class="label">服务端版本</view><view class="value">{{info.appVersion || (loading?'读取中':'不可用')}}</view></view>
+    <view class="list-item row"><view class="label">服务端 Schema</view><view class="value">{{info.schemaVersion || '-'}}</view></view>
+    <view class="list-item row"><view class="label">营养算法</view><view class="value">{{info.nutritionAlgorithmVersion || '-'}}</view></view>
+    <button class="btn" style="margin-top:24rpx" bindtap="copy">复制诊断信息</button>
+  </view>
+  <view class="card"><view class="value">隐私说明</view><view class="sub">体重、体脂、围度、饮食明细以及日志图片均默认私密。群组强监督只公开已绑定计划的执行结果。</view></view>
+</view>

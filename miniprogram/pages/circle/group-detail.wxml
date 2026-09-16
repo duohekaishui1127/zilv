@@ -1,0 +1,8 @@
+<view class="container" wx:if="{{group}}">
+  <view class="hero"><view class="h1">{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
+  <view class="card"><view class="row"><view><view class="label">群组邀请码</view><view class="big code-text">{{group.inviteCode}}</view></view><button class="btn btn-light btn-small" bindtap="copyCode">复制</button></view><view class="sub">群组只强制公开绑定计划的执行情况，不公开体重、体脂、饮食等私密数据。</view></view>
+  <view class="card"><view class="h2">今日监督</view><view class="list-item row" wx:for="{{members}}" wx:key="_id"><view><view class="value">{{item.nickname}}</view><view class="sub">{{item.role}}</view></view><view>{{item.completed}} / {{item.total}}</view></view></view>
+  <view class="section-title">动态</view>
+  <view class="card"><view class="list-item" wx:for="{{events}}" wx:key="_id"><view class="value">{{item.title}}</view><view class="sub">{{item.summary}}</view></view><view class="empty compact" wx:if="{{!events.length}}">暂无打卡动态</view></view>
+  <button wx:if="{{!isOwner}}" class="btn btn-danger" bindtap="leave">退出群组</button>
+</view>

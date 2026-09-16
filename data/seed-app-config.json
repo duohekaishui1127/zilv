@@ -1,0 +1,37 @@
+[
+  {
+    "key": "weightUpdateDays",
+    "value": 7,
+    "description": "超过此天数提醒更新体重"
+  },
+  {
+    "key": "defaultGoalType",
+    "value": "FAT_LOSS",
+    "description": "新用户默认目标"
+  },
+  {
+    "key": "defaultProteinRatio",
+    "value": 1.6,
+    "description": "默认蛋白质 g/kg，仅作为用户可调整初始值"
+  },
+  {
+    "key": "defaultFatRatio",
+    "value": 0.8,
+    "description": "默认脂肪 g/kg，仅作为用户可调整初始值"
+  },
+  {
+    "key": "foodDataNotice",
+    "value": "系统食物营养值为通用参考值，品牌、烹饪方式会造成差异。",
+    "description": "饮食页面提示"
+  },
+  {
+    "key": "noteMaxImages",
+    "value": 9,
+    "description": "单条日志最多图片数"
+  },
+  {
+    "key": "noteMaxContentLength",
+    "value": 5000,
+    "description": "单条日志正文最大字符数"
+  }
+]

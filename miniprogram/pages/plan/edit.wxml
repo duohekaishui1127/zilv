@@ -1,0 +1,13 @@
+<view class="container">
+  <view class="empty" wx:if="{{loading}}">正在加载计划…</view>
+  <view class="card" wx:else>
+    <view class="field"><view class="label">计划名称</view><input class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="例如：每天学习2小时"/></view>
+    <view class="field"><view class="label">分类</view><picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="category"><view class="input">{{categories[categoryIndex]}}</view></picker></view>
+    <view class="field"><view class="label">目标类型</view><picker mode="selector" range="{{targetTypes}}" value="{{targetIndex}}" bindchange="target"><view class="input">{{targetTypes[targetIndex]}}</view></picker></view>
+    <view class="row"><view class="field flex-1"><view class="label">目标值</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="分钟/次/ml"/></view></view>
+    <view class="field"><view class="label">重复规则</view><picker mode="selector" range="{{repeatTypes}}" value="{{repeatIndex}}" bindchange="repeat"><view class="input">{{repeatTypes[repeatIndex]}}</view></picker></view>
+    <view wx:if="{{isSpecificDays}}" class="field"><view class="label">选择星期</view><view class="row wrap" style="margin-top:12rpx"><view wx:for="{{weekdays}}" wx:key="value" data-day="{{item.value}}" bindtap="toggleDay" class="tag {{item.selected ? 'tag-active' : ''}}">{{item.selected ? '✓ ' : ''}}周{{item.label}}</view></view></view>
+    <view wx:if="{{isWeeklyCount}}" class="field"><view class="label">每周完成次数</view><input class="input" type="number" data-key="weeklyCount" value="{{weeklyCount}}" bindinput="input"/><view class="sub">每周完成 1～7 次；上面的“目标值”仍表示每次计划的目标，例如学习120分钟。</view></view>
+    <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建计划'}}</button>
+  </view>
+</view>

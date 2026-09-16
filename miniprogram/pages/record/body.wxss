@@ -1,0 +1,1 @@
+.choice-row{display:flex;gap:12rpx;flex-wrap:wrap;margin-top:18rpx}.choice-chip{padding:12rpx 18rpx;border-radius:999rpx;background:#eef0f3;color:#6b7280;font-size:24rpx}.choice-chip-active{background:#111827;color:#fff}.selected-metrics{margin-top:22rpx}

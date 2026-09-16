@@ -1,0 +1,137 @@
+[
+  {
+    "key": "WALK",
+    "name": "步行",
+    "category": "CARDIO",
+    "metValue": 3.5,
+    "sort": 1,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "BRISK_WALK",
+    "name": "快走",
+    "category": "CARDIO",
+    "metValue": 4.8,
+    "sort": 2,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "JOG",
+    "name": "慢跑",
+    "category": "CARDIO",
+    "metValue": 7,
+    "sort": 3,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "RUN",
+    "name": "跑步",
+    "category": "CARDIO",
+    "metValue": 9.8,
+    "sort": 4,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "CYCLING",
+    "name": "骑行",
+    "category": "CARDIO",
+    "metValue": 7.5,
+    "sort": 5,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "SWIM",
+    "name": "游泳",
+    "category": "CARDIO",
+    "metValue": 8,
+    "sort": 6,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "HIIT",
+    "name": "HIIT",
+    "category": "CARDIO",
+    "metValue": 8,
+    "sort": 7,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "ROPE",
+    "name": "跳绳",
+    "category": "CARDIO",
+    "metValue": 10,
+    "sort": 8,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "STRENGTH_LIGHT",
+    "name": "轻强度力量训练",
+    "category": "STRENGTH",
+    "metValue": 3.5,
+    "sort": 9,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "STRENGTH",
+    "name": "力量训练",
+    "category": "STRENGTH",
+    "metValue": 5,
+    "sort": 10,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "STRENGTH_HIGH",
+    "name": "高强度力量训练",
+    "category": "STRENGTH",
+    "metValue": 6,
+    "sort": 11,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "YOGA",
+    "name": "瑜伽",
+    "category": "OTHER",
+    "metValue": 2.5,
+    "sort": 12,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "ELLIPTICAL",
+    "name": "椭圆机",
+    "category": "CARDIO",
+    "metValue": 5,
+    "sort": 13,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "STAIR",
+    "name": "爬楼/登阶",
+    "category": "CARDIO",
+    "metValue": 8.8,
+    "sort": 14,
+    "enabled": true,
+    "dataVersion": 1
+  },
+  {
+    "key": "ROWING",
+    "name": "划船机",
+    "category": "CARDIO",
+    "metValue": 7,
+    "sort": 15,
+    "enabled": true,
+    "dataVersion": 1
+  }
+]

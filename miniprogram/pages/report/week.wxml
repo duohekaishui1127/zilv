@@ -1,0 +1,8 @@
+<view class="container" wx:if="{{report}}">
+  <view class="hero"><view class="h1">7天报告</view><view class="sub">{{report.weekStart}} ～ {{report.weekEnd}}</view></view>
+  <view class="card"><view class="h2">身体变化</view><view class="metric-grid" style="margin-top:20rpx"><view class="metric"><view class="label">期初体重</view><view class="big">{{report.startWeight||'-'}}</view><view class="label">kg</view></view><view class="metric"><view class="label">最新体重</view><view class="big">{{report.endWeight||'-'}}</view><view class="label">kg</view></view></view><view class="row" style="margin-top:22rpx"><view class="label">体重变化</view><view class="value">{{report.weightChange===null?'-':report.weightChange}} kg</view></view></view>
+  <view class="card"><view class="h2">执行数据</view><view class="list-item row"><view class="label">平均每日摄入</view><view class="value">{{report.averageCalorieIntake}} kcal</view></view><view class="list-item row"><view class="label">平均预计热量平衡</view><view class="value">{{report.averageEstimatedBalance}} kcal</view></view><view class="list-item row"><view class="label">蛋白质达标</view><view class="value">{{report.proteinSuccessDays}} / {{report.proteinTrackedDays}} 天</view></view><view class="list-item row"><view class="label">完成打卡</view><view class="value">{{report.checkinCount}} 次</view></view><view class="list-item row"><view class="label">当前启用计划</view><view class="value">{{report.activePlanCount}} 个</view></view></view>
+  <view class="card warn-card"><view class="sub">热量平衡和运动消耗均为估算值，主要用于观察趋势。</view></view>
+</view>
+<view wx:elif="{{error}}" class="empty">{{error}}</view>
+<view wx:else class="empty">正在生成报告…</view>

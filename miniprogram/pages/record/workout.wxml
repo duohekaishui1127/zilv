@@ -1,0 +1,13 @@
+<view class="container">
+  <view class="card"><view class="h2">今日运动</view><view class="row" style="margin-top:20rpx"><view><view class="label">累计时长</view><view class="big">{{summary.durationMinutes||0}} min</view></view><view><view class="label">预计消耗</view><view class="big">{{summary.estimatedCalories||0}} kcal</view></view></view></view>
+  <view class="card">
+    <view class="h2">新增运动</view>
+    <view class="field"><view class="label">关联计划（可选）</view><picker mode="selector" range="{{plans}}" range-key="name" value="{{planIndex}}" bindchange="plan"><view class="input">{{plans[planIndex].name || '不关联计划'}}</view></picker><view class="sub">关联后，达到时长/次数目标会自动完成计划并同步群组。</view></view>
+    <view class="field"><view class="label">运动类型</view><picker mode="selector" range="{{types}}" range-key="name" value="{{typeIndex}}" bindchange="changeType"><view class="input">{{types[typeIndex].name}}</view></picker></view>
+    <view class="field"><view class="label">时长（分钟）</view><input class="input" type="number" data-key="durationMinutes" value="{{durationMinutes}}" bindinput="input"/></view>
+    <view wx:if="{{isStrength}}" class="metric-grid"><view class="field"><view class="label">重量 kg</view><input class="input" type="digit" data-key="weightKg" value="{{weightKg}}" bindinput="input"/></view><view class="field"><view class="label">每组次数</view><input class="input" type="number" data-key="reps" value="{{reps}}" bindinput="input"/></view><view class="field"><view class="label">组数</view><input class="input" type="number" data-key="setsCount" value="{{setsCount}}" bindinput="input"/></view></view>
+    <view class="field"><view class="label">训练备注 / 重量组数</view><textarea class="input" data-key="note" value="{{note}}" bindinput="input" placeholder="例如：哑铃卧推 22.5kg × 10 × 4"/></view>
+    <button class="btn" loading="{{saving}}" bindtap="save">保存并估算消耗</button>
+  </view>
+  <view class="card"><view class="list-item" wx:for="{{workouts}}" wx:key="_id"><view class="row"><view class="flex-1"><view class="value">{{item.exerciseName}}</view><view class="sub">{{item.durationMinutes}}分钟 · {{item.note}}</view></view><view class="tag">≈ {{item.estimatedCalories}} kcal</view></view><view class="action-row"><button class="btn btn-small btn-light" data-id="{{item._id}}" data-title="{{item.exerciseName}}" bindtap="writeNote">训练复盘</button></view></view><view class="empty compact" wx:if="{{!workouts.length}}">今天还没有运动记录</view></view>
+</view>

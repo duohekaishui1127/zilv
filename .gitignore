@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+*:Zone.Identifier*
+node_modules/
+cloudfunctions/**/node_modules/
+miniprogram_npm/
+*.log
+.env
+.env.*
+!.env.example
+project.private.config.json
+coverage/

@@ -1,0 +1,27 @@
+<view class="container">
+  <view wx:if="{{loading}}" class="empty">正在加载…</view>
+  <block wx:else>
+    <view class="card">
+      <view class="h2">{{noteId?'编辑记录':'新增记录'}}</view>
+      <view class="sub">日志和图片默认仅自己可见，不会自动同步到好友或群组。</view>
+      <view class="field"><view class="label">类型</view><picker mode="selector" range="{{typeOptions}}" range-key="label" value="{{typeIndex}}" bindchange="changeType"><view class="input">{{typeOptions[typeIndex].label}}</view></picker></view>
+      <view class="field"><view class="label">日期</view><picker mode="date" value="{{recordDate}}" bindchange="changeDate"><view class="input">{{recordDate}}</view></picker></view>
+      <view class="field"><view class="label">标题</view><input class="input" value="{{title}}" data-key="title" bindinput="input" maxlength="100" placeholder="不填会自动生成"/></view>
+      <view class="field"><view class="label">内容</view><textarea class="textarea" value="{{content}}" data-key="content" bindinput="input" maxlength="5000" auto-height placeholder="记录当时的状态、心得、易错点或变化…"/></view>
+      <view class="field"><view class="label">标签</view><input class="input" value="{{tagsText}}" data-key="tagsText" bindinput="input" placeholder="例如：软考，数据库，减脂"/></view>
+    </view>
+    <view class="card">
+      <view class="row"><view><view class="h2">图片</view><view class="sub">最多 9 张；体态记录可标记正面、侧面、背面。</view></view><button class="btn btn-small btn-light" bindtap="chooseImages">添加</button></view>
+      <view wx:if="{{attachments.length}}" class="photo-grid">
+        <view wx:for="{{attachments}}" wx:key="index" class="photo-item">
+          <image class="photo" src="{{item.tempPath || item.fileId}}" mode="aspectFill" data-index="{{index}}" bindtap="preview"/>
+          <picker wx:if="{{typeOptions[typeIndex].key==='BODY'}}" mode="selector" range="{{poseOptions}}" range-key="label" data-index="{{index}}" bindchange="changePose"><view class="pose-label">{{item.poseType==='FRONT'?'正面':item.poseType==='SIDE'?'侧面':item.poseType==='BACK'?'背面':'普通照片'}}</view></picker>
+          <view class="photo-remove" data-index="{{index}}" bindtap="removeImage">×</view>
+        </view>
+      </view>
+      <view wx:else class="empty compact">可直接拍照，也可以从相册选择。</view>
+    </view>
+    <button class="btn" loading="{{saving}}" bindtap="save">保存记录</button>
+    <button wx:if="{{noteId}}" class="btn btn-danger delete-btn" bindtap="remove">删除记录</button>
+  </block>
+</view>

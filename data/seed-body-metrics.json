@@ -1,0 +1,98 @@
+[
+  {
+    "code": "weight",
+    "name": "体重",
+    "unit": "kg",
+    "defaultEnabled": true,
+    "sort": 1,
+    "enabled": true
+  },
+  {
+    "code": "bodyFat",
+    "name": "体脂率",
+    "unit": "%",
+    "defaultEnabled": true,
+    "sort": 2,
+    "enabled": true
+  },
+  {
+    "code": "waist",
+    "name": "腰围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 3,
+    "enabled": true
+  },
+  {
+    "code": "chest",
+    "name": "胸围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 4,
+    "enabled": true
+  },
+  {
+    "code": "hip",
+    "name": "臀围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 5,
+    "enabled": true
+  },
+  {
+    "code": "shoulder",
+    "name": "肩围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 6,
+    "enabled": true
+  },
+  {
+    "code": "leftArm",
+    "name": "左臂围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 7,
+    "enabled": true
+  },
+  {
+    "code": "rightArm",
+    "name": "右臂围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 8,
+    "enabled": true
+  },
+  {
+    "code": "leftThigh",
+    "name": "左大腿围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 9,
+    "enabled": true
+  },
+  {
+    "code": "rightThigh",
+    "name": "右大腿围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 10,
+    "enabled": true
+  },
+  {
+    "code": "leftCalf",
+    "name": "左小腿围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 11,
+    "enabled": true
+  },
+  {
+    "code": "rightCalf",
+    "name": "右小腿围",
+    "unit": "cm",
+    "defaultEnabled": false,
+    "sort": 12,
+    "enabled": true
+  }
+]

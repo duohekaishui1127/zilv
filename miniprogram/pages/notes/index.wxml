@@ -1,0 +1,23 @@
+<view class="container">
+  <view class="hero"><view class="h1">我的历程</view><view class="sub">文字、照片和当时的想法，会让长期变化更容易被看见。</view></view>
+  <scroll-view scroll-x class="filter-scroll">
+    <view class="filter-row">
+      <view wx:for="{{filters}}" wx:key="key" class="filter-chip {{activeType===item.key?'filter-chip-active':''}}" data-type="{{item.key}}" bindtap="filter">{{item.label}}</view>
+    </view>
+  </scroll-view>
+  <view wx:if="{{error}}" class="card error-card"><view class="value">加载失败</view><view class="sub">{{error}}</view><button class="btn btn-small" bindtap="retry">重试</button></view>
+  <view wx:for="{{notes}}" wx:key="_id" class="card note-card" data-id="{{item._id}}" bindtap="edit">
+    <view class="row"><view class="tag">{{item.typeLabel}}</view><view class="sub">{{item.recordDate}}</view></view>
+    <view class="note-title">{{item.title}}</view>
+    <view wx:if="{{item.content}}" class="note-content">{{item.content}}</view>
+    <view wx:if="{{item.tags.length}}" class="tag-row"><text wx:for="{{item.tags}}" wx:key="*this" class="mini-tag">#{{item}}</text></view>
+    <view wx:if="{{item.attachments.length}}" class="thumb-row">
+      <image wx:for="{{item.previewAttachments}}" wx:for-item="photo" wx:key="_id" class="thumb" src="{{photo.fileId}}" mode="aspectFill"/>
+      <view wx:if="{{item.morePhotoCount}}" class="more-photo">+{{item.morePhotoCount}}</view>
+    </view>
+  </view>
+  <view wx:if="{{!loading && !notes.length && !error}}" class="empty">还没有记录。可以从一次体重、一节学习或一次训练开始。</view>
+  <button wx:if="{{hasMore}}" class="btn btn-light load-more" loading="{{loading}}" bindtap="loadMore">加载更多</button>
+  <view wx:if="{{loading && !notes.length}}" class="empty compact">正在加载…</view>
+  <view class="fab" bindtap="add">＋</view>
+</view>

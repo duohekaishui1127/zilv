@@ -1,0 +1,10 @@
+<view class="container">
+  <view class="card warn-card"><view class="value">{{name}}</view><view class="sub">绑定后，该计划在群组中的执行状态不可隐藏；体重、饮食、身体围度等私密数据不会因此公开。</view></view>
+  <view class="card">
+    <view class="list-item row" wx:for="{{groups}}" wx:key="_id">
+      <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}}人 · 邀请码 {{item.inviteCode}}</view></view>
+      <button class="btn btn-small {{item.bound ? 'btn-danger' : ''}}" data-id="{{item._id}}" data-bound="{{item.bound}}" bindtap="toggle">{{item.bound ? '解除' : '绑定'}}</button>
+    </view>
+    <view class="empty compact" wx:if="{{!groups.length}}">还没有加入群组</view>
+  </view>
+</view>

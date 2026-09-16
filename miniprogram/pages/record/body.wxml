@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="card">
+    <view class="h2">新增身体记录</view>
+    <view class="field"><view class="label">体重 kg *</view><input class="input" type="digit" value="{{weightKg}}" data-key="weightKg" bindinput="input" placeholder="例如 75.2"/></view>
+    <view class="field"><view class="label">体脂率 %</view><input class="input" type="digit" value="{{bodyFat}}" data-key="bodyFat" bindinput="input" placeholder="可选；设备测量值可能有误差"/></view>
+    <view class="section-title">我想记录的围度</view>
+    <view class="sub">点选需要长期跟踪的指标。选择会自动保存，以后新增指标无需改页面结构。</view>
+    <view class="choice-row">
+      <view wx:for="{{metricDefs}}" wx:key="code" class="choice-chip {{item.selected?'choice-chip-active':''}}" data-index="{{index}}" bindtap="toggleMetric">{{item.name}}</view>
+    </view>
+    <view wx:if="{{metricDefs.length}}" class="metric-grid selected-metrics">
+      <block wx:for="{{metricDefs}}" wx:key="code">
+        <view wx:if="{{item.selected}}" class="field">
+          <view class="label">{{item.name}} {{item.unit}}</view>
+          <input class="input" type="digit" value="{{item.value}}" data-index="{{index}}" bindinput="metricInput" placeholder="可选"/>
+        </view>
+      </block>
+    </view>
+    <button class="btn" loading="{{saving}}" bindtap="save" style="margin-top:26rpx">保存并更新营养目标</button>
+  </view>
+  <view class="section-title">历史记录</view>
+  <view class="card">
+    <view wx:for="{{records}}" wx:key="_id" class="list-item"><view class="row"><view><view class="value">{{item.weightKg}} kg</view><view class="sub">{{item.recordDate}}</view></view><view wx:if="{{item.bodyFat}}" class="tag">体脂 {{item.bodyFat}}%</view></view></view>
+    <view wx:if="{{!records.length && !loading}}" class="empty">暂无身体记录</view>
+  </view>
+</view>

@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="card"><view class="row"><view><view class="label">今日累计</view><view class="big">{{summary.durationMinutes||0}} 分钟</view></view><view class="tag">{{summary.count||0}} 次</view></view></view>
+  <view class="card">
+    <view class="h2">新增学习记录</view>
+    <view class="field"><view class="label">关联计划（可选）</view><picker mode="selector" range="{{plans}}" range-key="name" value="{{planIndex}}" bindchange="plan"><view class="input">{{plans[planIndex].name || '不关联计划'}}</view></picker><view class="sub">关联后，达到时长/次数目标会自动完成计划，并同步到绑定群组。</view></view>
+    <view class="field"><view class="label">科目</view><input class="input" data-key="subject" value="{{subject}}" bindinput="input" placeholder="例如：系统架构设计师"/></view>
+    <view class="field"><view class="label">内容</view><input class="input" data-key="content" value="{{content}}" bindinput="input" placeholder="例如：关系代数"/></view>
+    <view class="field"><view class="label">时长（分钟）</view><input class="input" type="number" data-key="durationMinutes" value="{{durationMinutes}}" bindinput="input"/></view>
+    <button class="btn" loading="{{saving}}" bindtap="save">保存</button>
+  </view>
+  <view class="card"><view class="list-item" wx:for="{{sessions}}" wx:key="_id"><view class="row"><view class="flex-1"><view class="value">{{item.subject}}</view><view class="sub">{{item.content}}</view></view><view>{{item.durationMinutes}} min</view></view><view class="action-row"><button class="btn btn-small btn-light" data-id="{{item._id}}" data-title="{{item.subject}}学习笔记" bindtap="writeNote">写笔记</button></view></view><view class="empty compact" wx:if="{{!sessions.length}}">今天还没学习记录</view></view>
+</view>

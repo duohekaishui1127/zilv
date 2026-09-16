@@ -1,0 +1,19 @@
+<view class="container">
+  <view class="hero"><view class="h1">计划</view><view class="sub">计划是打卡与群组监督的基础</view></view>
+  <view class="card">
+    <view class="list-item" wx:for="{{plans}}" wx:key="_id">
+      <view class="row">
+        <view class="flex-1"><view class="value {{item.enabled ? '' : 'muted'}}">{{item.name}}</view><view class="sub">{{item.categoryLabel}} · {{item.repeatLabel}} · {{item.targetValue}}{{item.unit}}</view></view>
+        <view class="tag">{{item.enabled ? '启用' : '停用'}}</view>
+      </view>
+      <view class="action-row">
+        <button class="btn btn-light btn-small" data-id="{{item._id}}" bindtap="edit">编辑</button>
+        <button class="btn btn-light btn-small" data-id="{{item._id}}" data-name="{{item.name}}" bindtap="bindGroup">群组</button>
+        <button class="btn btn-light btn-small" data-id="{{item._id}}" data-enabled="{{item.enabled}}" bindtap="toggle">{{item.enabled ? '停用' : '启用'}}</button>
+        <button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="remove">删除</button>
+      </view>
+    </view>
+    <view class="empty compact" wx:if="{{!plans.length}}">还没有计划，先创建一个</view>
+  </view>
+  <view class="fab" bindtap="add">+</view>
+</view>

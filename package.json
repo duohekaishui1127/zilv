@@ -1,0 +1,10 @@
+{
+  "name": "zilu-miniapp-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node tools/static-check.js",
+    "verify": "npm run check && npm test"
+  }
+}

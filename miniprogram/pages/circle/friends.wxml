@@ -1,0 +1,11 @@
+<view class="container">
+  <view class="card"><view class="h2">通过好友码添加</view><view class="row"><input class="input flex-1" value="{{shareCode}}" bindinput="input" placeholder="输入好友码"/><button class="btn btn-small" bindtap="find">查找</button></view><view wx:if="{{found}}" class="list-item row"><view><view class="value">{{found.nickname}}</view><view class="sub">好友码 {{found.shareCode}}</view></view><button class="btn btn-small" bindtap="add">添加</button></view></view>
+  <view class="section-title" wx:if="{{requests.length}}">好友请求</view><view class="card" wx:if="{{requests.length}}"><view class="list-item row" wx:for="{{requests}}" wx:key="friendship._id"><view class="value">{{item.user.nickname}}</view><button class="btn btn-small" data-id="{{item.friendship._id}}" bindtap="accept">接受</button></view></view>
+  <view class="section-title">我的好友</view>
+  <view class="card">
+    <view class="list-item" wx:for="{{friends}}" wx:key="_id">
+      <view class="row"><view class="flex-1"><view class="value">{{item.nickname}}</view><view class="sub" wx:if="{{item.planStatus}}">今日总计划 {{item.planStatus.completed}} / {{item.planStatus.total}}</view><view class="sub" wx:else>对方已隐藏计划状态</view><view class="row-start" style="margin-top:10rpx"><view wx:if="{{item.studyStatus}}" class="tag">学习 {{item.studyStatus.done?'✓':'未完成'}}</view><view wx:if="{{item.workoutStatus}}" class="tag">健身 {{item.workoutStatus.done?'✓':'未完成'}}</view></view></view><button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="remove">删除</button></view>
+    </view>
+    <view class="empty compact" wx:if="{{!friends.length}}">暂无好友</view>
+  </view>
+</view>

@@ -1,0 +1,63 @@
+{
+  "pages": [
+    "pages/today/index",
+    "pages/record/index",
+    "pages/record/body",
+    "pages/record/food",
+    "pages/record/workout",
+    "pages/record/study",
+    "pages/plan/index",
+    "pages/plan/edit",
+    "pages/plan/bind",
+    "pages/circle/index",
+    "pages/circle/friends",
+    "pages/circle/groups",
+    "pages/circle/group-detail",
+    "pages/circle/group-create",
+    "pages/profile/index",
+    "pages/profile/edit",
+    "pages/profile/privacy",
+    "pages/profile/food-custom",
+    "pages/report/week",
+    "pages/notes/index",
+    "pages/notes/edit",
+    "pages/profile/about"
+  ],
+  "window": {
+    "navigationBarTitleText": "自律",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f7f9",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8a8f98",
+    "selectedColor": "#111827",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/today/index",
+        "text": "今日"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/plan/index",
+        "text": "计划"
+      },
+      {
+        "pagePath": "pages/circle/index",
+        "text": "圈子"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

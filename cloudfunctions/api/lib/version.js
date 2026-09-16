@@ -1,0 +1,5 @@
+module.exports = Object.freeze({
+  APP_VERSION: '1.0.0',
+  SCHEMA_VERSION: 3,
+  NUTRITION_ALGORITHM_VERSION: 'NUTRITION_V2'
+})

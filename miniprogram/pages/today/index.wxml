@@ -1,0 +1,61 @@
+<view class="container">
+  <view wx:if="{{loading && !dashboard}}" class="empty">正在加载今日数据…</view>
+  <view wx:elif="{{error && !dashboard}}" class="card error-card">
+    <view class="value">今日数据加载失败</view>
+    <view class="sub">{{error}}</view>
+    <button class="btn btn-small" style="margin-top:20rpx" bindtap="retry">重新加载</button>
+  </view>
+  <block wx:elif="{{dashboard}}">
+    <view class="hero"><view class="h1">自律</view><view class="sub">{{dashboard.user.nickname}} · 今天只完成今天</view></view>
+    <view class="card warn-card" wx:if="{{dashboard.weightStatus.needUpdate}}" bindtap="goBody">
+      <view class="row"><view><view class="value">请更新本周体重</view><view class="sub">上次更新：{{dashboard.weightStatus.lastUpdateDate || '尚未记录'}}，营养目标需要重新校准</view></view><view>›</view></view>
+    </view>
+    <view class="card">
+      <view class="row"><view class="h2">今日计划</view><view class="big">{{dashboard.completion.completed}}/{{dashboard.completion.total}}</view></view>
+      <view class="progress"><view class="progress-inner" style="width: {{completionPct}}%;"></view></view>
+      <view wx:if="{{dashboard.plans.length}}">
+        <view class="list-item row" wx:for="{{dashboard.plans}}" wx:key="_id">
+          <view class="flex-1">
+            <view class="value">{{item.name}}</view>
+            <view class="sub" wx:if="{{item.repeatType === 'WEEKLY_COUNT'}}">{{item.categoryLabel}} · 本周 {{item.weeklyProgress.completed}}/{{item.weeklyProgress.target}}</view>
+            <view class="sub" wx:else>{{item.categoryLabel}} · {{item.targetValue}}{{item.unit}}</view>
+          </view>
+          <button wx:if="{{!item.completed}}" class="btn btn-small" data-id="{{item._id}}" bindtap="completePlan">打卡</button>
+          <view wx:else class="success">✓ 已完成</view>
+        </view>
+      </view>
+      <view wx:else class="empty compact">今天还没有待执行计划</view>
+    </view>
+    <view class="card">
+      <view class="h2">今日能量</view>
+      <view class="metric-grid" style="margin-top:20rpx">
+        <view class="metric"><view class="label">摄入</view><view class="big">{{dashboard.nutrition.calorieIntake}}</view><view class="label">kcal</view></view>
+        <view class="metric"><view class="label">预计消耗</view><view class="big">{{dashboard.energy.estimatedTotalExpenditure}}</view><view class="label">kcal</view></view>
+      </view>
+      <view class="divider"></view>
+      <view class="row" wx:if="{{energyState.isDeficit}}"><view class="label">预计热量缺口</view><view class="big success">{{energyState.deficit}} kcal</view></view>
+      <view class="row" wx:elif="{{energyState.isSurplus}}"><view class="label">预计热量盈余</view><view class="big danger">{{energyState.surplus}} kcal</view></view>
+      <view class="row" wx:else><view class="label">预计热量平衡</view><view class="big">0 kcal</view></view>
+      <view class="sub">消耗为模型估算值，用于趋势记录，不等同于精确测量。</view>
+    </view>
+    <view class="card" wx:if="{{dashboard.nutritionTarget}}">
+      <view class="row"><view class="h2">营养目标</view><view class="tag">{{dashboard.nutritionTarget.targetCalories}} kcal</view></view>
+      <view class="list-item"><view class="row"><text>蛋白质</text><text>{{dashboard.nutrition.proteinIntake}} / {{dashboard.nutritionTarget.proteinGram}}g</text></view><view class="progress"><view class="progress-inner" style="width:{{proteinPct}}%"></view></view></view>
+      <view class="list-item"><view class="row"><text>碳水</text><text>{{dashboard.nutrition.carbIntake}} / {{dashboard.nutritionTarget.carbGram}}g</text></view><view class="progress"><view class="progress-inner" style="width:{{carbPct}}%"></view></view></view>
+      <view class="list-item"><view class="row"><text>脂肪</text><text>{{dashboard.nutrition.fatIntake}} / {{dashboard.nutritionTarget.fatGram}}g</text></view><view class="progress"><view class="progress-inner" style="width:{{fatPct}}%"></view></view></view>
+    </view>
+    <view class="card" wx:else>
+      <view class="value">营养目标尚未生成</view><view class="sub">请先在“我的 → 身体与营养档案”填写身高、生日、性别，并至少记录一次体重。</view>
+    </view>
+    <view class="card">
+      <view class="h2">快速记录</view>
+      <view class="quick-grid">
+        <button class="btn btn-light" bindtap="goFood">🍚 饮食</button>
+        <button class="btn btn-light" bindtap="goWorkout">🏃 运动</button>
+        <button class="btn btn-light" bindtap="goStudy">📚 学习</button>
+        <button class="btn btn-light" bindtap="goBody">⚖️ 身体</button>
+        <button class="btn btn-light" bindtap="goNotes">📝 日志</button>
+      </view>
+    </view>
+  </block>
+</view>
