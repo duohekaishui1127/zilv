@@ -43,7 +43,7 @@ note_attachments
 
 ## 隐私
 
-1.0.0 不提供好友/群组读取 Note 的 API。`visibility` 固定写为 PRIVATE，字段为未来扩展保留。
+当前版本不提供好友/群组读取 Note 的 API。`visibility` 固定写为 PRIVATE，字段为未来扩展保留。
 
 ## 幂等
 

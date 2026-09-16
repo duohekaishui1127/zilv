@@ -6,7 +6,7 @@
     <button class="btn btn-small" style="margin-top:20rpx" bindtap="retry">重新加载</button>
   </view>
   <block wx:elif="{{dashboard}}">
-    <view class="hero"><view class="h1">自律</view><view class="sub">{{dashboard.user.nickname}} · 今天只完成今天</view></view>
+    <view class="hero row"><view><view class="h1">自律</view><view class="sub">{{dashboard.user.nickname}} · 今天只完成今天</view></view><view class="tag" bindtap="goNotifications">消息{{dashboard.unreadNotificationCount ? ' ' + dashboard.unreadNotificationCount : ''}}</view></view>
     <view class="card warn-card" wx:if="{{dashboard.weightStatus.needUpdate}}" bindtap="goBody">
       <view class="row"><view><view class="value">请更新本周体重</view><view class="sub">上次更新：{{dashboard.weightStatus.lastUpdateDate || '尚未记录'}}，营养目标需要重新校准</view></view><view>›</view></view>
     </view>

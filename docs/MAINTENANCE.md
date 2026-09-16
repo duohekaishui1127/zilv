@@ -1,4 +1,4 @@
-# 1.0.0 维护说明
+# 1.1.0 维护说明
 
 ## Feature Actions
 
@@ -14,9 +14,12 @@ privacy.js     隐私设置
 friends.js     好友
 groups.js      群组
 notes.js       日志与附件
+notifications.js 站内提醒与微信订阅配置
 reports.js     周报
 system.js      版本与诊断
 ```
+
+`cloudfunctions/reminder-dispatch` 独立负责定时扫描、未打卡复核、消息幂等写入和微信订阅消息发送。
 
 原则：一个 Action 文件如果开始接近 160~220 行，应重新检查是否存在新的职责边界。质量门禁会对此提示/阻止。
 

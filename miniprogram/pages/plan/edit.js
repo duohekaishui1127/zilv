@@ -15,13 +15,25 @@ Page({
     targetValue: 1, unit: '', weeklyCount: 3,
     repeatTypes: REPEAT_TYPES.map(x => x.label), repeatValues: REPEAT_TYPES.map(x => x.value), repeatIndex: 0,
     isSpecificDays: false, isWeeklyCount: false,
+    reminderEnabled: false, reminderTime: '21:00', reminderPushEnabled: false,
+    reminderTemplateId: '', reminderConfigLoaded: false, subscribing: false,
+    subscriptionLabel: '尚未订阅微信提醒',
     weekdays: [1,2,3,4,5,6,7].map((value, i) => ({ value, label: ['一','二','三','四','五','六','日'][i], selected: false }))
   },
   onLoad(options) {
+    this.loadReminderConfig()
     if (options.id) {
       this.setData({ id: options.id, editMode: true })
       wx.setNavigationBarTitle({ title: '编辑计划' })
       this.loadPlan()
+    }
+  },
+  async loadReminderConfig() {
+    try {
+      const config = await api.call('getReminderConfig', {}, { silent: true })
+      this.setData({ reminderTemplateId: config.templateId || '', reminderConfigLoaded: true })
+    } catch (error) {
+      this.setData({ reminderTemplateId: '', reminderConfigLoaded: true })
     }
   },
   async loadPlan() {
@@ -40,6 +52,10 @@ Page({
         repeatIndex,
         isSpecificDays: plan.repeatType === 'SPECIFIC_WEEKDAYS',
         isWeeklyCount: plan.repeatType === 'WEEKLY_COUNT',
+        reminderEnabled: !!plan.reminderEnabled,
+        reminderTime: plan.reminderTime || '21:00',
+        reminderPushEnabled: !!plan.reminderPushEnabled,
+        subscriptionLabel: plan.reminderPushEnabled ? '已订阅下一次微信提醒' : '尚未订阅微信提醒',
         weekdays: this.data.weekdays.map(x => ({ ...x, selected: selectedDays.has(x.value) }))
       })
     } finally { this.setData({ loading: false }) }
@@ -51,6 +67,38 @@ Page({
     const i = Number(e.detail.value)
     const value = this.data.repeatValues[i]
     this.setData({ repeatIndex: i, isSpecificDays: value === 'SPECIFIC_WEEKDAYS', isWeeklyCount: value === 'WEEKLY_COUNT' })
+  },
+  reminderToggle(e) {
+    const enabled = !!e.detail.value
+    this.setData({ reminderEnabled: enabled, ...(!enabled ? { reminderPushEnabled: false, subscriptionLabel: '尚未订阅微信提醒' } : {}) })
+  },
+  reminderTimeChange(e) { this.setData({ reminderTime: e.detail.value }) },
+  async subscribeReminder() {
+    if (this.data.subscribing) return
+    if (!this.data.reminderEnabled) return wx.showToast({ title: '请先开启计划提醒', icon: 'none' })
+    if (!this.data.reminderTemplateId) {
+      return wx.showModal({
+        title: '微信提醒尚未配置',
+        content: '当前仍可使用消息中心提醒。请先在云函数环境变量中配置订阅消息模板。',
+        showCancel: false
+      })
+    }
+    this.setData({ subscribing: true })
+    try {
+      const result = await wx.requestSubscribeMessage({ tmplIds: [this.data.reminderTemplateId] })
+      const status = result[this.data.reminderTemplateId]
+      const accepted = status === 'accept' || status === 'acceptWithAudio'
+      this.setData({
+        reminderPushEnabled: accepted,
+        subscriptionLabel: accepted ? '已订阅下一次微信提醒' : '未允许微信提醒，可继续使用消息中心'
+      })
+      wx.showToast({ title: accepted ? '已订阅一次提醒' : '未开启微信提醒', icon: 'none' })
+    } catch (error) {
+      this.setData({ reminderPushEnabled: false, subscriptionLabel: '订阅失败，可稍后重试' })
+      wx.showToast({ title: '订阅失败，请稍后重试', icon: 'none' })
+    } finally {
+      this.setData({ subscribing: false })
+    }
   },
   toggleDay(e) {
     const day = Number(e.currentTarget.dataset.day)
@@ -74,7 +122,11 @@ Page({
       targetValue,
       unit: this.data.unit,
       repeatType,
-      repeatConfig: { weekdays: selectedDays, weeklyCount: repeatType === 'WEEKLY_COUNT' ? Number(this.data.weeklyCount || 1) : undefined }
+      repeatConfig: { weekdays: selectedDays, weeklyCount: repeatType === 'WEEKLY_COUNT' ? Number(this.data.weeklyCount || 1) : undefined },
+      reminderEnabled: this.data.reminderEnabled,
+      reminderTime: this.data.reminderTime,
+      reminderTimezoneOffset: -new Date().getTimezoneOffset(),
+      reminderPushEnabled: this.data.reminderPushEnabled
     }
     this.setData({ saving: true })
     try {

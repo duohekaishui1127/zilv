@@ -1,15 +1,17 @@
+const { db, C } = require('../lib/db')
 const { round1 } = require('../lib/utils')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
 
 async function dashboard({ user, localDate }) {
-  const [weight, plans, nutrition, workout, study] = await Promise.all([
+  const [weight, plans, nutrition, workout, study, unreadNotifications] = await Promise.all([
     latestWeight(user._id),
     getTodayPlansService(user._id, localDate),
     nutritionSummary(user._id, localDate),
     workoutSummary(user._id, localDate),
-    studySummary(user._id, localDate)
+    studySummary(user._id, localDate),
+    db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).count()
   ])
   let target = await currentNutritionTarget(user._id)
   if (!target && weight) target = await recalcNutritionTarget(user, localDate)
@@ -24,6 +26,7 @@ async function dashboard({ user, localDate }) {
     nutrition,
     workout,
     study,
+    unreadNotificationCount: unreadNotifications.total,
     energy: {
       baseDailyExpenditure: base,
       exerciseExpenditure: workout.estimatedCalories,

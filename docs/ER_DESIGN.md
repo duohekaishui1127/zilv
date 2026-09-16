@@ -1,4 +1,4 @@
-# 数据库 ER 关系设计（1.0.0）
+# 数据库 ER 关系设计（1.1.0）
 
 ```mermaid
 erDiagram
@@ -29,6 +29,8 @@ erDiagram
     BODY_RECORD o|--o{ NOTE : relates
     STUDY_SESSION o|--o{ NOTE : relates
     WORKOUT_SESSION o|--o{ NOTE : relates
+    USER ||--o{ NOTIFICATION : receives
+    PLAN ||--o{ NOTIFICATION : triggers
 ```
 
 ## 关键边界
@@ -41,3 +43,4 @@ erDiagram
 6. **Note** 是统一长期记录模型，通过 `relatedType + relatedId` 关联 Body/Study/Workout/Plan。
 7. **NoteAttachment** 独立存储文件元数据，实际图片进入云存储。
 8. Notes 在当前版本固定为 PRIVATE；好友/群组读取链路不存在。
+9. Notification 使用用户、计划和日期生成确定性 ID，承载站内未读状态及微信推送结果。

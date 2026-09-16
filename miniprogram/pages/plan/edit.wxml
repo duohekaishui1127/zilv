@@ -8,6 +8,20 @@
     <view class="field"><view class="label">重复规则</view><picker mode="selector" range="{{repeatTypes}}" value="{{repeatIndex}}" bindchange="repeat"><view class="input">{{repeatTypes[repeatIndex]}}</view></picker></view>
     <view wx:if="{{isSpecificDays}}" class="field"><view class="label">选择星期</view><view class="row wrap" style="margin-top:12rpx"><view wx:for="{{weekdays}}" wx:key="value" data-day="{{item.value}}" bindtap="toggleDay" class="tag {{item.selected ? 'tag-active' : ''}}">{{item.selected ? '✓ ' : ''}}周{{item.label}}</view></view></view>
     <view wx:if="{{isWeeklyCount}}" class="field"><view class="label">每周完成次数</view><input class="input" type="number" data-key="weeklyCount" value="{{weeklyCount}}" bindinput="input"/><view class="sub">每周完成 1～7 次；上面的“目标值”仍表示每次计划的目标，例如学习120分钟。</view></view>
+    <view class="divider"></view>
+    <view class="field">
+      <view class="row"><view><view class="value">未打卡提醒</view><view class="sub">到达设定时间仍未打卡时生成消息</view></view><switch checked="{{reminderEnabled}}" bindchange="reminderToggle"/></view>
+    </view>
+    <block wx:if="{{reminderEnabled}}">
+      <view class="field"><view class="label">提醒时间</view><picker mode="time" value="{{reminderTime}}" bindchange="reminderTimeChange"><view class="input">{{reminderTime}}</view></picker></view>
+      <view class="tip">
+        <view>{{subscriptionLabel}}</view>
+        <view class="sub">消息中心提醒持续有效；微信订阅消息通常一次授权发送一次，发送后需再次订阅。</view>
+        <view class="sub">订阅成功后还需保存计划，提醒设置才会生效。</view>
+      </view>
+      <button class="btn btn-light" loading="{{subscribing}}" disabled="{{!reminderConfigLoaded}}" bindtap="subscribeReminder">订阅下一次微信提醒</button>
+      <view style="height:24rpx"></view>
+    </block>
     <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建计划'}}</button>
   </view>
 </view>

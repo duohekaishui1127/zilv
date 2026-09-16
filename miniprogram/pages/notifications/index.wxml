@@ -1,0 +1,12 @@
+<view class="container">
+  <view class="hero row"><view><view class="h1">消息中心</view><view class="sub">未读 {{unreadCount}} 条</view></view><button wx:if="{{unreadCount}}" class="btn btn-light btn-small" bindtap="markAll">全部已读</button></view>
+  <view class="empty" wx:if="{{loading && !notifications.length}}">正在加载消息…</view>
+  <view class="card" wx:elif="{{notifications.length}}">
+    <view class="list-item {{item.status === 'UNREAD' ? 'notification-unread' : ''}}" wx:for="{{notifications}}" wx:key="_id" data-id="{{item._id}}" bindtap="open">
+      <view class="row"><view class="value">{{item.title}}</view><view class="tag" wx:if="{{item.status === 'UNREAD'}}">未读</view></view>
+      <view class="notification-content">{{item.content}}</view>
+      <view class="sub">{{item.displayTime}}{{item.pushLabel ? ' · ' + item.pushLabel : ''}}</view>
+    </view>
+  </view>
+  <view class="empty" wx:else>暂时没有提醒消息</view>
+</view>

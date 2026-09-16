@@ -1,4 +1,4 @@
-# 云数据库集合设计（应用 1.0.0 / Schema 3）
+# 云数据库集合设计（应用 1.1.0 / Schema 4）
 
 ## 核心业务
 
@@ -23,6 +23,7 @@ plan_group_bindings
 group_events
 notes
 note_attachments
+notifications
 ```
 
 ## 系统与工程
@@ -36,7 +37,13 @@ migration_history
 audit_logs
 ```
 
-共 26 个集合。
+共 27 个集合。
+
+## 计划提醒字段
+
+`plans` 增加：`reminderEnabled`、`reminderTime`、`reminderTimezoneOffset`、`reminderPushEnabled`。
+
+`notifications` 保存站内消息及推送结果：`userId`、`planId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。
 
 ## 推荐索引
 
@@ -59,6 +66,7 @@ audit_logs
 - `group_events`: `groupId + createdAt desc`；`groupId + checkinId + eventType`
 - `notes`: `userId + status + createdAt desc`；`userId + type + status + createdAt desc`；`userId + clientMutationId + status`
 - `note_attachments`: `noteId + sort`；`userId + noteId`
+- `notifications`: `userId + createdAt desc`；`userId + status + createdAt desc`；`userId + planId + recordDate`
 - `exercises`: `key`
 - `body_metric_defs`: `code`
 - `app_config`: `key`

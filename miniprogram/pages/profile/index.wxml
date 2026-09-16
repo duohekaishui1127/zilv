@@ -5,6 +5,7 @@
     <view class="list-item row" data-url="/pages/profile/privacy" bindtap="go"><view><view class="value">隐私设置</view><view class="sub">控制好友可见范围</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/food-custom" bindtap="go"><view><view class="value">自定义食物</view><view class="sub">添加包装食品或自己的食物数据</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/notes/index" bindtap="go"><view><view class="value">我的历程</view><view class="sub">体态照片、学习笔记和训练复盘</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/notifications/index" bindtap="go"><view><view class="value">消息中心</view><view class="sub">查看未打卡提醒和微信推送结果</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/report/week" bindtap="go"><view><view class="value">最近7天报告</view><view class="sub">体重、饮食、能量、打卡</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/about" bindtap="go"><view><view class="value">关于与诊断</view><view class="sub">版本、环境与问题定位信息</view></view><view>›</view></view>
   </view>

@@ -4,20 +4,22 @@ const { foods, exercises, bodyMetrics, appConfig } = require('./seed-data')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const APP_VERSION = '1.0.0'
-const SCHEMA_VERSION = 3
+const APP_VERSION = '1.1.0'
+const SCHEMA_VERSION = 4
 
 const collections = [
   'users','body_records','nutrition_profiles','nutrition_targets','foods','meals','meal_items',
   'workout_sessions','plans','checkins','study_sessions','friendships','privacy_settings','groups',
   'group_members','plan_group_bindings','group_events','exercises','body_metric_defs','app_config',
-  'system_meta','audit_logs','migration_history','notes','note_attachments','body_metric_preferences'
+  'system_meta','audit_logs','migration_history','notes','note_attachments','body_metric_preferences',
+  'notifications'
 ]
 
 const migrations = [
   { migrationId: '001_core_baseline', schemaVersion: 1, description: '核心业务集合基线' },
   { migrationId: '002_engineering_foundation', schemaVersion: 2, description: '工程化、系统数据初始化、日志与版本管理' },
-  { migrationId: '003_notes_quality', schemaVersion: 3, description: '日志/笔记与图片附件、模块边界及质量属性优化' }
+  { migrationId: '003_notes_quality', schemaVersion: 3, description: '日志/笔记与图片附件、模块边界及质量属性优化' },
+  { migrationId: '004_plan_reminders', schemaVersion: 4, description: '计划提醒、站内消息与微信订阅消息状态' }
 ]
 
 async function ensureCollection(name) {

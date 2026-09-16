@@ -30,7 +30,8 @@ const C = Object.freeze({
   MIGRATION_HISTORY: 'migration_history',
   NOTES: 'notes',
   NOTE_ATTACHMENTS: 'note_attachments',
-  BODY_METRIC_PREFS: 'body_metric_preferences'
+  BODY_METRIC_PREFS: 'body_metric_preferences',
+  NOTIFICATIONS: 'notifications'
 })
 
 module.exports = { cloud, db, _, C }

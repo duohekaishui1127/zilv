@@ -1,4 +1,4 @@
-# 1.0.0 发布检查清单
+# 1.1.0 发布检查清单
 
 ## 代码质量
 
@@ -12,9 +12,9 @@
 ## 数据库
 
 - [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 3`
-- [ ] 确认 `003_notes_quality` migration 已记录
-- [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences` 已创建
+- [ ] 确认 `system_meta.schemaVersion = 4`
+- [ ] 确认 `004_plan_reminders` migration 已记录
+- [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences`、`notifications` 已创建
 - [ ] 按 `DATABASE_SCHEMA.md` 建议建立索引
 - [ ] 真实数据升级前完成备份
 
@@ -41,6 +41,10 @@
 - [ ] trial/release 使用预期云环境
 - [ ] 先部署 `admin-init` 并完成迁移
 - [ ] 再部署 `api`
+- [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_TEMPLATE_ID`
+- [ ] 订阅消息模板字段名与 `REMINDER_TEMPLATE_*_KEY` 一致
+- [ ] 部署 `reminder-dispatch` 并确认每 5 分钟触发器生效
+- [ ] 体验版使用 `REMINDER_MINIPROGRAM_STATE=trial`，正式版使用 `formal`
 - [ ] 编译小程序并完成核心回归测试
 - [ ] `CHANGELOG.md` 已更新
 - [ ] Git commit / tag 已创建

@@ -1,4 +1,4 @@
-# 页面跳转图（1.0.0）
+# 页面跳转图（1.1.0）
 
 ```mermaid
 flowchart TD
@@ -8,6 +8,7 @@ flowchart TD
     T --> W[运动记录]
     T --> S[学习记录]
     T --> N[我的历程]
+    T --> NT[消息中心]
 
     R[记录] --> N
     R --> B
@@ -31,6 +32,7 @@ flowchart TD
     M --> PR[隐私设置]
     M --> N
     M --> WR[7天报告]
+    M --> NT
     M --> AB[关于与诊断]
 
     T -.TabBar.-> R

@@ -2,8 +2,8 @@
 
 项目采用语义化版本（Semantic Versioning）：`主版本.次版本.修订版本`。
 
-- `1.0.0 -> 1.1.0`：新增向后兼容功能；
-- `1.0.0 -> 1.0.1`：向后兼容的缺陷修复；
+- `1.1.0 -> 1.2.0`：新增向后兼容功能；
+- `1.1.0 -> 1.1.1`：向后兼容的缺陷修复；
 - `1.x -> 2.0.0`：存在需要明确迁移的不兼容接口或数据调整。
 
 应用版本与数据库 Schema 版本是两个概念：应用小版本不一定修改 Schema；只有持久化结构或初始化数据需要迁移时才递增 `SCHEMA_VERSION`。
@@ -45,11 +45,12 @@ chore: bump schema version
 3. `miniprogram/config/version.js`；
 4. `cloudfunctions/api/package.json`；
 5. `cloudfunctions/admin-init/package.json`；
-6. `cloudfunctions/api/lib/version.js`；
-7. `cloudfunctions/admin-init/index.js` 中应用/Schema 版本；
-8. `CHANGELOG.md`；
-9. 如果持久化结构变化，提高 `SCHEMA_VERSION` 并新增 migration；
-10. 执行 `npm run verify`，通过后再打 tag。
+6. `cloudfunctions/reminder-dispatch/package.json`；
+7. `cloudfunctions/api/lib/version.js`；
+8. `cloudfunctions/admin-init/index.js` 中应用/Schema 版本；
+9. `CHANGELOG.md`；
+10. 如果持久化结构变化，提高 `SCHEMA_VERSION` 并新增 migration；
+11. 执行 `npm run verify`，通过后再打 tag。
 
 `tools/static-check.js` 会自动检查上述主要版本值是否一致，并禁止云函数依赖使用 `latest`/`*`。
 
@@ -64,6 +65,6 @@ chore: bump schema version
 当前版本：
 
 ```text
-APP_VERSION    1.0.0
-SCHEMA_VERSION 3
+APP_VERSION    1.1.0
+SCHEMA_VERSION 4
 ```

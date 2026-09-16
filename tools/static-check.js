@@ -37,6 +37,7 @@ function checkVersions() {
     'package-lock root': json('package-lock.json').packages?.['']?.version,
     'api package': json('cloudfunctions/api/package.json').version,
     'admin-init package': json('cloudfunctions/admin-init/package.json').version,
+    'reminder-dispatch package': json('cloudfunctions/reminder-dispatch/package.json').version,
     'client config': (read('miniprogram/config/version.js').match(/APP_VERSION:\s*['"]([^'"]+)/) || [])[1],
     'server config': (read('cloudfunctions/api/lib/version.js').match(/APP_VERSION:\s*['"]([^'"]+)/) || [])[1],
     'admin-init': (read('cloudfunctions/admin-init/index.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)/) || [])[1]
@@ -50,7 +51,7 @@ function checkVersions() {
 }
 
 function checkDependencies() {
-  for (const rel of ['cloudfunctions/api/package.json', 'cloudfunctions/admin-init/package.json']) {
+  for (const rel of ['cloudfunctions/api/package.json', 'cloudfunctions/admin-init/package.json', 'cloudfunctions/reminder-dispatch/package.json']) {
     const pkg = json(rel)
     for (const [name, version] of Object.entries(pkg.dependencies || {})) {
       if (version === 'latest' || version === '*') fail(`${rel} 依赖 ${name} 未固定版本`)
@@ -149,6 +150,14 @@ function checkProjectConfig() {
   if (!config.libVersion || config.libVersion === 'trial') fail('project.config.json 必须固定稳定基础库版本，不能使用 trial')
 }
 
+function checkReminderFunction() {
+  const config = json('cloudfunctions/reminder-dispatch/config.json')
+  const permissions = config.permissions?.openapi || []
+  if (!permissions.includes('subscribeMessage.send')) fail('reminder-dispatch 缺少 subscribeMessage.send OpenAPI 权限')
+  const timer = (config.triggers || []).find(trigger => trigger.type === 'timer')
+  if (!timer?.config) fail('reminder-dispatch 缺少定时触发器')
+}
+
 function checkLegacyModules() {
   for (const rel of ['cloudfunctions/api/actions/social.js', 'cloudfunctions/api/actions/activity.js']) {
     if (fs.existsSync(path.join(root, rel))) warn(`旧的大模块仍存在: ${rel}`)
@@ -161,6 +170,7 @@ checkDependencies()
 checkPages()
 checkWxmlBalance()
 checkProjectConfig()
+checkReminderFunction()
 checkActionContracts()
 checkLegacyModules()
 

@@ -10,6 +10,7 @@ module.exports = {
   ...require('./friends'),
   ...require('./groups'),
   ...require('./notes'),
+  ...require('./notifications'),
   ...require('./reports'),
   ...require('./system')
 }

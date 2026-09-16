@@ -41,6 +41,7 @@ Page({
   goWorkout() { wx.navigateTo({ url: '/pages/record/workout' }) },
   goStudy() { wx.navigateTo({ url: '/pages/record/study' }) },
   goNotes() { wx.navigateTo({ url: '/pages/notes/index' }) },
+  goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
   async completePlan(e) {
     const id = e.currentTarget.dataset.id
     if (!id || this._completing) return

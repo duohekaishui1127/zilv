@@ -5,13 +5,15 @@ const MUTATING_ACTIONS = new Set([
   'updateProfile','addBodyRecord','createCustomFood','addMealItem','deleteMealItem','addWorkout',
   'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','removeFriend','createGroup','joinGroup','leaveGroup',
-  'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs'
+  'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
+  'markNotificationRead','markAllNotificationsRead'
 ])
 
 function inferEntityId(event = {}, data = {}) {
   return event.planId || event.groupId || event.friendshipId || event.itemId || event.foodId || event.targetUserId ||
     data.plan?._id || data.group?._id || data.record?._id || data.food?._id || data.item?._id ||
-    data.workout?._id || data.session?._id || data.checkin?._id || data.friendship?._id || data.note?._id || null
+    data.workout?._id || data.session?._id || data.checkin?._id || data.friendship?._id || data.note?._id ||
+    data.notification?._id || null
 }
 
 async function writeAudit({ userId, action, requestId, event, data }) {

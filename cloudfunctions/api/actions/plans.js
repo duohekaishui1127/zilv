@@ -21,13 +21,26 @@ function normalizePlan(input, localDate, existing = {}) {
     if (!Number.isFinite(weeklyCount) || weeklyCount < 1 || weeklyCount > 7) throw fail('INVALID_PARAMETER', '每周次数应为1到7次')
     repeatConfig.weeklyCount = Math.round(weeklyCount)
   }
+  const reminderEnabled = Boolean(p.reminderEnabled ?? existing.reminderEnabled ?? false)
+  const reminderTime = String(p.reminderTime ?? existing.reminderTime ?? '21:00')
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
+    throw fail('INVALID_PARAMETER', '提醒时间不合法')
+  }
+  const timezoneOffset = Number(p.reminderTimezoneOffset ?? existing.reminderTimezoneOffset ?? 480)
+  if (!Number.isFinite(timezoneOffset) || timezoneOffset < -720 || timezoneOffset > 840) {
+    throw fail('INVALID_PARAMETER', '提醒时区不合法')
+  }
   return {
     name: name.slice(0, 80), category: p.category || existing.category || 'CUSTOM',
     targetType: p.targetType || existing.targetType || 'BOOLEAN', targetValue,
     unit: String(p.unit ?? existing.unit ?? '').slice(0, 20), repeatType, repeatConfig,
     startDate: p.startDate || existing.startDate || localDate,
     endDate: p.endDate === undefined ? (existing.endDate || null) : (p.endDate || null),
-    privacyLevel: p.privacyLevel || existing.privacyLevel || 'FRIENDS'
+    privacyLevel: p.privacyLevel || existing.privacyLevel || 'FRIENDS',
+    reminderEnabled,
+    reminderTime,
+    reminderTimezoneOffset: Math.round(timezoneOffset),
+    reminderPushEnabled: reminderEnabled && Boolean(p.reminderPushEnabled ?? existing.reminderPushEnabled ?? false)
   }
 }
 

@@ -21,6 +21,7 @@
     "pages/report/week",
     "pages/notes/index",
     "pages/notes/edit",
+    "pages/notifications/index",
     "pages/profile/about"
   ],
   "window": {
