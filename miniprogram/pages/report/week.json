@@ -1,1 +1,4 @@
-{"navigationBarTitleText":"最近7天报告"}
+{
+  "navigationBarTitleText": "趋势与复盘",
+  "enablePullDownRefresh": false
+}

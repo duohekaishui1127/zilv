@@ -4,7 +4,7 @@ const { foods, exercises, bodyMetrics, appConfig } = require('./seed-data')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const APP_VERSION = '1.1.0'
+const APP_VERSION = '1.2.0'
 const SCHEMA_VERSION = 4
 
 const collections = [

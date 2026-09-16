@@ -1,4 +1,4 @@
-# 1.1.0 数据库初始化
+# 1.2.0 数据库初始化
 
 `cloudfunctions/admin-init` 是一次性管理函数。
 

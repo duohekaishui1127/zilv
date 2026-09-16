@@ -1,4 +1,4 @@
-# 云数据库集合设计（应用 1.1.0 / Schema 4）
+# 云数据库集合设计（应用 1.2.0 / Schema 4）
 
 ## 核心业务
 
@@ -57,7 +57,7 @@ audit_logs
 - `meal_items`: `userId + recordDate`；`mealId`
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `plans`: `userId + enabled`
-- `checkins`: `userId + planId + date`
+- `checkins`: `userId + planId + date`；`userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `friendships`: `userA + userB`
 - `privacy_settings`: `userId`

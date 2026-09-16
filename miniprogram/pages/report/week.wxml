@@ -1,8 +1,58 @@
-<view class="container" wx:if="{{report}}">
-  <view class="hero"><view class="h1">7天报告</view><view class="sub">{{report.weekStart}} ～ {{report.weekEnd}}</view></view>
-  <view class="card"><view class="h2">身体变化</view><view class="metric-grid" style="margin-top:20rpx"><view class="metric"><view class="label">期初体重</view><view class="big">{{report.startWeight||'-'}}</view><view class="label">kg</view></view><view class="metric"><view class="label">最新体重</view><view class="big">{{report.endWeight||'-'}}</view><view class="label">kg</view></view></view><view class="row" style="margin-top:22rpx"><view class="label">体重变化</view><view class="value">{{report.weightChange===null?'-':report.weightChange}} kg</view></view></view>
-  <view class="card"><view class="h2">执行数据</view><view class="list-item row"><view class="label">平均每日摄入</view><view class="value">{{report.averageCalorieIntake}} kcal</view></view><view class="list-item row"><view class="label">平均预计热量平衡</view><view class="value">{{report.averageEstimatedBalance}} kcal</view></view><view class="list-item row"><view class="label">蛋白质达标</view><view class="value">{{report.proteinSuccessDays}} / {{report.proteinTrackedDays}} 天</view></view><view class="list-item row"><view class="label">完成打卡</view><view class="value">{{report.checkinCount}} 次</view></view><view class="list-item row"><view class="label">当前启用计划</view><view class="value">{{report.activePlanCount}} 个</view></view></view>
-  <view class="card warn-card"><view class="sub">热量平衡和运动消耗均为估算值，主要用于观察趋势。</view></view>
+<view class="container">
+  <view class="hero"><view class="h1">趋势与复盘</view><view class="sub" wx:if="{{report}}">{{report.startDate}} ～ {{report.endDate}}</view></view>
+  <view class="range-tabs">
+    <view wx:for="{{ranges}}" wx:key="days" class="range-tab {{selectedDays === item.days ? 'range-tab-active' : ''}}" data-days="{{item.days}}" bindtap="selectRange">{{item.label}}</view>
+  </view>
+
+  <view wx:if="{{loading && !report}}" class="empty">正在生成趋势报告…</view>
+  <view wx:elif="{{error && !report}}" class="card error-card"><view class="value">报告生成失败</view><view class="sub">{{error}}</view><button class="btn btn-small" style="margin-top:20rpx" bindtap="retry">重新加载</button></view>
+
+  <block wx:if="{{report}}">
+    <view class="summary-grid">
+      <view class="summary-item"><view class="label">活跃天数</view><view class="big">{{report.summary.activeDays}}</view><view class="sub">共 {{report.days}} 天</view></view>
+      <view class="summary-item"><view class="label">完成打卡</view><view class="big">{{report.summary.checkinCount}}</view><view class="sub">次</view></view>
+      <view class="summary-item"><view class="label">运动时长</view><view class="big">{{report.summary.workoutMinutes}}</view><view class="sub">分钟 / {{report.summary.workoutDays}} 天</view></view>
+      <view class="summary-item"><view class="label">学习时长</view><view class="big">{{report.summary.studyMinutes}}</view><view class="sub">分钟 / {{report.summary.studyDays}} 天</view></view>
+    </view>
+
+    <view class="card">
+      <view class="row"><view class="h2">身体趋势</view><view class="tag" wx:if="{{report.summary.weightChange !== null}}">{{report.summary.weightChange > 0 ? '+' : ''}}{{report.summary.weightChange}} kg</view></view>
+      <view class="metric-grid body-metrics"><view class="metric"><view class="label">区间首次</view><view class="big">{{report.summary.firstWeight === null ? '-' : report.summary.firstWeight}}</view><view class="label">kg</view></view><view class="metric"><view class="label">区间最新</view><view class="big">{{report.summary.latestWeight === null ? '-' : report.summary.latestWeight}}</view><view class="label">kg</view></view></view>
+      <canvas wx:if="{{hasWeight}}" type="2d" id="weightChart" class="trend-chart"></canvas>
+      <view wx:else class="empty compact">这个区间还没有体重记录</view>
+      <view wx:if="{{hasBodyFat}}"><view class="chart-title">体脂率</view><canvas type="2d" id="bodyFatChart" class="trend-chart"></canvas></view>
+    </view>
+
+    <view class="card">
+      <view class="h2">饮食与能量</view>
+      <view class="list-item row"><view class="label">有记录日平均摄入</view><view class="value">{{report.summary.averageCalorieIntake === null ? '-' : report.summary.averageCalorieIntake + ' kcal'}}</view></view>
+      <view class="list-item row"><view class="label">饮食记录</view><view class="value">{{report.summary.calorieTrackedDays}} 天</view></view>
+      <view class="list-item row"><view class="label">平均预计热量平衡</view><view class="value">{{report.summary.averageCalorieBalance === null ? '-' : report.summary.averageCalorieBalance + ' kcal'}}</view></view>
+      <view class="list-item row"><view class="label">蛋白质达标</view><view class="value">{{report.summary.proteinSuccessDays}} / {{report.summary.proteinTrackedDays}} 天</view></view>
+      <canvas wx:if="{{hasBalance}}" type="2d" id="balanceChart" class="trend-chart"></canvas>
+      <view wx:else class="empty compact">需要营养目标后才能计算热量平衡</view>
+      <view class="sub">零线以上表示预计盈余，以下表示预计缺口；结果仅用于观察趋势。</view>
+    </view>
+
+    <view class="card">
+      <view class="row"><view class="h2">运动与学习</view><view class="chart-legend"><text class="legend-workout">● 运动</text><text class="legend-study">● 学习</text></view></view>
+      <canvas wx:if="{{hasActivity}}" type="2d" id="activityChart" class="trend-chart"></canvas>
+      <view wx:else class="empty compact">这个区间还没有运动或学习记录</view>
+    </view>
+  </block>
+
+  <view class="card calendar-card">
+    <view class="row"><button class="month-button" bindtap="previousMonth">‹</button><picker mode="date" fields="month" value="{{month}}" bindchange="monthChange"><view class="h2">{{month}} 活跃日历</view></picker><button class="month-button" bindtap="nextMonth">›</button></view>
+    <view wx:if="{{calendarLoading && !calendar}}" class="empty compact">正在加载日历…</view>
+    <block wx:elif="{{calendar}}">
+      <view class="weekday-grid"><view wx:for="{{weekdayLabels}}" wx:key="*this" class="weekday">{{item}}</view></view>
+      <view class="calendar-grid">
+        <view wx:for="{{calendar.cells}}" wx:key="key" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}}" title="{{item.detail}}">
+          <block wx:if="{{!item.blank}}"><view>{{item.day}}</view><view class="checkin-dot" wx:if="{{item.checkinCount}}">{{item.checkinCount}}</view></block>
+        </view>
+      </view>
+      <view class="calendar-summary">活跃 {{calendar.summary.activeDays}} 天 · 打卡 {{calendar.summary.checkinCount}} 次 · 运动 {{calendar.summary.workoutDays}} 天 · 学习 {{calendar.summary.studyDays}} 天</view>
+      <view class="activity-legend"><text>少</text><text class="legend-box activity-0"></text><text class="legend-box activity-1"></text><text class="legend-box activity-2"></text><text class="legend-box activity-3"></text><text class="legend-box activity-4"></text><text>多</text></view>
+    </block>
+  </view>
 </view>
-<view wx:elif="{{error}}" class="empty">{{error}}</view>
-<view wx:else class="empty">正在生成报告…</view>

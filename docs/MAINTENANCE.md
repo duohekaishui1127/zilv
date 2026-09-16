@@ -1,4 +1,4 @@
-# 1.1.0 维护说明
+# 1.2.0 维护说明
 
 ## Feature Actions
 
@@ -15,11 +15,13 @@ friends.js     好友
 groups.js      群组
 notes.js       日志与附件
 notifications.js 站内提醒与微信订阅配置
-reports.js     周报
+reports.js     趋势与活跃日历入口
 system.js      版本与诊断
 ```
 
 `cloudfunctions/reminder-dispatch` 独立负责定时扫描、未打卡复核、消息幂等写入和微信订阅消息发送。
+
+趋势报告的数据读取集中在 `services/progress.js`，按日期聚合规则集中在无数据库依赖的 `domain/progress-report.js`。
 
 原则：一个 Action 文件如果开始接近 160~220 行，应重新检查是否存在新的职责边界。质量门禁会对此提示/阻止。
 

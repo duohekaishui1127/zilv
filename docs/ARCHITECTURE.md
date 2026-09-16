@@ -1,4 +1,4 @@
-# 自律 1.1.0 架构设计
+# 自律 1.2.0 架构设计
 
 ## 1. 架构风格
 
@@ -49,7 +49,7 @@ Plan                  计划与打卡
 Friend                好友弱监督
 Group                 群组强监督
 Notes                 私密日志、笔记、附件
-Reports               周报
+Reports               7/30/90天趋势、月度活跃日历
 System                版本和诊断
 Notification          站内提醒、已读状态、微信推送结果
 ```
@@ -72,6 +72,7 @@ notifications 幂等写入
 - 运动消耗算法 → `domain/exercise-calculator.js`
 - 计划周期 → `domain/plan-schedule.js`
 - 日志字段规则 → `domain/note.js`
+- 趋势聚合规则 → `domain/progress-report.js`
 - 身体指标种类 → `body_metric_defs` 数据集合
 - 用户记录详细度 → `body_metric_preferences`
 - 环境 → `miniprogram/config/env.js`
