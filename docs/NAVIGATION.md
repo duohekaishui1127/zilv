@@ -1,4 +1,4 @@
-# 页面跳转图（1.3.0）
+# 页面跳转图（1.4.0）
 
 ```mermaid
 flowchart TD
@@ -10,12 +10,6 @@ flowchart TD
     T --> S[学习记录]
     T --> N[我的历程]
     T --> NT[消息中心]
-
-    R[记录] --> N
-    R --> B
-    R --> F
-    R --> W
-    R --> S
 
     B --> NE[日志编辑器 / 体态]
     S --> NE2[日志编辑器 / 学习]
@@ -30,7 +24,7 @@ flowchart TD
     CG --> GD[群组详情]
 
     M[我的] --> MP[身体与营养档案]
-    M --> C
+    M --> B
     M --> PR[隐私设置]
     M --> N
     M --> WR[趋势与复盘]
@@ -38,9 +32,9 @@ flowchart TD
     M --> AB[关于与诊断]
 
     CA -.TabBar.-> T
-    T -.TabBar.-> R
-    R -.TabBar.-> P
-    P -.TabBar.-> M
+    T -.TabBar.-> P
+    P -.TabBar.-> C
+    C -.TabBar.-> M
 ```
 
 ## 自动业务联动

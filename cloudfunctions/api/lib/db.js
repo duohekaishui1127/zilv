@@ -15,6 +15,7 @@ const C = Object.freeze({
   WORKOUTS: 'workout_sessions',
   PLANS: 'plans',
   CHECKINS: 'checkins',
+  DAILY_REVIEWS: 'daily_reviews',
   STUDY: 'study_sessions',
   FRIENDSHIPS: 'friendships',
   PRIVACY: 'privacy_settings',

@@ -5,16 +5,20 @@ const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarge
 const { homePreferencesOf } = require('../services/preferences')
 const { isFeedbackAdmin } = require('../services/feedback-admin')
 
-async function getProfile({ user }) {
-  const [nutritionProfile, privacy] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id)])
-  return { user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy, isFeedbackAdmin: isFeedbackAdmin(user) }
+async function getProfile({ user, localDate }) {
+  const [nutritionProfile, privacy, weight] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id), latestWeight(user._id)])
+  return {
+    user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy,
+    weightStatus: weightStatus(weight, localDate),
+    latestWeight: weight || null,
+    isFeedbackAdmin: isFeedbackAdmin(user)
+  }
 }
 
 async function updateHomePreferences({ user, event }) {
   const input = event.preferences || {}
   const homePreferences = {
-    showEnergy: input.showEnergy !== false,
-    showWeightReminder: input.showWeightReminder !== false
+    showEnergy: input.showEnergy !== false
   }
   await db.collection(C.USERS).doc(user._id).update({ data: { homePreferences, updatedAt: now() } })
   return { homePreferences }

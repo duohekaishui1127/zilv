@@ -39,8 +39,8 @@ function decorateCalendar(calendar, currentDate) {
     key: day.date,
     today: day.date === currentDate,
     activityClass: `activity-${day.activityScore}`,
-    moodIcon: MOOD_ICONS[day.mood] || (day.checkinCount ? '/assets/moods/checked.png' : ''),
-    moodLabel: MOOD_LABELS[day.mood] || (day.checkinCount ? '已完成' : ''),
+    moodIcon: MOOD_ICONS[day.mood] || '',
+    moodLabel: MOOD_LABELS[day.mood] || '',
     hasRecords: day.active || day.noteCount > 0
   }))
   return { ...calendar, cells: [...blanks, ...days] }
@@ -49,12 +49,15 @@ function decorateCalendar(calendar, currentDate) {
 function presentReview(review) {
   return {
     ...review,
+    dailyReview: review.dailyReview ? {
+      ...review.dailyReview,
+      moodIcon: MOOD_ICONS[review.dailyReview.mood] || '',
+      moodLabel: MOOD_LABELS[review.dailyReview.mood] || ''
+    } : null,
     notes: (review.notes || []).map(note => ({ ...note, typeLabel: NOTE_LABELS[note.type] || '小记' })),
     tasks: (review.tasks || []).map(task => ({
       ...task,
       categoryLabel: CATEGORY_LABELS[task.category] || '计划',
-      moodLabel: MOOD_LABELS[task.mood] || '',
-      moodIcon: MOOD_ICONS[task.mood] || '',
       completedTime: clockText(task.completedAt),
       timerSummary: task.timerMode
         ? `有效 ${timerText(task.timerEffectiveSeconds)} · 总用时 ${timerText(task.timerTotalSeconds)} · 暂停 ${timerText(task.timerPausedSeconds)}`
@@ -75,7 +78,7 @@ Page({
     reviewVisible: false,
     reviewLoading: false,
     selectedDay: null,
-    dayReview: { notes: [], tasks: [] },
+    dayReview: { dailyReview: null, notes: [], tasks: [] },
     tasksExpanded: false
   },
   onShow() { this.loadCalendar() },
@@ -105,7 +108,7 @@ Page({
       reviewVisible: true,
       reviewLoading: true,
       selectedDay: { ...day, title: dateTitle(day.date) },
-      dayReview: { date: day.date, notes: [], tasks: [] },
+      dayReview: { date: day.date, dailyReview: null, notes: [], tasks: [] },
       tasksExpanded: false
     })
     try {

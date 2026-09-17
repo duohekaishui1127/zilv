@@ -2,7 +2,7 @@ const api = require('../../utils/api')
 
 Page({
   data: {
-    preferences: { showEnergy: true, showWeightReminder: true },
+    preferences: { showEnergy: true },
     saving: false
   },
   async onLoad() {

@@ -54,16 +54,16 @@
         "selectedIconPath": "assets/tabbar/today-active.png"
       },
       {
-        "pagePath": "pages/record/index",
-        "text": "记录",
-        "iconPath": "assets/tabbar/record.png",
-        "selectedIconPath": "assets/tabbar/record-active.png"
-      },
-      {
         "pagePath": "pages/plan/index",
         "text": "计划",
         "iconPath": "assets/tabbar/plan.png",
         "selectedIconPath": "assets/tabbar/plan-active.png"
+      },
+      {
+        "pagePath": "pages/circle/index",
+        "text": "圈子",
+        "iconPath": "assets/tabbar/circle.png",
+        "selectedIconPath": "assets/tabbar/circle-active.png"
       },
       {
         "pagePath": "pages/profile/index",

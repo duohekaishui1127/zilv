@@ -1,14 +1,10 @@
 <view class="container">
   <view class="card">
     <view class="h2">首页显示内容</view>
-    <view class="sub">今日计划始终保留；其他信息可以按你的关注方向隐藏。隐藏不会删除数据，也不影响“记录”页面。</view>
+    <view class="sub">今日计划始终保留；如果你只关注学习或运动，可以隐藏能量模块。隐藏不会删除任何数据。</view>
     <view class="list-item row">
       <view class="flex-1"><view class="value">今日能量与营养</view><view class="sub">摄入、消耗、热量缺口和营养目标</view></view>
       <switch checked="{{preferences.showEnergy}}" data-key="showEnergy" bindchange="toggle"/>
-    </view>
-    <view class="list-item row">
-      <view class="flex-1"><view class="value">体重更新提醒</view><view class="sub">需要重新校准营养目标时显示</view></view>
-      <switch checked="{{preferences.showWeightReminder}}" data-key="showWeightReminder" bindchange="toggle"/>
     </view>
   </view>
   <button class="btn" loading="{{saving}}" bindtap="save">保存设置</button>

@@ -2,6 +2,7 @@ const { db, C } = require('../lib/db')
 const { now, fail, round1 } = require('../lib/utils')
 const { isBasePlanDue } = require('../services/plans')
 const { timerSnapshot, secondsOf } = require('../domain/plan-timer')
+const { completePlan } = require('./plans')
 
 async function contextOf(user, event, localDate) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
@@ -124,4 +125,13 @@ async function finishPlanTimer({ user, event, localDate }) {
   return timerResult({ ...checkin, ...data }, plan, timestamp)
 }
 
-module.exports = { startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer }
+async function finishAndCompletePlanTimer(context) {
+  const timer = await finishPlanTimer(context)
+  const completed = await completePlan({
+    ...context,
+    event: { planId: context.event.planId }
+  })
+  return { ...timer, checkin: completed.checkin }
+}
+
+module.exports = { startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer, finishAndCompletePlanTimer }

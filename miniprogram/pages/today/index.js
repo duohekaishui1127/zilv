@@ -4,11 +4,12 @@ const { CATEGORY_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS } = require('../../utils
 
 function emptyEditor() {
   return {
-    visible: false, planId: '', planName: '', category: '', targetType: 'BOOLEAN', unit: '', completed: false,
-    durationMinutes: '', actualValue: '', mood: '', note: '', showActualValue: false, timed: false,
+    visible: false, planId: '', planName: '', note: '', timed: false,
     timerEffectiveDisplay: '', timerTotalDisplay: '', timerPausedDisplay: ''
   }
 }
+
+function emptyDailyReviewEditor() { return { visible: false, mood: '', note: '' } }
 
 function timeMs(value) {
   if (!value) return null
@@ -72,7 +73,7 @@ function decoratePlan(plan, nowMs) {
   return {
     ...plan,
     categoryLabel: CATEGORY_LABELS[plan.category] || '计划',
-    checkin: plan.checkin ? { ...plan.checkin, moodLabel: MOOD_LABELS[plan.checkin.mood] || '', moodIcon: MOOD_ICONS[plan.checkin.mood] || '' } : null,
+    checkin: plan.checkin ? { ...plan.checkin } : null,
     ...timerView(plan, nowMs)
   }
 }
@@ -91,6 +92,7 @@ Page({
     energyState: { deficit: 0, surplus: 0, isDeficit: false, isSurplus: false },
     moods: MOODS,
     completionEditor: emptyEditor(),
+    dailyReviewEditor: emptyDailyReviewEditor(),
     completionSaving: false,
     timerBusyPlanId: ''
   },
@@ -106,8 +108,13 @@ Page({
       const serverMs = timeMs(d.serverTime)
       this._clockOffset = serverMs == null ? 0 : serverMs - Date.now()
       const target = d.nutritionTarget || {}
-      d.homePreferences = { showEnergy: true, showWeightReminder: true, ...(d.homePreferences || {}) }
+      d.homePreferences = { showEnergy: true, ...(d.homePreferences || {}) }
       d.plans = (d.plans || []).map(plan => decoratePlan(plan, this.serverNow()))
+      if (d.dailyReview) d.dailyReview = {
+        ...d.dailyReview,
+        moodIcon: MOOD_ICONS[d.dailyReview.mood] || '',
+        moodLabel: MOOD_LABELS[d.dailyReview.mood] || ''
+      }
       this.setData({
         dashboard: d,
         completionPct: fmt.pct(d.completion.completed, d.completion.total),
@@ -146,10 +153,8 @@ Page({
     if (!plan || this._autoFinishingTimer) return
     this._autoFinishingTimer = plan._id
     try {
-      await api.call('finishPlanTimer', { planId: plan._id }, { silent: true })
+      await api.call('finishAndCompletePlanTimer', { planId: plan._id }, { silent: true })
       await this.load()
-      const refreshed = this.data.dashboard?.plans?.find(item => item._id === plan._id)
-      if (refreshed) this.showCompletion(refreshed)
       wx.showToast({ title: '倒计时完成', icon: 'success' })
     } catch (error) {
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
@@ -160,39 +165,24 @@ Page({
   retry() { this.load() },
   togglePlans() { this.setData({ plansExpanded: !this.data.plansExpanded }) },
   toggleEnergy() { this.setData({ energyExpanded: !this.data.energyExpanded }) },
-  goBody() { wx.navigateTo({ url: '/pages/record/body' }) },
+  goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
   openCompletion(e) {
     const plan = this.planFromEvent(e)
     if (!plan) return
-    if (plan.timerEnabled && !plan.completed) {
-      if (plan.timerStatus === 'FINISHED') return this.showCompletion(plan)
-      const message = plan.timerStatus ? '请先结束当前计时' : '请先开始计时'
-      return wx.showToast({ title: message, icon: 'none' })
-    }
-    this.showCompletion(plan)
+    if (plan.completed) return this.showCompletion(plan)
+    wx.showToast({ title: plan.timerEnabled ? '请使用计时按钮完成' : '点击右侧圆圈即可完成', icon: 'none' })
   },
   showCompletion(plan) {
     const checkin = plan.checkin || {}
     const timed = !!checkin.timerStatus
-    const duration = timed
-      ? Math.round(Number(checkin.timerEffectiveSeconds || 0) / 6) / 10
-      : (checkin.durationMinutes ?? (plan.targetType === 'DURATION' ? (checkin.actualValue ?? plan.targetValue) : ''))
     this.setData({
       completionEditor: {
         visible: true,
         planId: plan._id,
         planName: plan.name,
-        category: plan.category,
-        targetType: plan.targetType,
-        unit: plan.unit,
-        completed: !!plan.completed,
-        durationMinutes: duration,
-        actualValue: checkin.actualValue ?? (plan.targetType === 'DURATION' && timed ? duration : plan.targetValue),
-        mood: checkin.mood || '',
         note: checkin.note || '',
-        showActualValue: plan.targetType === 'COUNT' || plan.targetType === 'VALUE',
         timed,
         timerEffectiveDisplay: plan.timerEffectiveDisplay,
         timerTotalDisplay: plan.timerTotalDisplay,
@@ -205,7 +195,7 @@ Page({
     if (!plan || this._quickCompleting) return
     if (plan.completed) return this.showCompletion(plan)
     if (plan.timerEnabled) {
-      if (plan.timerStatus === 'FINISHED') return this.showCompletion(plan)
+      if (plan.timerStatus === 'FINISHED') return this.completeFinishedTimer(plan)
       return wx.showToast({ title: plan.timerStatus ? '请先结束计时' : '请使用计时按钮开始', icon: 'none' })
     }
     this._quickCompleting = true
@@ -232,16 +222,26 @@ Page({
   startTimer(e) { return this.timerAction('startPlanTimer', e) },
   pauseTimer(e) { return this.timerAction('pausePlanTimer', e) },
   resumeTimer(e) { return this.timerAction('resumePlanTimer', e) },
+  async completeFinishedTimer(plan) {
+    if (!plan || this.data.timerBusyPlanId) return
+    this.setData({ timerBusyPlanId: plan._id })
+    try {
+      await api.call('finishAndCompletePlanTimer', { planId: plan._id })
+      wx.showToast({ title: '计划已完成', icon: 'success' })
+      await this.load()
+    } finally {
+      this.setData({ timerBusyPlanId: '' })
+    }
+  },
   async finishTimer(e) {
     const plan = this.planFromEvent(e)
     if (!plan || this.data.timerBusyPlanId) return
-    if (!await api.confirm('结束后将停止计时，并进入完成记录。', '结束计时')) return
+    if (!await api.confirm('结束后将停止计时，并直接完成这项计划。', '结束计时')) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
-      await api.call('finishPlanTimer', { planId: plan._id })
+      await api.call('finishAndCompletePlanTimer', { planId: plan._id })
+      wx.showToast({ title: '计划已完成', icon: 'success' })
       await this.load()
-      const refreshed = this.data.dashboard?.plans?.find(item => item._id === plan._id)
-      if (refreshed) this.showCompletion(refreshed)
     } finally {
       this.setData({ timerBusyPlanId: '' })
     }
@@ -253,44 +253,43 @@ Page({
   editorInput(e) {
     this.setData({ [`completionEditor.${e.currentTarget.dataset.key}`]: e.detail.value })
   },
-  chooseMood(e) {
-    const value = e.currentTarget.dataset.value
-    this.setData({ 'completionEditor.mood': this.data.completionEditor.mood === value ? '' : value })
-  },
   async saveCompletion() {
     if (this.data.completionSaving) return
     const editor = this.data.completionEditor
     const plan = this.data.dashboard.plans.find(item => item._id === editor.planId)
     if (!plan) return
 
-    let durationMinutes = null
-    if (editor.durationMinutes !== '') {
-      durationMinutes = Number(editor.durationMinutes)
-      if (!Number.isFinite(durationMinutes) || durationMinutes < 0 || durationMinutes > 1440) {
-        return wx.showToast({ title: '请输入0到1440分钟', icon: 'none' })
-      }
-    }
-    let actualValue = plan.targetValue
-    if (plan.targetType === 'DURATION') actualValue = durationMinutes == null ? Number(plan.targetValue) : durationMinutes
-    if (editor.showActualValue) {
-      actualValue = Number(editor.actualValue)
-      if (!Number.isFinite(actualValue) || actualValue < 0) return wx.showToast({ title: '请输入有效完成量', icon: 'none' })
-    }
-
     this.setData({ completionSaving: true })
     try {
       await api.call('completePlan', {
         planId: editor.planId,
-        actualValue,
-        durationMinutes,
-        mood: editor.mood,
         note: editor.note
       })
       this.setData({ completionEditor: emptyEditor() })
-      wx.showToast({ title: editor.completed ? '记录已更新' : '计划已完成', icon: 'success' })
+      wx.showToast({ title: '备注已保存', icon: 'success' })
       await this.load()
     } finally {
       this.setData({ completionSaving: false })
     }
+  },
+  openDailyReview() {
+    const review = this.data.dashboard?.dailyReview
+    const completion = this.data.dashboard?.completion
+    if (!review && completion?.completed !== completion?.total) return wx.showToast({ title: '完成全部计划后再打卡', icon: 'none' })
+    this.setData({ dailyReviewEditor: { visible: true, mood: review?.mood || '', note: review?.note || '' } })
+  },
+  closeDailyReview() { if (!this.data.completionSaving) this.setData({ dailyReviewEditor: emptyDailyReviewEditor() }) },
+  chooseDailyMood(e) { this.setData({ 'dailyReviewEditor.mood': e.currentTarget.dataset.value }) },
+  dailyReviewInput(e) { this.setData({ 'dailyReviewEditor.note': e.detail.value }) },
+  async saveDailyReview() {
+    const editor = this.data.dailyReviewEditor
+    if (!editor.mood) return wx.showToast({ title: '请选择今天的心情', icon: 'none' })
+    this.setData({ completionSaving: true })
+    try {
+      await api.call('saveDailyReview', { mood: editor.mood, note: editor.note })
+      this.setData({ dailyReviewEditor: emptyDailyReviewEditor() })
+      wx.showToast({ title: '今日已打卡', icon: 'success' })
+      await this.load()
+    } finally { this.setData({ completionSaving: false }) }
   }
 })

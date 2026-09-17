@@ -40,18 +40,20 @@ async function loadProgressReport(userId, endDate, days) {
 
 async function loadActivityCalendar(userId, month) {
   const dates = monthRange(month)
-  const [rangeData, notes] = await Promise.all([
+  const [rangeData, notes, dailyReviews] = await Promise.all([
     loadRangeData(userId, dates, false),
-    fetchAll(C.NOTES, { userId, recordDate: _.gte(dates[0]).and(_.lte(dates[dates.length - 1])), status: 'ACTIVE' }, 'recordDate')
+    fetchAll(C.NOTES, { userId, recordDate: _.gte(dates[0]).and(_.lte(dates[dates.length - 1])), status: 'ACTIVE' }, 'recordDate'),
+    fetchAll(C.DAILY_REVIEWS, between(userId, 'date', dates[0], dates[dates.length - 1]), 'date')
   ])
-  return buildActivityCalendar({ ...rangeData, notes })
+  return buildActivityCalendar({ ...rangeData, notes, dailyReviews })
 }
 
 async function loadDayReview(userId, date) {
-  const [checkins, notes, plans] = await Promise.all([
+  const [checkins, notes, plans, dailyReviewResult] = await Promise.all([
     fetchAll(C.CHECKINS, { userId, date, completed: true }, 'completedAt'),
     fetchAll(C.NOTES, { userId, recordDate: date, status: 'ACTIVE' }, 'createdAt'),
-    fetchAll(C.PLANS, { userId }, 'createdAt')
+    fetchAll(C.PLANS, { userId }, 'createdAt'),
+    db.collection(C.DAILY_REVIEWS).where({ userId, date }).limit(1).get()
   ])
   const attachmentMap = await attachmentsForNotes(notes.map(note => note._id))
   const planMap = Object.fromEntries(plans.map(plan => [plan._id, plan]))
@@ -77,6 +79,7 @@ async function loadDayReview(userId, date) {
   }).sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
   return {
     date,
+    dailyReview: dailyReviewResult.data[0] || null,
     tasks,
     notes: notes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(note => ({
       _id: note._id,

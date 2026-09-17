@@ -12,10 +12,6 @@
       <view class="tag" bindtap="goNotifications">消息{{dashboard.unreadNotificationCount ? ' ' + dashboard.unreadNotificationCount : ''}}</view>
     </view>
 
-    <view class="card warn-card" wx:if="{{dashboard.homePreferences.showWeightReminder && dashboard.weightStatus.needUpdate}}" bindtap="goBody">
-      <view class="row"><view><view class="value">请更新本周体重</view><view class="sub">上次更新：{{dashboard.weightStatus.lastUpdateDate || '尚未记录'}}，营养目标需要重新校准</view></view><view>›</view></view>
-    </view>
-
     <view class="card plan-card">
       <view class="row card-toggle" bindtap="togglePlans">
         <view class="h2">今日计划</view>
@@ -39,21 +35,35 @@
                   <button wx:elif="{{item.timerStatus === 'RUNNING'}}" class="btn btn-small btn-light" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="pauseTimer">暂停</button>
                   <button wx:elif="{{item.timerStatus === 'PAUSED'}}" class="btn btn-small timer-primary" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="resumeTimer">继续</button>
                   <button wx:if="{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED'}}" class="btn btn-small btn-danger" data-index="{{index}}" catchtap="finishTimer">结束</button>
-                  <button wx:if="{{item.timerStatus === 'FINISHED'}}" class="btn btn-small timer-primary" data-index="{{index}}" catchtap="openCompletion">填写完成记录</button>
+                  <button wx:if="{{item.timerStatus === 'FINISHED'}}" class="btn btn-small timer-primary" data-index="{{index}}" catchtap="quickComplete">完成</button>
                 </view>
               </view>
-              <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.moodLabel || item.checkin.note || item.checkin.timerStatus)}}">
+              <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.note || item.checkin.timerStatus)}}">
                 <text wx:if="{{item.checkin.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</text>
                 <text wx:elif="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
-                <image wx:if="{{item.checkin.moodIcon}}" class="inline-mood-icon" src="{{item.checkin.moodIcon}}" mode="aspectFit"/><text wx:if="{{item.checkin.moodLabel}}"> {{item.checkin.moodLabel}}</text>
-                <text wx:if="{{item.checkin.note}}"> · {{item.checkin.note}}</text>
+                <text wx:if="{{item.checkin.note}}">{{item.checkin.timerStatus || item.checkin.durationMinutes ? ' · ' : ''}}{{item.checkin.note}}</text>
               </view>
             </view>
             <view class="check-circle {{item.completed ? 'check-circle-done' : ''}}" data-index="{{index}}" catchtap="quickComplete">{{item.completed ? '✓' : ''}}</view>
           </view>
         </view>
         <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
-        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">普通计划可点圆圈快速完成；计时计划请先开始并结束计时。计划本身请到“计划”页修改。</view>
+        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈直接完成；完成后点任务可补充备注。计划内容与群组关联请到“计划”页修改。</view>
+      </view>
+    </view>
+
+    <view class="card daily-checkin-card {{dashboard.dailyReview || dashboard.completion.completed === dashboard.completion.total ? '' : 'daily-checkin-disabled'}}" bindtap="openDailyReview">
+      <view class="row">
+        <view class="row-start">
+          <image wx:if="{{dashboard.dailyReview && dashboard.dailyReview.moodIcon}}" class="daily-mood-icon" src="{{dashboard.dailyReview.moodIcon}}" mode="aspectFit"/>
+          <view>
+            <view class="h2">{{dashboard.dailyReview ? '今日已打卡' : '完成今日打卡'}}</view>
+            <view class="sub" wx:if="{{dashboard.dailyReview}}">{{dashboard.dailyReview.moodLabel}}{{dashboard.dailyReview.note ? ' · ' + dashboard.dailyReview.note : ''}}</view>
+            <view class="sub" wx:elif="{{dashboard.completion.completed === dashboard.completion.total}}">记录整日心情和一句小记</view>
+            <view class="sub" wx:else>完成全部计划后即可打卡</view>
+          </view>
+        </view>
+        <view>›</view>
       </view>
     </view>
 
@@ -82,6 +92,7 @@
           <view class="list-item"><view class="row"><text>脂肪</text><text>{{dashboard.nutrition.fatIntake}} / {{dashboard.nutritionTarget.fatGram}}g</text></view><view class="progress"><view class="progress-inner" style="width:{{fatPct}}%"></view></view></view>
         </block>
         <view wx:else class="tip">营养目标尚未生成。请先在“我的 → 身体与营养档案”完善资料，并至少记录一次体重。</view>
+        <button class="btn btn-light food-entry-button" bindtap="goFood">添加 / 查看今日进食</button>
         <view class="sub">热量缺口按预计总消耗计算；所有消耗均为模型估算值。</view>
       </view>
     </view>
@@ -91,32 +102,32 @@
 <view wx:if="{{completionEditor.visible}}" class="sheet-mask" bindtap="closeCompletion">
   <view class="completion-sheet" catchtap="noop">
     <view class="sheet-handle"></view>
-    <view class="row"><view><view class="h2">{{completionEditor.completed ? '编辑完成记录' : '完成计划'}}</view><view class="sub">{{completionEditor.planName}}</view></view><view class="sheet-close" bindtap="closeCompletion">×</view></view>
+    <view class="row"><view><view class="h2">任务备注</view><view class="sub">{{completionEditor.planName}}</view></view><view class="sheet-close" bindtap="closeCompletion">×</view></view>
 
     <view class="timer-result" wx:if="{{completionEditor.timed}}">
       <view class="timer-result-item"><view class="label">有效时间</view><view class="value">{{completionEditor.timerEffectiveDisplay}}</view></view>
       <view class="timer-result-item"><view class="label">总用时</view><view class="value">{{completionEditor.timerTotalDisplay}}</view></view>
       <view class="timer-result-item"><view class="label">暂停时间</view><view class="value">{{completionEditor.timerPausedDisplay}}</view></view>
     </view>
-    <view class="field completion-field" wx:if="{{!completionEditor.timed}}">
-      <view class="label">实际用时（分钟，可选）</view>
-      <input class="input" type="number" data-key="durationMinutes" value="{{completionEditor.durationMinutes}}" bindinput="editorInput" placeholder="例如：60"/>
-    </view>
-    <view class="field" wx:if="{{completionEditor.showActualValue}}">
-      <view class="label">实际完成量（{{completionEditor.unit || '数值'}}）</view>
-      <input class="input" type="digit" data-key="actualValue" value="{{completionEditor.actualValue}}" bindinput="editorInput"/>
-    </view>
-    <view class="field">
-      <view class="label">完成后的心情</view>
-      <view class="mood-row">
-        <view wx:for="{{moods}}" wx:key="value" class="mood-chip {{completionEditor.mood === item.value ? 'mood-chip-active' : ''}}" data-value="{{item.value}}" bindtap="chooseMood"><image class="mood-picker-icon" src="{{item.icon}}" mode="aspectFit"/><text>{{item.label}}</text></view>
-      </view>
-    </view>
     <view class="field">
       <view class="label">备注（可选）</view>
-      <textarea class="input note-input" maxlength="500" data-key="note" value="{{completionEditor.note}}" bindinput="editorInput" placeholder="记录今天的完成情况、感受或需要改进的地方"/>
+      <textarea class="input note-input" maxlength="500" data-key="note" value="{{completionEditor.note}}" bindinput="editorInput" placeholder="补充这项任务的过程或结果"/>
     </view>
-    <view class="tip" wx:if="{{completionEditor.category === 'STUDY' || completionEditor.category === 'WORKOUT'}}">保存后会同步到“记录”中的{{completionEditor.category === 'STUDY' ? '学习' : '运动'}}分类，不会在记录首页重复展示。</view>
-    <button class="btn" loading="{{completionSaving}}" bindtap="saveCompletion">{{completionEditor.completed ? '保存修改' : '确认完成'}}</button>
+    <button class="btn" loading="{{completionSaving}}" bindtap="saveCompletion">保存备注</button>
+  </view>
+</view>
+
+<view wx:if="{{dailyReviewEditor.visible}}" class="sheet-mask" bindtap="closeDailyReview">
+  <view class="completion-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="row"><view><view class="h2">今日打卡</view><view class="sub">为完整的一天留下心情和小记</view></view><view class="sheet-close" bindtap="closeDailyReview">×</view></view>
+    <view class="field completion-field">
+      <view class="label">今天整体感觉如何？</view>
+      <view class="mood-row">
+        <view wx:for="{{moods}}" wx:key="value" class="mood-chip {{dailyReviewEditor.mood === item.value ? 'mood-chip-active' : ''}}" data-value="{{item.value}}" bindtap="chooseDailyMood"><image class="mood-picker-icon" src="{{item.icon}}" mode="aspectFit"/><text>{{item.label}}</text></view>
+      </view>
+    </view>
+    <view class="field"><view class="label">今日小记（可选）</view><textarea class="input note-input" maxlength="1000" value="{{dailyReviewEditor.note}}" bindinput="dailyReviewInput" placeholder="写下今天值得记住的一句话"/></view>
+    <button class="btn" loading="{{completionSaving}}" bindtap="saveDailyReview">保存今日打卡</button>
   </view>
 </view>

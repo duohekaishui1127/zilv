@@ -51,13 +51,17 @@
 
       <view class="review-section">
         <view class="section-title review-title">备注小记</view>
+        <view wx:if="{{dayReview.dailyReview && dayReview.dailyReview.note}}" class="note-block daily-note-block">
+          <view class="row"><view class="value">今日小记</view><view class="note-type">{{dayReview.dailyReview.moodLabel}}</view></view>
+          <view class="note-content">{{dayReview.dailyReview.note}}</view>
+        </view>
         <view wx:for="{{dayReview.notes}}" wx:for-index="noteIndex" wx:key="_id" class="note-block">
           <view class="row"><view class="value">{{item.title}}</view><view class="note-type">{{item.typeLabel}}</view></view>
           <view class="note-content">{{item.content || '这条小记没有填写正文'}}</view>
           <view class="note-tags" wx:if="{{item.tags.length}}"><text wx:for="{{item.tags}}" wx:key="*this">#{{item}} </text></view>
           <view class="note-photos" wx:if="{{item.attachments.length}}"><image wx:for="{{item.attachments}}" wx:for-item="photo" wx:key="*this" class="note-photo" src="{{photo}}" mode="aspectFill" data-index="{{noteIndex}}" data-src="{{photo}}" bindtap="previewImages"/></view>
         </view>
-        <view wx:if="{{!dayReview.notes.length}}" class="empty compact note-empty">当天没有备注小记</view>
+        <view wx:if="{{!(dayReview.dailyReview && dayReview.dailyReview.note) && !dayReview.notes.length}}" class="empty compact note-empty">当天没有备注小记</view>
       </view>
 
       <view class="review-section task-section">
@@ -67,7 +71,7 @@
         </view>
         <view wx:if="{{tasksExpanded}}" class="task-list">
           <view wx:for="{{dayReview.tasks}}" wx:key="_id" class="task-item">
-            <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.completedTime ? ' · ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view><image wx:if="{{item.moodIcon}}" class="task-mood" src="{{item.moodIcon}}" mode="aspectFit"/></view>
+            <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.completedTime ? ' · ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view></view>
             <view class="task-description" wx:if="{{item.description}}">{{item.description}}</view>
             <view class="task-timer" wx:if="{{item.timerSummary}}">{{item.timerSummary}}</view>
             <view class="task-note" wx:if="{{item.note}}">{{item.note}}</view>

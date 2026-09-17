@@ -65,14 +65,14 @@ function check() { const m=matrix();line(m,3,8,6,11);line(m,6,11,12,4);return m 
 const shapes = {
   'mood-great': face('GREAT'), 'mood-good': face('GOOD'), 'mood-okay': face('OKAY'),
   'mood-tired': face('TIRED'), 'mood-bad': face('BAD'), 'mood-checked': check(),
-  calendar: calendar(), today: today(), record: record(), plan: plan(), profile: profile(),
+  calendar: calendar(), today: today(), record: record(), plan: plan(), circle: groups(), profile: profile(),
   notes: notes(), body: body(), food: food(), workout: workout(), study: study(), friends: friends(), groups: groups(),
   start: start(), pause: pause(), resume: start(), stop: stop()
 }
 
 const outputs = [
   ...['great','good','okay','tired','bad','checked'].map(name => ({ shape:`mood-${name}`, path:`moods/${name}.png`, scale:4 })),
-  ...['calendar','today','record','plan','profile'].flatMap(name => [
+  ...['calendar','today','plan','circle','profile'].flatMap(name => [
     { shape:name, path:`tabbar/${name}.png`, scale:5, color:'#8a8f98' },
     { shape:name, path:`tabbar/${name}-active.png`, scale:5, color:'#111827' }
   ]),

@@ -1,4 +1,4 @@
-# 1.3.0 发布检查清单
+# 1.4.0 发布检查清单
 
 ## 代码质量
 
@@ -12,7 +12,7 @@
 ## 数据库
 
 - [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 6`
+- [ ] 确认 `system_meta.schemaVersion = 7`
 - [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
 - [ ] 修改并核对 `cloudfunctions/api/config/release-announcement.js`
 - [ ] 确认 `004_plan_reminders` migration 已记录

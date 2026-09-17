@@ -7,6 +7,7 @@
 .plan-item:last-of-type { border-bottom: 0; }
 .check-circle { width: 42rpx; height: 42rpx; flex: 0 0 42rpx; border: 3rpx solid #9ca3af; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 25rpx; font-weight: 700; }
 .check-circle-done { border-color: #697386; background: #697386; }
+.plan-item-completed { opacity: .62; }
 .plan-item-completed .plan-name, .plan-item-completed .plan-description { color: #9ca3af; }
 .completion-meta { margin-top: 9rpx; color: #7b8492; font-size: 23rpx; line-height: 1.5; }
 .inline-mood-icon { width: 30rpx; height: 30rpx; margin-left: 8rpx; vertical-align: -7rpx; image-rendering: pixelated; }
@@ -19,12 +20,16 @@
 .timer-actions .btn { min-width: 126rpx; }
 .timer-primary { background: #111827; color: #fff; }
 .plan-tip { padding-top: 18rpx; }
+.daily-checkin-card { border: 2rpx solid #d9dee7; }
+.daily-checkin-disabled { opacity: .58; }
+.daily-mood-icon { width: 64rpx; height: 64rpx; margin-right: 18rpx; image-rendering: pixelated; }
 .energy-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 22rpx; }
 .energy-metric { min-width: 0; background: #f8f9fb; border-radius: 18rpx; padding: 20rpx 10rpx; text-align: center; }
 .energy-value { margin: 5rpx 0; font-size: 34rpx; font-weight: 700; overflow-wrap: anywhere; }
 .energy-details { margin-top: 6rpx; }
 .detail-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 10rpx 0; }
 .nutrition-title { margin-top: 28rpx; }
+.food-entry-button { margin: 24rpx 0 18rpx; }
 
 .sheet-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; background: rgba(17, 24, 39, .42); }
 .completion-sheet { width: 100%; max-height: 88vh; overflow-y: auto; box-sizing: border-box; padding: 18rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); background: #fff; border-radius: 30rpx 30rpx 0 0; }

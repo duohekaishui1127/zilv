@@ -1,6 +1,6 @@
 const { db, C } = require('../lib/db')
 const { round1, now } = require('../lib/utils')
-const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
+const { latestWeight, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
 const { homePreferencesOf } = require('../services/preferences')
@@ -8,13 +8,14 @@ const { ensureReleaseAnnouncement } = require('../services/release-announcements
 
 async function dashboard({ user, localDate }) {
   await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
-  const [weight, plans, nutrition, workout, study, unreadNotifications] = await Promise.all([
+  const [weight, plans, nutrition, workout, study, unreadNotifications, dailyReviewResult] = await Promise.all([
     latestWeight(user._id),
     getTodayPlansService(user._id, localDate),
     nutritionSummary(user._id, localDate),
     workoutSummary(user._id, localDate),
     studySummary(user._id, localDate),
-    db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).count()
+    db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).count(),
+    db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get()
   ])
   let target = await currentNutritionTarget(user._id)
   if (!target && weight) target = await recalcNutritionTarget(user, localDate)
@@ -25,13 +26,13 @@ async function dashboard({ user, localDate }) {
     serverTime: now(),
     user: { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode },
     homePreferences: homePreferencesOf(user),
-    weightStatus: weightStatus(weight, localDate),
     nutritionTarget: target,
     plans,
     nutrition,
     workout,
     study,
     unreadNotificationCount: unreadNotifications.total,
+    dailyReview: dailyReviewResult.data[0] || null,
     energy: {
       baseDailyExpenditure: base,
       exerciseExpenditure: workout.estimatedCalories,

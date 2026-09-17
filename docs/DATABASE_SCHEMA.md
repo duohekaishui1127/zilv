@@ -1,6 +1,6 @@
-# 云数据库集合设计（应用 1.3.0 / Schema 6）
+# 云数据库集合设计（应用 1.4.0 / Schema 7）
 
-> Schema 6 新增的计时字段均为向后兼容的可选字段，不需要新建集合：`plans.timerMode`、`plans.timerDurationMinutes`，以及 `checkins`、学习记录和运动记录中的计时状态与有效/总/暂停时长。
+> Schema 7 新增 `daily_reviews`，用于保存每天唯一一条整日心情与小记；`meals` 增加时间戳、备注与照片文件 ID。旧任务、饮食和分类记录继续兼容保留。
 
 ## 计划专注计时字段
 
@@ -26,6 +26,7 @@ meal_items
 workout_sessions
 plans
 checkins
+daily_reviews
 study_sessions
 friendships
 privacy_settings
@@ -50,7 +51,14 @@ migration_history
 audit_logs
 ```
 
-共 28 个集合。
+共 29 个集合。
+
+## 整日打卡与进食时间流
+
+- `daily_reviews`: `userId`、`date`、`mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`。
+- `meals.recordedAt`: 本次进食的服务端时间戳。
+- `meals.note`: 本次进食的可选文字。
+- `meals.photoFileIds`: 最多三张饮食照片的云文件 ID。
 
 ## 用户反馈与版本广播
 
@@ -77,6 +85,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `plans`: `userId + enabled`
 - `checkins`: `userId + planId + date`；`userId + date`
+- `daily_reviews`: `userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `friendships`: `userA + userB`
 - `privacy_settings`: `userId`

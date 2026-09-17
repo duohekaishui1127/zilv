@@ -1,40 +1,49 @@
 const api = require('../../utils/api')
 const debounce = require('../../utils/debounce')
 
+function clockText(value) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '--:--'
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function presentEntries(entries = []) {
+  return entries.map(entry => ({
+    ...entry,
+    timeLabel: clockText(entry.recordedAt),
+    title: entry.items?.length
+      ? entry.items.map(item => `${item.foodNameSnapshot} ${item.amountGram}g`).join('、')
+      : (entry.photoFileIds?.length ? '照片记录' : '随手记录')
+  }))
+}
+
 Page({
   data: {
     keyword: '', foods: [], selected: null, amountGram: '', preview: null,
-    mealTypes: ['早餐', '午餐', '晚餐', '加餐'], mealValues: ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'], mealIndex: 0,
-    items: [], summary: {}, target: null, loading: false
+    note: '', photos: [], entries: [], summary: {}, target: null, loading: false, saving: false
   },
-  onLoad() {
-    this._debouncedSearch = debounce(() => this.search(true), 350)
-  },
+  onLoad() { this._debouncedSearch = debounce(() => this.search(true), 350) },
   onShow() { this.loadDaily(); this.search(true) },
   async loadDaily() {
     const d = await api.call('getDailyMeals')
-    this.setData({ items: d.items, summary: d.summary, target: d.target })
+    this.setData({ entries: presentEntries(d.entries), summary: d.summary, target: d.target })
   },
-  onKeyword(e) {
-    this.setData({ keyword: e.detail.value })
-    this._debouncedSearch()
-  },
+  onKeyword(e) { this.setData({ keyword: e.detail.value }); this._debouncedSearch() },
   async search(silent = false) {
     if (this.data.loading) return
     this.setData({ loading: true })
     try {
       const d = await api.call('searchFood', { keyword: this.data.keyword }, { silent })
       this.setData({ foods: d.foods })
-    } finally {
-      this.setData({ loading: false })
-    }
+    } finally { this.setData({ loading: false }) }
   },
   select(e) {
     const selected = this.data.foods.find(x => x._id === e.currentTarget.dataset.id) || null
     this.setData({ selected }, () => this.updatePreview())
   },
+  clearSelected() { this.setData({ selected: null, amountGram: '', preview: null }) },
   amount(e) { this.setData({ amountGram: e.detail.value }, () => this.updatePreview()) },
-  meal(e) { this.setData({ mealIndex: Number(e.detail.value) }) },
+  noteInput(e) { this.setData({ note: e.detail.value }) },
   updatePreview() {
     const { selected, amountGram } = this.data
     const amount = Number(amountGram)
@@ -47,22 +56,41 @@ Page({
       fat: Math.round(selected.fatPer100 * ratio * 10) / 10
     } })
   },
+  async choosePhotos() {
+    const remain = 3 - this.data.photos.length
+    if (remain <= 0) return wx.showToast({ title: '最多添加3张照片', icon: 'none' })
+    const result = await wx.chooseMedia({ count: remain, mediaType: ['image'], sourceType: ['album', 'camera'], sizeType: ['compressed'] })
+    this.setData({ photos: [...this.data.photos, ...result.tempFiles.map(file => file.tempFilePath)] })
+  },
+  removePhoto(e) { this.setData({ photos: this.data.photos.filter((_, index) => index !== Number(e.currentTarget.dataset.index)) }) },
+  previewPhoto(e) { wx.previewImage({ urls: this.data.photos, current: e.currentTarget.dataset.src }) },
+  previewEntryPhoto(e) {
+    const entry = this.data.entries[Number(e.currentTarget.dataset.entryIndex)]
+    if (entry?.photoFileIds?.length) wx.previewImage({ urls: entry.photoFileIds, current: e.currentTarget.dataset.src })
+  },
   async add() {
-    if (!this.data.selected) return wx.showToast({ title: '请先选择食物', icon: 'none' })
+    if (this.data.saving) return
+    const hasLooseRecord = this.data.note.trim() || this.data.photos.length
+    if (!this.data.selected && !hasLooseRecord) return wx.showToast({ title: '请选择食物，或添加文字/照片', icon: 'none' })
     const amount = Number(this.data.amountGram)
-    if (!Number.isFinite(amount) || amount <= 0) return wx.showToast({ title: '请输入有效食用克数', icon: 'none' })
-    await api.call('addMealItem', {
-      foodId: this.data.selected._id,
-      amountGram: amount,
-      mealType: this.data.mealValues[this.data.mealIndex]
-    })
-    wx.showToast({ title: '已添加', icon: 'success' })
-    this.setData({ selected: null, amountGram: '', preview: null })
-    await this.loadDaily()
+    if (this.data.selected && (!Number.isFinite(amount) || amount <= 0)) return wx.showToast({ title: '请输入有效食用克数', icon: 'none' })
+    this.setData({ saving: true })
+    try {
+      const photoFileIds = await Promise.all(this.data.photos.map(path => api.uploadImage(path, 'meal-photos')))
+      await api.call('addMealEntry', {
+        foodId: this.data.selected?._id || '',
+        amountGram: this.data.selected ? amount : undefined,
+        note: this.data.note,
+        photoFileIds
+      })
+      wx.showToast({ title: '已记录', icon: 'success' })
+      this.setData({ selected: null, amountGram: '', preview: null, note: '', photos: [] })
+      await this.loadDaily()
+    } finally { this.setData({ saving: false }) }
   },
   async remove(e) {
-    if (!await api.confirm('删除这条饮食记录？')) return
-    await api.call('deleteMealItem', { itemId: e.currentTarget.dataset.id })
+    if (!await api.confirm('删除这次进食记录？')) return
+    await api.call('deleteMealEntry', { entryId: e.currentTarget.dataset.id })
     await this.loadDaily()
   },
   custom() { wx.navigateTo({ url: '/pages/profile/food-custom' }) }

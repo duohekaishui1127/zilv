@@ -7,6 +7,7 @@ module.exports = {
   ...require('./study'),
   ...require('./plans'),
   ...require('./plan-timers'),
+  ...require('./daily-reviews'),
   ...require('./privacy'),
   ...require('./friends'),
   ...require('./groups'),

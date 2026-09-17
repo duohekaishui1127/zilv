@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { dateRange, monthRange, buildProgressReport, buildActivityCalendar, latestMoodByDate } = require('../cloudfunctions/api/domain/progress-report')
+const { dateRange, monthRange, buildProgressReport, buildActivityCalendar } = require('../cloudfunctions/api/domain/progress-report')
 
 test('趋势日期范围包含结束日并正确跨月', () => {
   assert.deepEqual(dateRange('2026-03-02', 3), ['2026-02-28', '2026-03-01', '2026-03-02'])
@@ -51,14 +51,15 @@ test('活跃日历汇总饮食、运动、学习和打卡天数', () => {
   assert.equal(calendar.days[1].noteCount, 1)
 })
 
-test('日历使用当天最后一次完成任务的心情作为印记', () => {
-  const moods = latestMoodByDate([
-    { date: '2026-09-17', completed: true, mood: 'GOOD', completedAt: '2026-09-17T08:00:00Z' },
-    { date: '2026-09-17', completed: true, mood: 'GREAT', completedAt: '2026-09-17T10:00:00Z' },
-    { date: '2026-09-18', completed: false, mood: 'BAD', completedAt: '2026-09-18T10:00:00Z' }
-  ])
-  assert.equal(moods['2026-09-17'].value, 'GREAT')
-  assert.equal(moods['2026-09-18'], undefined)
+test('日历只使用整日打卡心情作为当天印记', () => {
+  const calendar = buildActivityCalendar({
+    dates: ['2026-09-17', '2026-09-18'],
+    checkins: [{ date: '2026-09-17', completed: true, mood: 'BAD' }],
+    dailyReviews: [{ date: '2026-09-17', mood: 'GREAT', note: '充实的一天', updatedAt: '2026-09-17T10:00:00Z' }]
+  })
+  assert.equal(calendar.days[0].mood, 'GREAT')
+  assert.equal(calendar.days[0].noteCount, 1)
+  assert.equal(calendar.days[1].mood, '')
 })
 
 test('同一天多次更新营养目标时使用最新版本', () => {

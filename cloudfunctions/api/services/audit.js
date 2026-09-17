@@ -2,9 +2,9 @@ const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
 
 const MUTATING_ACTIONS = new Set([
-  'updateProfile','addBodyRecord','createCustomFood','addMealItem','deleteMealItem','addWorkout',
+  'updateProfile','addBodyRecord','createCustomFood','addMealItem','addMealEntry','deleteMealItem','deleteMealEntry','addWorkout',
   'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','startPlanTimer','pausePlanTimer',
-  'resumePlanTimer','finishPlanTimer','addStudySession','updatePrivacy',
+  'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','removeFriend','createGroup','joinGroup','leaveGroup',
   'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus'

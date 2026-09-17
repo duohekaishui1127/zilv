@@ -1,7 +1,7 @@
 <view class="container">
   <view class="card">
     <view class="row"><view class="h2">今日营养</view><view class="tag" wx:if="{{target}}">目标 {{target.targetCalories}} kcal</view></view>
-    <view class="metric-grid" style="margin-top:20rpx">
+    <view class="metric-grid nutrition-grid">
       <view class="metric"><view class="label">热量</view><view class="big">{{summary.calorieIntake||0}}</view><view class="label">kcal</view></view>
       <view class="metric"><view class="label">蛋白质</view><view class="big">{{summary.proteinIntake||0}}</view><view class="label">g</view></view>
       <view class="metric"><view class="label">碳水</view><view class="big">{{summary.carbIntake||0}}</view><view class="label">g</view></view>
@@ -10,30 +10,37 @@
   </view>
 
   <view class="card">
-    <view class="row"><view class="h2">添加食物</view><button class="btn btn-light btn-small" bindtap="custom">+ 自定义</button></view>
-    <input class="input" placeholder="搜索：鸡胸肉、米饭…" value="{{keyword}}" bindinput="onKeyword"/>
+    <view class="row"><view><view class="h2">记录一次进食</view><view class="sub">自动保留当前时间，不区分早中晚餐</view></view><button class="btn btn-light btn-small" bindtap="custom">+ 自定义食物</button></view>
+    <input class="input search-input" placeholder="可选：搜索鸡胸肉、米饭…" value="{{keyword}}" bindinput="onKeyword"/>
     <view class="food-list" wx:if="{{foods.length}}">
       <view class="list-item" wx:for="{{foods}}" wx:key="_id" data-id="{{item._id}}" bindtap="select">
-        <view class="row">
-          <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">每100g {{item.energyKcalPer100}} kcal · P{{item.proteinPer100}} C{{item.carbPer100}} F{{item.fatPer100}}</view></view>
-          <view wx:if="{{selected && selected._id===item._id}}" class="success">✓</view>
-        </view>
+        <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">每100g {{item.energyKcalPer100}} kcal · P{{item.proteinPer100}} C{{item.carbPer100}} F{{item.fatPer100}}</view></view><view wx:if="{{selected && selected._id===item._id}}" class="success">✓</view></view>
       </view>
     </view>
     <view wx:if="{{selected}}" class="selection-panel">
-      <view class="field"><view class="label">已选：{{selected.name}}</view><input class="input" type="digit" placeholder="食用克数" value="{{amountGram}}" bindinput="amount"/></view>
-      <picker mode="selector" range="{{mealTypes}}" value="{{mealIndex}}" bindchange="meal"><view class="input">餐次：{{mealTypes[mealIndex]}}</view></picker>
+      <view class="row"><view class="label">已选：{{selected.name}}</view><view class="link" bindtap="clearSelected">取消选择</view></view>
+      <input class="input" type="digit" placeholder="食用克数" value="{{amountGram}}" bindinput="amount"/>
       <view class="sub" wx:if="{{preview}}">预计：{{preview.kcal}} kcal · P{{preview.protein}} C{{preview.carb}} F{{preview.fat}}</view>
-      <button class="btn" style="margin-top:20rpx" bindtap="add">加入今日饮食</button>
     </view>
+    <textarea class="input meal-note" maxlength="500" value="{{note}}" bindinput="noteInput" placeholder="这次吃了什么、感受如何（可选）"/>
+    <view class="photo-grid">
+      <view wx:for="{{photos}}" wx:key="*this" class="photo-wrap"><image class="meal-photo" src="{{item}}" mode="aspectFill" data-src="{{item}}" bindtap="previewPhoto"/><view class="photo-remove" data-index="{{index}}" catchtap="removePhoto">×</view></view>
+      <view wx:if="{{photos.length < 3}}" class="photo-add" bindtap="choosePhotos">+<text>拍照/图片</text></view>
+    </view>
+    <button class="btn save-entry" loading="{{saving}}" bindtap="add">保存本次进食</button>
   </view>
 
-  <view class="section-title">今日明细</view>
-  <view class="card">
-    <view class="list-item row" wx:for="{{items}}" wx:key="_id">
-      <view class="flex-1"><view class="value">{{item.foodNameSnapshot}} · {{item.amountGram}}g</view><view class="sub">{{item.energyKcal}} kcal · P{{item.proteinGram}} C{{item.carbGram}} F{{item.fatGram}}</view></view>
-      <button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="remove">删除</button>
+  <view class="section-title">今日进食</view>
+  <view class="card timeline-card">
+    <view class="meal-entry" wx:for="{{entries}}" wx:for-index="entryIndex" wx:key="_id">
+      <view class="meal-time">{{item.timeLabel}}</view>
+      <view class="meal-content">
+        <view class="row"><view class="value flex-1">{{item.title}}</view><button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="remove">删除</button></view>
+        <view class="sub" wx:if="{{item.items.length}}">{{item.energyKcal}} kcal · P{{item.proteinGram}} C{{item.carbGram}} F{{item.fatGram}}</view>
+        <view class="meal-entry-note" wx:if="{{item.note}}">{{item.note}}</view>
+        <view class="entry-photos" wx:if="{{item.photoFileIds.length}}"><image wx:for="{{item.photoFileIds}}" wx:for-item="photo" wx:key="*this" class="entry-photo" src="{{photo}}" mode="aspectFill" data-entry-index="{{entryIndex}}" data-src="{{photo}}" bindtap="previewEntryPhoto"/></view>
+      </view>
     </view>
-    <view wx:if="{{!items.length}}" class="empty compact">今天还没记录饮食</view>
+    <view wx:if="{{!entries.length}}" class="empty compact">今天还没记录进食</view>
   </view>
 </view>
