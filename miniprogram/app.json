@@ -17,6 +17,8 @@
     "pages/profile/index",
     "pages/profile/edit",
     "pages/profile/home-settings",
+    "pages/feedback/index",
+    "pages/feedback/admin",
     "pages/profile/privacy",
     "pages/profile/food-custom",
     "pages/report/week",

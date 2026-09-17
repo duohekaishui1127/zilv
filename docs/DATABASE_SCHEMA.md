@@ -1,4 +1,4 @@
-# 云数据库集合设计（应用 1.2.0 / Schema 4）
+# 云数据库集合设计（应用 1.2.0 / Schema 5）
 
 > 本轮新增字段均为向后兼容的可选字段，不需要新建集合：`users.homePreferences`、`plans.description`、`checkins.durationMinutes`、`checkins.mood`，以及学习/运动记录中的 `mood`、`completionNote`、`source`、`checkinId`。
 
@@ -26,6 +26,7 @@ group_events
 notes
 note_attachments
 notifications
+feedbacks
 ```
 
 ## 系统与工程
@@ -39,7 +40,13 @@ migration_history
 audit_logs
 ```
 
-共 27 个集合。
+共 28 个集合。
+
+## 用户反馈与版本广播
+
+feedbacks 保存用户建议：userId、category、content、images、contact、status、deviceInfo、clientMutationId、createdAt、updatedAt。
+
+反馈管理员由 api 云函数环境变量 FEEDBACK_ADMIN_SHARE_CODES 指定。版本公告文案位于 cloudfunctions/api/config/release-announcement.js，同一个公告 id 对每名用户只投递一次。
 
 ## 计划提醒字段
 
@@ -69,6 +76,7 @@ audit_logs
 - `notes`: `userId + status + createdAt desc`；`userId + type + status + createdAt desc`；`userId + clientMutationId + status`
 - `note_attachments`: `noteId + sort`；`userId + noteId`
 - `notifications`: `userId + createdAt desc`；`userId + status + createdAt desc`；`userId + planId + recordDate`
+- `feedbacks`: `userId + createdAt desc`；`userId + clientMutationId`
 - `exercises`: `key`
 - `body_metric_defs`: `code`
 - `app_config`: `key`

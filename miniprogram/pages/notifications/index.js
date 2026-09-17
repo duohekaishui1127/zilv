@@ -37,9 +37,13 @@ Page({
     }
   },
   async open(e) {
-    const id = e.currentTarget.dataset.id
+    const index = Number(e.currentTarget.dataset.index)
+    const item = this.data.notifications[index]
+    const id = item?._id
     if (id) await api.call('markNotificationRead', { notificationId: id }, { silent: true }).catch(() => {})
-    wx.switchTab({ url: '/pages/today/index' })
+    if (item?.page) return wx.navigateTo({ url: item.page })
+    if (item?.type === 'PLAN_REMINDER') return wx.switchTab({ url: '/pages/today/index' })
+    await this.load()
   },
   async markAll() {
     await api.call('markAllNotificationsRead')

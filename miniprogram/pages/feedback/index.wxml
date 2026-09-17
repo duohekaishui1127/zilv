@@ -1,0 +1,42 @@
+<view class="container">
+  <view class="hero"><view class="h1">意见与建议</view><view class="sub">每一条反馈都会保存并交给作者处理。请不要填写密码、身份证号等敏感信息。</view></view>
+
+  <view class="card">
+    <view class="field">
+      <view class="label">反馈类型</view>
+      <picker mode="selector" range="{{categories}}" range-key="label" value="{{categoryIndex}}" bindchange="changeCategory"><view class="input">{{categories[categoryIndex].label}}</view></picker>
+    </view>
+    <view class="field">
+      <view class="label">具体内容</view>
+      <textarea class="input feedback-textarea" maxlength="2000" data-key="content" value="{{content}}" bindinput="input" placeholder="请描述你的建议、遇到的问题或希望增加的功能"/>
+      <view class="sub">{{content.length}} / 2000</view>
+    </view>
+    <view class="field">
+      <view class="label">截图（可选，最多3张）</view>
+      <button class="btn btn-light btn-small" bindtap="chooseImages">添加截图</button>
+      <view class="image-grid" wx:if="{{attachments.length}}">
+        <view class="image-item" wx:for="{{attachments}}" wx:key="key">
+          <image class="feedback-image" src="{{item.tempPath || item.fileId}}" mode="aspectFill" data-index="{{index}}" bindtap="previewDraft"/>
+          <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+        </view>
+      </view>
+    </view>
+    <view class="field">
+      <view class="label">联系方式（可选）</view>
+      <input class="input" maxlength="100" data-key="contact" value="{{contact}}" bindinput="input" placeholder="微信号、邮箱等，便于进一步沟通"/>
+    </view>
+    <button class="btn submit-button" loading="{{saving}}" bindtap="submit">提交反馈</button>
+  </view>
+
+  <view class="section-title">我的反馈</view>
+  <view class="card" wx:for="{{feedbacks}}" wx:for-item="feedback" wx:for-index="feedbackIndex" wx:key="_id">
+    <view class="row"><view class="tag">{{feedback.categoryLabel}}</view><view class="tag {{feedback.statusClass}}">{{feedback.statusLabel}}</view></view>
+    <view class="history-content">{{feedback.content}}</view>
+    <view class="history-images" wx:if="{{feedback.images.length}}">
+      <image wx:for="{{feedback.images}}" wx:for-item="photo" wx:key="*this" class="history-image" src="{{photo}}" mode="aspectFill" data-feedback-index="{{feedbackIndex}}" data-photo="{{photo}}" bindtap="previewHistory"/>
+    </view>
+    <view class="sub">{{feedback.displayTime}}</view>
+  </view>
+  <view class="empty compact" wx:if="{{loading && !feedbacks.length}}">正在加载反馈…</view>
+  <view class="empty compact" wx:if="{{!loading && !feedbacks.length}}">还没有提交过反馈</view>
+</view>

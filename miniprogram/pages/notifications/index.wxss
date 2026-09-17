@@ -1,2 +1,2 @@
 .notification-unread { border-left: 6rpx solid #111827; padding-left: 18rpx; }
-.notification-content { margin-top: 10rpx; line-height: 1.55; color: #374151; }
+.notification-content { margin-top: 10rpx; line-height: 1.55; color: #374151; white-space: pre-wrap; }

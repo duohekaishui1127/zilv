@@ -85,14 +85,14 @@ progress-report.js
 
 ## 数据库初始化
 
-运行 `admin-init` 后会自动创建当前版本所需的 **27 个集合**，并幂等写入：
+运行 `admin-init` 后会自动创建当前版本所需的 **28 个集合**，并幂等写入：
 
 - 63 条基础食物；
 - 15 个运动项目；
 - 12 个身体指标定义；
 - 7 项系统配置；
-- `schemaVersion = 4`；
-- Schema 1~4 migration 记录。
+- `schemaVersion = 5`；
+- Schema 1~5 migration 记录。
 
 真实微信云环境仍需要你部署后调用一次 `admin-init`；工程本身无法代替你的微信账号授权。
 

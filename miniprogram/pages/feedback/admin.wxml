@@ -1,0 +1,18 @@
+<view class="container">
+  <view class="hero"><view class="h1">反馈管理</view><view class="sub">共读取 {{feedbacks.length}} 条最近反馈</view></view>
+  <view class="empty" wx:if="{{loading && !feedbacks.length}}">正在加载反馈…</view>
+  <view class="card" wx:for="{{feedbacks}}" wx:for-item="feedback" wx:for-index="feedbackIndex" wx:key="_id">
+    <view class="row"><view class="tag">{{feedback.categoryLabel}}</view><view class="tag {{feedback.status === 'COMPLETED' ? 'tag-active' : ''}}">{{feedback.statusLabel}}</view></view>
+    <view class="admin-content">{{feedback.content}}</view>
+    <view class="admin-images" wx:if="{{feedback.images.length}}">
+      <image wx:for="{{feedback.images}}" wx:for-item="photo" wx:key="*this" class="admin-image" src="{{photo}}" mode="aspectFill" data-feedback-index="{{feedbackIndex}}" data-photo="{{photo}}" bindtap="preview"/>
+    </view>
+    <view class="admin-meta">用户：{{feedback.submitterNickname}}（{{feedback.submitterShareCode}}）</view>
+    <view class="admin-meta" wx:if="{{feedback.contact}}">联系方式：{{feedback.contact}}</view>
+    <view class="admin-meta">{{feedback.displayTime}} · App {{feedback.deviceInfo.appVersion || '-'}} · {{feedback.deviceInfo.model || '未知设备'}}</view>
+    <view class="status-row">
+      <button wx:for="{{statuses}}" wx:for-item="statusItem" wx:key="value" class="btn btn-light status-button" data-id="{{feedback._id}}" data-status="{{statusItem.value}}" disabled="{{feedback.status === statusItem.value}}" bindtap="setStatus">{{statusItem.label}}</button>
+    </view>
+  </view>
+  <view class="empty" wx:if="{{!loading && !feedbacks.length}}">暂时没有用户反馈</view>
+</view>

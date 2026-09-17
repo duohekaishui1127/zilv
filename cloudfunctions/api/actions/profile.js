@@ -3,10 +3,11 @@ const { now, fail, sanitizeNumber } = require('../lib/utils')
 const { getUserById, getPrivacy, getNutritionProfile } = require('../services/users')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { homePreferencesOf } = require('../services/preferences')
+const { isFeedbackAdmin } = require('../services/feedback-admin')
 
 async function getProfile({ user }) {
   const [nutritionProfile, privacy] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id)])
-  return { user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy }
+  return { user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy, isFeedbackAdmin: isFeedbackAdmin(user) }
 }
 
 async function updateHomePreferences({ user, event }) {

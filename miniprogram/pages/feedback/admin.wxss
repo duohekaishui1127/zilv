@@ -1,0 +1,6 @@
+.admin-content { margin-top: 14rpx; color: #253041; line-height: 1.65; white-space: pre-wrap; }
+.admin-meta { margin-top: 12rpx; color: #7b8492; font-size: 23rpx; line-height: 1.55; }
+.admin-images { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 16rpx; }
+.admin-image { width: 150rpx; height: 150rpx; border-radius: 14rpx; background: #eef0f3; }
+.status-row { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 20rpx; }
+.status-button { padding: 12rpx 16rpx; font-size: 22rpx; }

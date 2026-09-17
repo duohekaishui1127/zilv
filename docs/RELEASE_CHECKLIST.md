@@ -12,7 +12,9 @@
 ## 数据库
 
 - [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 4`
+- [ ] 确认 `system_meta.schemaVersion = 5`
+- [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
+- [ ] 修改并核对 `cloudfunctions/api/config/release-announcement.js`
 - [ ] 确认 `004_plan_reminders` migration 已记录
 - [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences`、`notifications` 已创建
 - [ ] 按 `DATABASE_SCHEMA.md` 建议建立索引

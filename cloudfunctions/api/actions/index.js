@@ -11,6 +11,7 @@ module.exports = {
   ...require('./groups'),
   ...require('./notes'),
   ...require('./notifications'),
+  ...require('./feedback'),
   ...require('./reports'),
   ...require('./system')
 }

@@ -4,8 +4,10 @@ const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarge
 const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
 const { homePreferencesOf } = require('../services/preferences')
+const { ensureReleaseAnnouncement } = require('../services/release-announcements')
 
 async function dashboard({ user, localDate }) {
+  await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
   const [weight, plans, nutrition, workout, study, unreadNotifications] = await Promise.all([
     latestWeight(user._id),
     getTodayPlansService(user._id, localDate),
