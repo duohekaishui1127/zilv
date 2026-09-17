@@ -21,7 +21,12 @@ function getLogger() {
 function log(level, event, extra = {}) {
   const logger = getLogger()
   const fn = logger[level] || logger.log || console.log
-  fn.call(logger, '[zilu-api]', { ...event, ...extra })
+
+  fn.call(logger, {
+    tag: 'zilu-api',
+    ...event,
+    ...extra
+  })
 }
 
 function createRequestContext({ action, userId }) {
