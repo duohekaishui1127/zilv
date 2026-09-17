@@ -3,6 +3,7 @@ const { round1 } = require('../lib/utils')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
+const { homePreferencesOf } = require('../services/preferences')
 
 async function dashboard({ user, localDate }) {
   const [weight, plans, nutrition, workout, study, unreadNotifications] = await Promise.all([
@@ -20,6 +21,7 @@ async function dashboard({ user, localDate }) {
   const balance = round1(nutrition.calorieIntake - totalExpenditure)
   return {
     user: { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode },
+    homePreferences: homePreferencesOf(user),
     weightStatus: weightStatus(weight, localDate),
     nutritionTarget: target,
     plans,

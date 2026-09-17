@@ -16,6 +16,7 @@
     "pages/circle/group-create",
     "pages/profile/index",
     "pages/profile/edit",
+    "pages/profile/home-settings",
     "pages/profile/privacy",
     "pages/profile/food-custom",
     "pages/report/week",

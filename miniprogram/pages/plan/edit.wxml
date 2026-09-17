@@ -2,6 +2,7 @@
   <view class="empty" wx:if="{{loading}}">正在加载计划…</view>
   <view class="card" wx:else>
     <view class="field"><view class="label">计划名称</view><input class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="例如：每天学习2小时"/></view>
+    <view class="field"><view class="label">具体内容（可选）</view><textarea class="input" data-key="description" value="{{description}}" bindinput="input" maxlength="500" placeholder="例如：复习第3章，并完成课后练习；内容会显示在今日首页"/></view>
     <view class="field"><view class="label">分类</view><picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="category"><view class="input">{{categories[categoryIndex]}}</view></picker></view>
     <view class="field"><view class="label">目标类型</view><picker mode="selector" range="{{targetTypes}}" value="{{targetIndex}}" bindchange="target"><view class="input">{{targetTypes[targetIndex]}}</view></picker></view>
     <view class="row"><view class="field flex-1"><view class="label">目标值</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="分钟/次/ml"/></view></view>

@@ -1,4 +1,5 @@
 const api=require('../../utils/api')
+const { MOOD_LABELS } = require('../../utils/constants')
 Page({
   data:{subject:'',content:'',durationMinutes:'',sessions:[],summary:{},plans:[],planIndex:0,saving:false},
   onShow(){this.load()},
@@ -7,7 +8,13 @@ Page({
   async load(){
     const [daily,plans]=await Promise.all([api.call('getDailyStudy'),api.call('getTodayPlans')])
     const studyPlans=[{_id:'',name:'不关联计划'},...plans.plans.filter(p=>p.category==='STUDY'&&!p.completed)]
-    this.setData({sessions:daily.sessions,summary:daily.summary,plans:studyPlans,planIndex:0})
+    const sessions = daily.sessions.map(item => ({
+      ...item,
+      moodLabel: MOOD_LABELS[item.mood] || '',
+      displayNote: [...new Set([item.note, item.completionNote].filter(Boolean))].join(' · '),
+      durationLabel: Number(item.durationMinutes || 0) > 0 ? `${item.durationMinutes} min` : '未填写用时'
+    }))
+    this.setData({sessions,summary:daily.summary,plans:studyPlans,planIndex:0})
   },
   writeNote(e){
     const id=e.currentTarget.dataset.id

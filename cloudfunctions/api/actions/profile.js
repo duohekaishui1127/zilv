@@ -2,10 +2,21 @@ const { db, C } = require('../lib/db')
 const { now, fail, sanitizeNumber } = require('../lib/utils')
 const { getUserById, getPrivacy, getNutritionProfile } = require('../services/users')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
+const { homePreferencesOf } = require('../services/preferences')
 
 async function getProfile({ user }) {
   const [nutritionProfile, privacy] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id)])
-  return { user, nutritionProfile, privacy }
+  return { user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy }
+}
+
+async function updateHomePreferences({ user, event }) {
+  const input = event.preferences || {}
+  const homePreferences = {
+    showEnergy: input.showEnergy !== false,
+    showWeightReminder: input.showWeightReminder !== false
+  }
+  await db.collection(C.USERS).doc(user._id).update({ data: { homePreferences, updatedAt: now() } })
+  return { homePreferences }
 }
 
 async function updateProfile({ user, event, localDate }) {
@@ -47,4 +58,4 @@ async function getNutritionTarget({ user, localDate }) {
   return { target, weightStatus: weightStatus(weight, localDate) }
 }
 
-module.exports = { getProfile, updateProfile, getNutritionTarget }
+module.exports = { getProfile, updateProfile, getNutritionTarget, updateHomePreferences }

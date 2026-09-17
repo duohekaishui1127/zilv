@@ -9,7 +9,7 @@ function indexOfValue(list, value, fallback = 0) {
 Page({
   data: {
     id: '', editMode: false, loading: false, saving: false,
-    name: '',
+    name: '', description: '',
     categories: PLAN_CATEGORIES.map(x => x.label), categoryValues: PLAN_CATEGORIES.map(x => x.value), categoryIndex: 0,
     targetTypes: TARGET_TYPES.map(x => x.label), targetValues: TARGET_TYPES.map(x => x.value), targetIndex: 0,
     targetValue: 1, unit: '', weeklyCount: 3,
@@ -44,6 +44,7 @@ Page({
       const selectedDays = new Set(plan.repeatConfig?.weekdays || [])
       this.setData({
         name: plan.name,
+        description: plan.description || '',
         categoryIndex: indexOfValue(PLAN_CATEGORIES, plan.category),
         targetIndex: indexOfValue(TARGET_TYPES, plan.targetType),
         targetValue: plan.targetValue,
@@ -117,6 +118,7 @@ Page({
     if (repeatType === 'WEEKLY_COUNT' && (!Number.isFinite(weeklyCount) || weeklyCount < 1 || weeklyCount > 7)) return wx.showToast({ title: '每周次数应为1到7次', icon: 'none' })
     const plan = {
       name,
+      description: this.data.description.trim(),
       category: this.data.categoryValues[this.data.categoryIndex],
       targetType: this.data.targetValues[this.data.targetIndex],
       targetValue,

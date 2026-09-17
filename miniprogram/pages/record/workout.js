@@ -1,4 +1,5 @@
 const api = require('../../utils/api')
+const { MOOD_LABELS } = require('../../utils/constants')
 
 const FALLBACK_TYPES = [
   {key:'WALK',name:'步行',category:'CARDIO'}, {key:'BRISK_WALK',name:'快走',category:'CARDIO'},
@@ -31,8 +32,14 @@ Page({
     let typeIndex=Math.max(0,types.findIndex(x=>x.key===currentKey))
     if (typeIndex < 0) typeIndex=0
     const workoutPlans=[{_id:'',name:'不关联计划'},...plans.plans.filter(p=>p.category==='WORKOUT'&&!p.completed)]
+    const workouts = daily.workouts.map(item => ({
+      ...item,
+      moodLabel: MOOD_LABELS[item.mood] || '',
+      displayNote: [...new Set([item.note, item.completionNote].filter(Boolean))].join(' · '),
+      durationLabel: Number(item.durationMinutes || 0) > 0 ? `${item.durationMinutes}分钟` : '未填写用时'
+    }))
     this.setData({
-      workouts: daily.workouts, summary: daily.summary, plans:workoutPlans, planIndex:0, types, typeIndex,
+      workouts, summary: daily.summary, plans:workoutPlans, planIndex:0, types, typeIndex,
       isStrength: (types[typeIndex]?.category || '') === 'STRENGTH'
     })
   },

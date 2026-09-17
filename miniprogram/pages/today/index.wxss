@@ -1,1 +1,28 @@
-/* 使用全局样式 */
+.retry-btn { margin-top: 20rpx; }
+.card-toggle { min-height: 52rpx; }
+.compact-row { gap: 12rpx; }
+.chevron { color: #8a8f98; font-size: 30rpx; min-width: 30rpx; text-align: center; }
+.plan-list { margin-top: 10rpx; }
+.plan-item { padding: 24rpx 0; border-bottom: 1rpx solid #eef0f2; }
+.plan-item:last-of-type { border-bottom: 0; }
+.check-circle { width: 42rpx; height: 42rpx; flex: 0 0 42rpx; border: 3rpx solid #9ca3af; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 25rpx; font-weight: 700; }
+.check-circle-done { border-color: #697386; background: #697386; }
+.plan-item-completed .plan-name, .plan-item-completed .plan-description { color: #9ca3af; }
+.completion-meta { margin-top: 9rpx; color: #7b8492; font-size: 23rpx; line-height: 1.5; }
+.plan-tip { padding-top: 18rpx; }
+.energy-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 22rpx; }
+.energy-metric { min-width: 0; background: #f8f9fb; border-radius: 18rpx; padding: 20rpx 10rpx; text-align: center; }
+.energy-value { margin: 5rpx 0; font-size: 34rpx; font-weight: 700; overflow-wrap: anywhere; }
+.energy-details { margin-top: 6rpx; }
+.detail-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 10rpx 0; }
+.nutrition-title { margin-top: 28rpx; }
+
+.sheet-mask { position: fixed; inset: 0; z-index: 100; display: flex; align-items: flex-end; background: rgba(17, 24, 39, .42); }
+.completion-sheet { width: 100%; max-height: 88vh; overflow-y: auto; box-sizing: border-box; padding: 18rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); background: #fff; border-radius: 30rpx 30rpx 0 0; }
+.sheet-handle { width: 72rpx; height: 8rpx; border-radius: 999rpx; background: #d6dae0; margin: 0 auto 24rpx; }
+.sheet-close { padding: 12rpx; color: #8a8f98; font-size: 42rpx; line-height: 1; }
+.completion-field { margin-top: 30rpx; }
+.mood-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 14rpx; }
+.mood-chip { padding: 12rpx 18rpx; border-radius: 999rpx; color: #60646c; background: #f0f2f5; font-size: 24rpx; }
+.mood-chip-active { color: #fff; background: #303846; }
+.note-input { min-height: 150rpx; }

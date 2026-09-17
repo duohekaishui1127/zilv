@@ -50,7 +50,12 @@ async function addWorkout({ user, event, localDate }) {
       || (linkedPlan.targetType === 'DURATION' && durationTotal >= Number(linkedPlan.targetValue || 0))
       || (linkedPlan.targetType === 'COUNT' && linked.data.length >= Number(linkedPlan.targetValue || 0))
     if (shouldComplete) {
-      await completePlan({ user, event: { planId: linkedPlan._id, actualValue: linkedPlan.targetType === 'DURATION' ? durationTotal : linked.data.length }, localDate })
+      await completePlan({ user, event: {
+        planId: linkedPlan._id,
+        actualValue: linkedPlan.targetType === 'DURATION' ? durationTotal : linked.data.length,
+        durationMinutes: durationTotal,
+        note: data.note
+      }, localDate })
       planAutoCompleted = true
     }
   }

@@ -2,6 +2,7 @@
   <view class="card"><view class="row"><view><view class="h1">{{profile.user.nickname}}</view><view class="sub">好友码 {{profile.user.shareCode}}</view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view></view>
   <view class="card">
     <view class="list-item row" data-url="/pages/profile/edit" bindtap="go"><view><view class="value">身体与营养档案</view><view class="sub">身高、生日、目标、活动水平</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/profile/home-settings" bindtap="go"><view><view class="value">今日页设置</view><view class="sub">选择首页显示的自律数据</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/privacy" bindtap="go"><view><view class="value">隐私设置</view><view class="sub">控制好友可见范围</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/food-custom" bindtap="go"><view><view class="value">自定义食物</view><view class="sub">添加包装食品或自己的食物数据</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/notes/index" bindtap="go"><view><view class="value">我的历程</view><view class="sub">体态照片、学习笔记和训练复盘</view></view><view>›</view></view>

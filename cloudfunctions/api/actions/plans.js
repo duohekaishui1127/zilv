@@ -2,6 +2,7 @@ const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
 const { isBasePlanDue } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
+const { syncPlanCategoryRecord } = require('../services/plan-records')
 
 
 function normalizePlan(input, localDate, existing = {}) {
@@ -32,6 +33,7 @@ function normalizePlan(input, localDate, existing = {}) {
   }
   return {
     name: name.slice(0, 80), category: p.category || existing.category || 'CUSTOM',
+    description: String(p.description ?? existing.description ?? '').trim().slice(0, 500),
     targetType: p.targetType || existing.targetType || 'BOOLEAN', targetValue,
     unit: String(p.unit ?? existing.unit ?? '').slice(0, 20), repeatType, repeatConfig,
     startDate: p.startDate || existing.startDate || localDate,
@@ -101,10 +103,27 @@ async function completePlan({ user, event, localDate }) {
     if (count.total >= Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1)) throw fail('PLAN_WEEKLY_TARGET_REACHED', '本周目标已完成')
   }
 
+  const existingCheckin = cr.data[0] || null
+  const durationMinutes = event.durationMinutes === undefined
+    ? (existingCheckin?.durationMinutes ?? null)
+    : (event.durationMinutes === '' || event.durationMinutes == null ? null : Number(event.durationMinutes))
+  if (durationMinutes != null && (!Number.isFinite(durationMinutes) || durationMinutes < 0 || durationMinutes > 1440)) {
+    throw fail('INVALID_PARAMETER', '实际用时应为0到1440分钟')
+  }
+  const allowedMoods = ['GREAT', 'GOOD', 'OKAY', 'TIRED', 'BAD']
+  const mood = event.mood === undefined
+    ? (existingCheckin?.mood || '')
+    : (allowedMoods.includes(event.mood) ? event.mood : '')
+  const note = event.note === undefined ? (existingCheckin?.note || '') : String(event.note || '').slice(0, 500)
+  const actualValue = Number(event.actualValue ?? plan.targetValue ?? 1)
+  if (!Number.isFinite(actualValue) || actualValue < 0 || actualValue > 1000000000) {
+    throw fail('INVALID_PARAMETER', '实际完成量不合法')
+  }
   let checkin
+  const shouldEmitGroupEvent = !existingCheckin?.completed
   const data = {
-    actualValue: Number(event.actualValue ?? plan.targetValue ?? 1), completed: true,
-    completedAt: now(), note: String(event.note || '').slice(0, 500), updatedAt: now()
+    actualValue, completed: true,
+    durationMinutes, mood, completedAt: existingCheckin?.completedAt || now(), note, updatedAt: now()
   }
   if (cr.data.length) {
     await db.collection(C.CHECKINS).doc(cr.data[0]._id).update({ data })
@@ -114,7 +133,8 @@ async function completePlan({ user, event, localDate }) {
     const add = await db.collection(C.CHECKINS).add({ data: base })
     checkin = { _id: add._id, ...base }
   }
-  await emitGroupEventsForCheckin(user, plan, checkin)
+  await syncPlanCategoryRecord({ user, plan, checkin, localDate })
+  if (shouldEmitGroupEvent) await emitGroupEventsForCheckin(user, plan, checkin)
   return { checkin }
 }
 

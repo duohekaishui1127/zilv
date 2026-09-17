@@ -1,5 +1,7 @@
 # 云数据库集合设计（应用 1.2.0 / Schema 4）
 
+> 本轮新增字段均为向后兼容的可选字段，不需要新建集合：`users.homePreferences`、`plans.description`、`checkins.durationMinutes`、`checkins.mood`，以及学习/运动记录中的 `mood`、`completionNote`、`source`、`checkinId`。
+
 ## 核心业务
 
 ```text
