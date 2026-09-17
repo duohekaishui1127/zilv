@@ -3,7 +3,8 @@ const { now } = require('../lib/utils')
 
 const MUTATING_ACTIONS = new Set([
   'updateProfile','addBodyRecord','createCustomFood','addMealItem','deleteMealItem','addWorkout',
-  'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','addStudySession','updatePrivacy',
+  'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','startPlanTimer','pausePlanTimer',
+  'resumePlanTimer','finishPlanTimer','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','removeFriend','createGroup','joinGroup','leaveGroup',
   'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus'

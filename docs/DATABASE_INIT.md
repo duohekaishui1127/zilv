@@ -1,4 +1,4 @@
-# 1.2.0 数据库初始化（Schema 5）
+# 1.3.0 数据库初始化（Schema 6）
 
 `cloudfunctions/admin-init` 是一次性管理函数。
 
@@ -9,8 +9,8 @@
 - 幂等写入 15 个运动项目；
 - 幂等写入 12 个身体指标；
 - 幂等写入 7 项应用配置；
-- 将 `system_meta.schemaVersion` 更新为 5；
-- 写入 Schema 1、2、3、4、5 的 migration 记录。
+- 将 `system_meta.schemaVersion` 更新为 6；
+- 写入 Schema 1、2、3、4、5、6 的 migration 记录。
 
 重复执行不会无限新增同名系统数据。
 

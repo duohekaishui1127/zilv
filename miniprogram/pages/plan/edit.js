@@ -1,5 +1,5 @@
 const api = require('../../utils/api')
-const { PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES } = require('../../utils/constants')
+const { PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES } = require('../../utils/constants')
 
 function indexOfValue(list, value, fallback = 0) {
   const index = list.findIndex(x => x.value === value)
@@ -13,6 +13,8 @@ Page({
     categories: PLAN_CATEGORIES.map(x => x.label), categoryValues: PLAN_CATEGORIES.map(x => x.value), categoryIndex: 0,
     targetTypes: TARGET_TYPES.map(x => x.label), targetValues: TARGET_TYPES.map(x => x.value), targetIndex: 0,
     targetValue: 1, unit: '', weeklyCount: 3,
+    timerModes: TIMER_MODES.map(x => x.label), timerValues: TIMER_MODES.map(x => x.value), timerIndex: 0,
+    timerDurationMinutes: 25, isCountdown: false,
     repeatTypes: REPEAT_TYPES.map(x => x.label), repeatValues: REPEAT_TYPES.map(x => x.value), repeatIndex: 0,
     isSpecificDays: false, isWeeklyCount: false,
     reminderEnabled: false, reminderTime: '21:00', reminderPushEnabled: false,
@@ -50,6 +52,9 @@ Page({
         targetValue: plan.targetValue,
         unit: plan.unit || '',
         weeklyCount: plan.repeatConfig?.weeklyCount || (plan.repeatType === 'WEEKLY_COUNT' ? plan.targetValue : 3),
+        timerIndex: indexOfValue(TIMER_MODES, plan.timerMode || 'NONE'),
+        timerDurationMinutes: plan.timerDurationMinutes || 25,
+        isCountdown: plan.timerMode === 'COUNT_DOWN',
         repeatIndex,
         isSpecificDays: plan.repeatType === 'SPECIFIC_WEEKDAYS',
         isWeeklyCount: plan.repeatType === 'WEEKLY_COUNT',
@@ -64,6 +69,10 @@ Page({
   input(e) { this.setData({ [e.currentTarget.dataset.key]: e.detail.value }) },
   category(e) { this.setData({ categoryIndex: Number(e.detail.value) }) },
   target(e) { this.setData({ targetIndex: Number(e.detail.value) }) },
+  timerMode(e) {
+    const timerIndex = Number(e.detail.value)
+    this.setData({ timerIndex, isCountdown: this.data.timerValues[timerIndex] === 'COUNT_DOWN' })
+  },
   repeat(e) {
     const i = Number(e.detail.value)
     const value = this.data.repeatValues[i]
@@ -116,6 +125,11 @@ Page({
     if (!Number.isFinite(targetValue) || targetValue <= 0) return wx.showToast({ title: '目标值必须大于0', icon: 'none' })
     const weeklyCount = Number(this.data.weeklyCount || 1)
     if (repeatType === 'WEEKLY_COUNT' && (!Number.isFinite(weeklyCount) || weeklyCount < 1 || weeklyCount > 7)) return wx.showToast({ title: '每周次数应为1到7次', icon: 'none' })
+    const timerMode = this.data.timerValues[this.data.timerIndex]
+    const timerDurationMinutes = Number(this.data.timerDurationMinutes || 0)
+    if (timerMode === 'COUNT_DOWN' && (!Number.isFinite(timerDurationMinutes) || timerDurationMinutes < 1 || timerDurationMinutes > 1440)) {
+      return wx.showToast({ title: '倒计时应为1到1440分钟', icon: 'none' })
+    }
     const plan = {
       name,
       description: this.data.description.trim(),
@@ -125,6 +139,8 @@ Page({
       unit: this.data.unit,
       repeatType,
       repeatConfig: { weekdays: selectedDays, weeklyCount: repeatType === 'WEEKLY_COUNT' ? Number(this.data.weeklyCount || 1) : undefined },
+      timerMode,
+      timerDurationMinutes: timerMode === 'COUNT_DOWN' ? timerDurationMinutes : null,
       reminderEnabled: this.data.reminderEnabled,
       reminderTime: this.data.reminderTime,
       reminderTimezoneOffset: -new Date().getTimezoneOffset(),

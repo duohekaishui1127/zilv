@@ -1,6 +1,16 @@
-# 云数据库集合设计（应用 1.2.0 / Schema 5）
+# 云数据库集合设计（应用 1.3.0 / Schema 6）
 
-> 本轮新增字段均为向后兼容的可选字段，不需要新建集合：`users.homePreferences`、`plans.description`、`checkins.durationMinutes`、`checkins.mood`，以及学习/运动记录中的 `mood`、`completionNote`、`source`、`checkinId`。
+> Schema 6 新增的计时字段均为向后兼容的可选字段，不需要新建集合：`plans.timerMode`、`plans.timerDurationMinutes`，以及 `checkins`、学习记录和运动记录中的计时状态与有效/总/暂停时长。
+
+## 计划专注计时字段
+
+- `plans.timerMode`: `NONE` / `COUNT_UP` / `COUNT_DOWN`。
+- `plans.timerDurationMinutes`: 倒计时目标分钟数。
+- `checkins.timerStatus`: `RUNNING` / `PAUSED` / `FINISHED`。
+- `checkins.timerStartedAt`、`timerResumedAt`、`timerPausedAt`、`timerEndedAt`: 服务端计时时间点。
+- `checkins.timerAccumulatedMs`: 已累计的有效毫秒数，用于暂停后继续。
+- `checkins.timerEffectiveSeconds`、`timerTotalSeconds`、`timerPausedSeconds`: 结束后的统计快照。
+- 学习/运动分类记录保存三个统计秒数字段，便于在“记录”中展示同一份完成结果。
 
 ## 核心业务
 

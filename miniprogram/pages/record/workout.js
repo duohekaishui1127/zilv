@@ -1,6 +1,14 @@
 const api = require('../../utils/api')
 const { MOOD_LABELS } = require('../../utils/constants')
 
+function timerText(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds || 0)))
+  const hours = Math.floor(value / 3600)
+  const minutes = Math.floor((value % 3600) / 60)
+  const rest = value % 60
+  return hours ? `${hours}小时${minutes}分${rest}秒` : `${minutes}分${rest}秒`
+}
+
 const FALLBACK_TYPES = [
   {key:'WALK',name:'步行',category:'CARDIO'}, {key:'BRISK_WALK',name:'快走',category:'CARDIO'},
   {key:'JOG',name:'慢跑',category:'CARDIO'}, {key:'RUN',name:'跑步',category:'CARDIO'},
@@ -36,7 +44,8 @@ Page({
       ...item,
       moodLabel: MOOD_LABELS[item.mood] || '',
       displayNote: [...new Set([item.note, item.completionNote].filter(Boolean))].join(' · '),
-      durationLabel: Number(item.durationMinutes || 0) > 0 ? `${item.durationMinutes}分钟` : '未填写用时'
+      durationLabel: Number(item.durationMinutes || 0) > 0 ? `${item.durationMinutes}分钟` : '未填写用时',
+      timerSummary: item.timerMode ? `有效 ${timerText(item.timerEffectiveSeconds)} · 总用时 ${timerText(item.timerTotalSeconds)} · 暂停 ${timerText(item.timerPausedSeconds)}` : ''
     }))
     this.setData({
       workouts, summary: daily.summary, plans:workoutPlans, planIndex:0, types, typeIndex,

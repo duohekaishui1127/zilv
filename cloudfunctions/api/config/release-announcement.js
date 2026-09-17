@@ -6,8 +6,8 @@
  */
 module.exports = Object.freeze({
   enabled: true,
-  id: '2026-09-17-feedback-and-today',
-  version: '1.2.0',
-  title: '自律功能更新',
-  content: '本次更新优化了今日计划与能量展示，并新增“意见与建议”。欢迎把使用感受和希望改进的地方告诉我们。'
+  id: '2026-09-17-plan-focus-timer',
+  version: '1.3.0',
+  title: '计划专注计时上线',
+  content: '计划现已支持正计时和倒计时，可暂停、继续与结束，并自动统计有效时间、总用时和暂停时间。完成后会同步到对应的学习或运动记录。'
 })

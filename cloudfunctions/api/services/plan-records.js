@@ -8,7 +8,17 @@ function durationOf(plan, checkin) {
 }
 
 function hasCompletionDetails(checkin) {
-  return Number(checkin.durationMinutes || 0) > 0 || !!checkin.mood || !!checkin.note
+  return checkin.timerStatus === 'FINISHED' || Number(checkin.durationMinutes || 0) > 0 || !!checkin.mood || !!checkin.note
+}
+
+function timerFields(checkin) {
+  if (!checkin.timerStatus) return {}
+  return {
+    timerMode: checkin.timerMode || '',
+    timerEffectiveSeconds: Number(checkin.timerEffectiveSeconds || 0),
+    timerTotalSeconds: Number(checkin.timerTotalSeconds || 0),
+    timerPausedSeconds: Number(checkin.timerPausedSeconds || 0)
+  }
 }
 
 function latest(items) {
@@ -34,6 +44,7 @@ async function syncStudyRecord(user, plan, checkin, localDate) {
       durationMinutes: durationOf(plan, checkin),
       mood: checkin.mood || '',
       note: checkin.note || '',
+      ...timerFields(checkin),
       updatedAt: now()
     }
     await db.collection(C.STUDY).doc(generated._id).update({ data })
@@ -42,7 +53,7 @@ async function syncStudyRecord(user, plan, checkin, localDate) {
   const manual = latest(records)
   if (manual) {
     await db.collection(C.STUDY).doc(manual._id).update({ data: {
-      mood: checkin.mood || '', completionNote: checkin.note || '', updatedAt: now()
+      mood: checkin.mood || '', completionNote: checkin.note || '', ...timerFields(checkin), updatedAt: now()
     } })
     return
   }
@@ -56,6 +67,7 @@ async function syncStudyRecord(user, plan, checkin, localDate) {
     durationMinutes: durationOf(plan, checkin),
     mood: checkin.mood || '',
     note: checkin.note || '',
+    ...timerFields(checkin),
     source: 'PLAN_CHECKIN',
     createdAt: now(),
     updatedAt: now()
@@ -75,6 +87,7 @@ async function syncWorkoutRecord(user, plan, checkin, localDate) {
       durationMinutes: durationOf(plan, checkin),
       mood: checkin.mood || '',
       note: checkin.note || '',
+      ...timerFields(checkin),
       updatedAt: now()
     }
     await db.collection(C.WORKOUTS).doc(generated._id).update({ data })
@@ -83,7 +96,7 @@ async function syncWorkoutRecord(user, plan, checkin, localDate) {
   const manual = latest(records)
   if (manual) {
     await db.collection(C.WORKOUTS).doc(manual._id).update({ data: {
-      mood: checkin.mood || '', completionNote: checkin.note || '', updatedAt: now()
+      mood: checkin.mood || '', completionNote: checkin.note || '', ...timerFields(checkin), updatedAt: now()
     } })
     return
   }
@@ -102,6 +115,7 @@ async function syncWorkoutRecord(user, plan, checkin, localDate) {
     estimatedCalories: 0,
     mood: checkin.mood || '',
     note: checkin.note || '',
+    ...timerFields(checkin),
     sets: [],
     source: 'PLAN_CHECKIN',
     createdAt: now(),

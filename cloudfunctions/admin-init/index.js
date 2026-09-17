@@ -4,8 +4,8 @@ const { foods, exercises, bodyMetrics, appConfig } = require('./seed-data')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
-const APP_VERSION = '1.2.0'
-const SCHEMA_VERSION = 5
+const APP_VERSION = '1.3.0'
+const SCHEMA_VERSION = 6
 
 const collections = [
   'users','body_records','nutrition_profiles','nutrition_targets','foods','meals','meal_items',
@@ -20,7 +20,8 @@ const migrations = [
   { migrationId: '002_engineering_foundation', schemaVersion: 2, description: '工程化、系统数据初始化、日志与版本管理' },
   { migrationId: '003_notes_quality', schemaVersion: 3, description: '日志/笔记与图片附件、模块边界及质量属性优化' },
   { migrationId: '004_plan_reminders', schemaVersion: 4, description: '计划提醒、站内消息与微信订阅消息状态' },
-  { migrationId: '005_feedback_and_announcements', schemaVersion: 5, description: '用户反馈、作者处理状态与版本更新广播' }
+  { migrationId: '005_feedback_and_announcements', schemaVersion: 5, description: '用户反馈、作者处理状态与版本更新广播' },
+  { migrationId: '006_plan_focus_timer', schemaVersion: 6, description: '计划正计时、倒计时及有效时间统计' }
 ]
 
 async function ensureCollection(name) {
@@ -70,13 +71,13 @@ exports.main = async (event = {}) => {
     .then(result => result.data[0] || null)
     .catch(() => null)
   const currentSchemaVersion = Number(schema?.schemaVersion || 0)
-  const isSchema4Upgrade = currentSchemaVersion >= 4
-  const collectionsToEnsure = isSchema4Upgrade ? ['feedbacks'] : collections
+  const isIncrementalUpgrade = currentSchemaVersion >= 4
+  const collectionsToEnsure = isIncrementalUpgrade ? ['feedbacks'] : collections
   const collectionResults = []
   for (const name of collectionsToEnsure) collectionResults.push(await ensureCollection(name))
 
   const skippedSeed = items => ({ inserted: 0, updated: 0, total: items.length, skipped: true })
-  const [foodResult, exerciseResult, metricResult, configResult] = isSchema4Upgrade
+  const [foodResult, exerciseResult, metricResult, configResult] = isIncrementalUpgrade
     ? [skippedSeed(foods), skippedSeed(exercises), skippedSeed(bodyMetrics), skippedSeed(appConfig)]
     : await Promise.all([
       seedMany('foods', foods, item => ({ ownerType: 'SYSTEM', name: item.name })),

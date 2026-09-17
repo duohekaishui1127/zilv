@@ -20,6 +20,11 @@ const REPEAT_TYPES = [
   { label: '指定星期', value: 'SPECIFIC_WEEKDAYS' },
   { label: '每周 N 次', value: 'WEEKLY_COUNT' }
 ]
+const TIMER_MODES = [
+  { label: '不计时', value: 'NONE' },
+  { label: '正计时', value: 'COUNT_UP' },
+  { label: '倒计时', value: 'COUNT_DOWN' }
+]
 const CATEGORY_LABELS = PLAN_CATEGORIES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
 const REPEAT_LABELS = REPEAT_TYPES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
 const MOOD_LABELS = Object.freeze({ GREAT: '😄 很棒', GOOD: '🙂 不错', OKAY: '😐 一般', TIRED: '😮‍💨 疲惫', BAD: '😞 低落' })
@@ -39,4 +44,4 @@ const POSE_TYPES = Object.freeze([
   { key: 'BACK', label: '背面' }
 ])
 
-module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, CATEGORY_LABELS, REPEAT_LABELS, MOOD_LABELS }
+module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES, CATEGORY_LABELS, REPEAT_LABELS, MOOD_LABELS }

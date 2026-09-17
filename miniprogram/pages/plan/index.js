@@ -1,11 +1,17 @@
 const api = require('../../utils/api')
-const { CATEGORY_LABELS, REPEAT_LABELS } = require('../../utils/constants')
+const { CATEGORY_LABELS, REPEAT_LABELS, TIMER_MODES } = require('../../utils/constants')
+const TIMER_LABELS = Object.fromEntries(TIMER_MODES.map(item => [item.value, item.label]))
 Page({
   data: { plans: [] },
   onShow() { this.load() },
   async load() {
     const d = await api.call('getPlans')
-    this.setData({ plans: d.plans.map(p => ({ ...p, categoryLabel: CATEGORY_LABELS[p.category] || p.category, repeatLabel: REPEAT_LABELS[p.repeatType] || p.repeatType })) })
+    this.setData({ plans: d.plans.map(p => ({
+      ...p,
+      categoryLabel: CATEGORY_LABELS[p.category] || p.category,
+      repeatLabel: REPEAT_LABELS[p.repeatType] || p.repeatType,
+      timerLabel: TIMER_LABELS[p.timerMode || 'NONE'] || '不计时'
+    })) })
   },
   add() { wx.navigateTo({ url: '/pages/plan/edit' }) },
   edit(e) { wx.navigateTo({ url: `/pages/plan/edit?id=${e.currentTarget.dataset.id}` }) },

@@ -1,10 +1,9 @@
 const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
-const { isBasePlanDue } = require('../services/plans')
+const { isBasePlanDue, assertNoActiveTimer } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
-
-
+const { TIMER_MODES, MAX_TIMER_MINUTES, completedTimerFields } = require('../domain/plan-timer')
 function normalizePlan(input, localDate, existing = {}) {
   const p = input || {}
   const name = String(p.name ?? existing.name ?? '').trim()
@@ -31,6 +30,14 @@ function normalizePlan(input, localDate, existing = {}) {
   if (!Number.isFinite(timezoneOffset) || timezoneOffset < -720 || timezoneOffset > 840) {
     throw fail('INVALID_PARAMETER', '提醒时区不合法')
   }
+  const timerMode = p.timerMode ?? existing.timerMode ?? 'NONE'
+  if (!TIMER_MODES.includes(timerMode)) throw fail('INVALID_PARAMETER', '计时方式不合法')
+  const timerDurationMinutes = timerMode === 'COUNT_DOWN'
+    ? Number(p.timerDurationMinutes ?? existing.timerDurationMinutes ?? 25)
+    : null
+  if (timerMode === 'COUNT_DOWN' && (!Number.isFinite(timerDurationMinutes) || timerDurationMinutes < 1 || timerDurationMinutes > MAX_TIMER_MINUTES)) {
+    throw fail('INVALID_PARAMETER', `倒计时时长应为1到${MAX_TIMER_MINUTES}分钟`)
+  }
   return {
     name: name.slice(0, 80), category: p.category || existing.category || 'CUSTOM',
     description: String(p.description ?? existing.description ?? '').trim().slice(0, 500),
@@ -42,7 +49,9 @@ function normalizePlan(input, localDate, existing = {}) {
     reminderEnabled,
     reminderTime,
     reminderTimezoneOffset: Math.round(timezoneOffset),
-    reminderPushEnabled: reminderEnabled && Boolean(p.reminderPushEnabled ?? existing.reminderPushEnabled ?? false)
+    reminderPushEnabled: reminderEnabled && Boolean(p.reminderPushEnabled ?? existing.reminderPushEnabled ?? false),
+    timerMode,
+    timerDurationMinutes: timerMode === 'COUNT_DOWN' ? Math.round(timerDurationMinutes) : null
   }
 }
 
@@ -66,17 +75,19 @@ async function updatePlan({ user, event, localDate }) {
   return { plan: { ...plan, ...data } }
 }
 
-async function setPlanEnabled({ user, event }) {
+async function setPlanEnabled({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const enabled = !!event.enabled
+  if (!enabled) await assertNoActiveTimer(user._id, plan._id, localDate)
   await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled, updatedAt: now() } })
   return { enabled }
 }
 
-async function deletePlan({ user, event }) {
+async function deletePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  await assertNoActiveTimer(user._id, plan._id, localDate)
   await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled: false, deletedAt: now(), updatedAt: now() } })
   const bindings = await db.collection(C.PLAN_GROUPS).where({ planId: plan._id, userId: user._id, enabled: true }).get()
   await Promise.all(bindings.data.map(b => db.collection(C.PLAN_GROUPS).doc(b._id).update({ data: { enabled: false, updatedAt: now() } })))
@@ -104,12 +115,17 @@ async function completePlan({ user, event, localDate }) {
   }
 
   const existingCheckin = cr.data[0] || null
+  const completionTime = now()
+  const finalizedTimer = completedTimerFields(existingCheckin, plan, completionTime)
   const durationMinutes = event.durationMinutes === undefined
     ? (existingCheckin?.durationMinutes ?? null)
     : (event.durationMinutes === '' || event.durationMinutes == null ? null : Number(event.durationMinutes))
   if (durationMinutes != null && (!Number.isFinite(durationMinutes) || durationMinutes < 0 || durationMinutes > 1440)) {
     throw fail('INVALID_PARAMETER', '实际用时应为0到1440分钟')
   }
+  const timerDurationMinutes = finalizedTimer.durationMinutes ?? (existingCheckin?.timerStatus === 'FINISHED'
+    ? roundTimerMinutes(existingCheckin.timerEffectiveSeconds)
+    : durationMinutes)
   const allowedMoods = ['GREAT', 'GOOD', 'OKAY', 'TIRED', 'BAD']
   const mood = event.mood === undefined
     ? (existingCheckin?.mood || '')
@@ -123,7 +139,8 @@ async function completePlan({ user, event, localDate }) {
   const shouldEmitGroupEvent = !existingCheckin?.completed
   const data = {
     actualValue, completed: true,
-    durationMinutes, mood, completedAt: existingCheckin?.completedAt || now(), note, updatedAt: now()
+    durationMinutes: timerDurationMinutes, mood, completedAt: existingCheckin?.completedAt || completionTime,
+    note, ...finalizedTimer, updatedAt: completionTime
   }
   if (cr.data.length) {
     await db.collection(C.CHECKINS).doc(cr.data[0]._id).update({ data })
@@ -137,5 +154,5 @@ async function completePlan({ user, event, localDate }) {
   if (shouldEmitGroupEvent) await emitGroupEventsForCheckin(user, plan, checkin)
   return { checkin }
 }
-
+function roundTimerMinutes(seconds) { const value = Number(seconds); return Number.isFinite(value) && value >= 0 ? Math.round(value / 6) / 10 : null }
 module.exports = { createPlan, getPlan, updatePlan, setPlanEnabled, deletePlan, getPlans, completePlan }

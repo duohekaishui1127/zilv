@@ -1,5 +1,5 @@
 const { db, C } = require('../lib/db')
-const { round1 } = require('../lib/utils')
+const { round1, now } = require('../lib/utils')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
@@ -22,6 +22,7 @@ async function dashboard({ user, localDate }) {
   const totalExpenditure = round1(base + workout.estimatedCalories)
   const balance = round1(nutrition.calorieIntake - totalExpenditure)
   return {
+    serverTime: now(),
     user: { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode },
     homePreferences: homePreferencesOf(user),
     weightStatus: weightStatus(weight, localDate),

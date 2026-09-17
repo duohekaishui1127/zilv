@@ -31,8 +31,20 @@
               <view class="sub plan-description" wx:if="{{item.description}}">{{item.description}}</view>
               <view class="sub" wx:if="{{item.repeatType === 'WEEKLY_COUNT'}}">{{item.categoryLabel}} · 本周 {{item.weeklyProgress.completed}}/{{item.weeklyProgress.target}} · 每次 {{item.targetValue}}{{item.unit}}</view>
               <view class="sub" wx:else>{{item.categoryLabel}} · 目标 {{item.targetValue}}{{item.unit}}</view>
-              <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.moodLabel || item.checkin.note)}}">
-                <text wx:if="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
+              <view class="timer-panel" wx:if="{{item.timerEnabled && !item.completed}}" catchtap="noop">
+                <view class="row timer-head"><view class="timer-state">{{item.timerModeLabel}} · {{item.timerStatusLabel}}</view><view class="timer-clock">{{item.timerDisplay}}</view></view>
+                <view class="timer-summary" wx:if="{{item.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</view>
+                <view class="timer-actions">
+                  <button wx:if="{{!item.timerStatus}}" class="btn btn-small timer-primary" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="startTimer">开始</button>
+                  <button wx:elif="{{item.timerStatus === 'RUNNING'}}" class="btn btn-small btn-light" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="pauseTimer">暂停</button>
+                  <button wx:elif="{{item.timerStatus === 'PAUSED'}}" class="btn btn-small timer-primary" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="resumeTimer">继续</button>
+                  <button wx:if="{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED'}}" class="btn btn-small btn-danger" data-index="{{index}}" catchtap="finishTimer">结束</button>
+                  <button wx:if="{{item.timerStatus === 'FINISHED'}}" class="btn btn-small timer-primary" data-index="{{index}}" catchtap="openCompletion">填写完成记录</button>
+                </view>
+              </view>
+              <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.moodLabel || item.checkin.note || item.checkin.timerStatus)}}">
+                <text wx:if="{{item.checkin.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</text>
+                <text wx:elif="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
                 <text wx:if="{{item.checkin.moodLabel}}"> · {{item.checkin.moodLabel}}</text>
                 <text wx:if="{{item.checkin.note}}"> · {{item.checkin.note}}</text>
               </view>
@@ -41,7 +53,7 @@
           </view>
         </view>
         <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
-        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈可快速完成，点计划可填写用时、心情和备注；计划本身请到“计划”页修改。</view>
+        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">普通计划可点圆圈快速完成；计时计划请先开始并结束计时。计划本身请到“计划”页修改。</view>
       </view>
     </view>
 
@@ -81,7 +93,12 @@
     <view class="sheet-handle"></view>
     <view class="row"><view><view class="h2">{{completionEditor.completed ? '编辑完成记录' : '完成计划'}}</view><view class="sub">{{completionEditor.planName}}</view></view><view class="sheet-close" bindtap="closeCompletion">×</view></view>
 
-    <view class="field completion-field">
+    <view class="timer-result" wx:if="{{completionEditor.timed}}">
+      <view class="timer-result-item"><view class="label">有效时间</view><view class="value">{{completionEditor.timerEffectiveDisplay}}</view></view>
+      <view class="timer-result-item"><view class="label">总用时</view><view class="value">{{completionEditor.timerTotalDisplay}}</view></view>
+      <view class="timer-result-item"><view class="label">暂停时间</view><view class="value">{{completionEditor.timerPausedDisplay}}</view></view>
+    </view>
+    <view class="field completion-field" wx:if="{{!completionEditor.timed}}">
       <view class="label">实际用时（分钟，可选）</view>
       <input class="input" type="number" data-key="durationMinutes" value="{{completionEditor.durationMinutes}}" bindinput="editorInput" placeholder="例如：60"/>
     </view>

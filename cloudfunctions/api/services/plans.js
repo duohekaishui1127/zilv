@@ -1,5 +1,5 @@
 const { db, _, C } = require('../lib/db')
-const { weekRange } = require('../lib/utils')
+const { weekRange, fail } = require('../lib/utils')
 const { isBasePlanDue } = require('../domain/plan-schedule')
 
 async function getTodayPlans(userId, dateStr) {
@@ -46,4 +46,9 @@ async function getTodayPlans(userId, dateStr) {
     .filter(Boolean)
 }
 
-module.exports = { isBasePlanDue, getTodayPlans }
+async function assertNoActiveTimer(userId, planId, dateStr) {
+  const result = await db.collection(C.CHECKINS).where({ userId, planId, date: dateStr }).limit(1).get()
+  if (['RUNNING', 'PAUSED'].includes(result.data[0]?.timerStatus)) throw fail('TIMER_ACTIVE', '请先在“今日”页结束该计划的计时')
+}
+
+module.exports = { isBasePlanDue, getTodayPlans, assertNoActiveTimer }
