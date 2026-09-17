@@ -83,7 +83,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `group_members`: `groupId + userId + status`；`userId + status`
 - `plan_group_bindings`: `planId + groupId + userId`
 - `group_events`: `groupId + createdAt desc`；`groupId + checkinId + eventType`
-- `notes`: `userId + status + createdAt desc`；`userId + type + status + createdAt desc`；`userId + clientMutationId + status`
+- `notes`: `userId + status + createdAt desc`；`userId + type + status + createdAt desc`；`userId + clientMutationId + status`；`userId + recordDate + status`
 - `note_attachments`: `noteId + sort`；`userId + noteId`
 - `notifications`: `userId + createdAt desc`；`userId + status + createdAt desc`；`userId + planId + recordDate`
 - `feedbacks`: `userId + createdAt desc`；`userId + clientMutationId`

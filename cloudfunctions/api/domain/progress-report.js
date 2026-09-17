@@ -56,6 +56,15 @@ function latestBodyByDate(records) {
   }, {})
 }
 
+function latestMoodByDate(checkins) {
+  return checkins.filter(item => item.completed && item.mood).reduce((map, item) => {
+    const current = map[item.date]
+    const itemTime = new Date(item.completedAt || item.updatedAt || item.createdAt || 0).getTime()
+    if (!current || itemTime >= current.time) map[item.date] = { value: item.mood, time: itemTime }
+    return map
+  }, {})
+}
+
 function targetForDate(targets, date) {
   return targets.find(target => {
     const from = target.effectiveFromDate || '0000-00-00'
@@ -64,12 +73,17 @@ function targetForDate(targets, date) {
   }) || null
 }
 
-function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], studySessions = [], checkins = [], targets = [] }) {
+function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], studySessions = [], checkins = [], notes = [], targets = [] }) {
   const bodyMap = latestBodyByDate(bodies)
   const mealMap = sumByDate(mealItems, 'recordDate', ['energyKcal', 'proteinGram'])
   const workoutMap = sumByDate(workouts, 'recordDate', ['durationMinutes', 'estimatedCalories'])
   const studyMap = sumByDate(studySessions, 'recordDate', ['durationMinutes'])
   const checkinMap = sumByDate(checkins.filter(item => item.completed), 'date', ['completed'])
+  const noteCounts = notes.filter(item => item.status !== 'DELETED').reduce((map, item) => {
+    map[item.recordDate] = (map[item.recordDate] || 0) + 1
+    return map
+  }, {})
+  const moodMap = latestMoodByDate(checkins)
   const orderedTargets = [...targets].sort((a, b) => {
     const dateOrder = String(b.effectiveFromDate || '').localeCompare(String(a.effectiveFromDate || ''))
     if (dateOrder) return dateOrder
@@ -87,9 +101,10 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
     const calorieIntake = round1(meal.energyKcal)
     const expenditure = target && mealTracked ? round1(number(target.baseDailyExpenditure) + number(workout.estimatedCalories)) : null
     const balance = expenditure == null ? null : round1(calorieIntake - expenditure)
+    const noteCount = noteCounts[date] || 0
     const activityScore = Math.min(4,
       (mealTracked ? 1 : 0) + (number(workout.durationMinutes) > 0 ? 1 : 0) +
-      (number(study.durationMinutes) > 0 ? 1 : 0) + (number(checkin.completed) > 0 ? 1 : 0) + (body ? 1 : 0))
+      (number(study.durationMinutes) > 0 ? 1 : 0) + (number(checkin.completed) > 0 ? 1 : 0) + (body ? 1 : 0) + (noteCount ? 1 : 0))
     return {
       date,
       day: Number(date.slice(-2)),
@@ -106,6 +121,8 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
       workoutCalories: round1(workout.estimatedCalories),
       studyMinutes: Math.round(number(study.durationMinutes)),
       checkinCount: Math.round(number(checkin.completed)),
+      mood: moodMap[date]?.value || '',
+      noteCount,
       activityScore,
       active: activityScore > 0
     }
@@ -157,9 +174,10 @@ function buildActivityCalendar(input) {
       checkinCount: daily.reduce((sum, day) => sum + day.checkinCount, 0),
       workoutDays: daily.filter(day => day.workoutMinutes > 0).length,
       studyDays: daily.filter(day => day.studyMinutes > 0).length,
-      mealDays: daily.filter(day => day.mealTracked).length
+      mealDays: daily.filter(day => day.mealTracked).length,
+      noteDays: daily.filter(day => day.noteCount > 0).length
     }
   }
 }
 
-module.exports = { dateRange, monthRange, buildDailySeries, buildProgressReport, buildActivityCalendar }
+module.exports = { dateRange, monthRange, buildDailySeries, buildProgressReport, buildActivityCalendar, latestMoodByDate }

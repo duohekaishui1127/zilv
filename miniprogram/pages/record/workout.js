@@ -1,5 +1,5 @@
 const api = require('../../utils/api')
-const { MOOD_LABELS } = require('../../utils/constants')
+const { MOOD_LABELS, MOOD_ICONS } = require('../../utils/constants')
 
 function timerText(seconds) {
   const value = Math.max(0, Math.round(Number(seconds || 0)))
@@ -43,6 +43,7 @@ Page({
     const workouts = daily.workouts.map(item => ({
       ...item,
       moodLabel: MOOD_LABELS[item.mood] || '',
+      moodIcon: MOOD_ICONS[item.mood] || '',
       displayNote: [...new Set([item.note, item.completionNote].filter(Boolean))].join(' · '),
       durationLabel: Number(item.durationMinutes || 0) > 0 ? `${item.durationMinutes}分钟` : '未填写用时',
       timerSummary: item.timerMode ? `有效 ${timerText(item.timerEffectiveSeconds)} · 总用时 ${timerText(item.timerTotalSeconds)} · 暂停 ${timerText(item.timerPausedSeconds)}` : ''

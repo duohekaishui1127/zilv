@@ -1,0 +1,2 @@
+.record-source { display:flex; align-items:center; gap:8rpx; }
+.record-mood-icon { width:30rpx; height:30rpx; image-rendering:pixelated; }

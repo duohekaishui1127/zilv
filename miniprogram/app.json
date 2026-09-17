@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/calendar/index",
     "pages/today/index",
     "pages/record/index",
     "pages/record/body",
@@ -41,24 +42,34 @@
     "borderStyle": "black",
     "list": [
       {
+        "pagePath": "pages/calendar/index",
+        "text": "日历",
+        "iconPath": "assets/tabbar/calendar.png",
+        "selectedIconPath": "assets/tabbar/calendar-active.png"
+      },
+      {
         "pagePath": "pages/today/index",
-        "text": "今日"
+        "text": "今日",
+        "iconPath": "assets/tabbar/today.png",
+        "selectedIconPath": "assets/tabbar/today-active.png"
       },
       {
         "pagePath": "pages/record/index",
-        "text": "记录"
+        "text": "记录",
+        "iconPath": "assets/tabbar/record.png",
+        "selectedIconPath": "assets/tabbar/record-active.png"
       },
       {
         "pagePath": "pages/plan/index",
-        "text": "计划"
-      },
-      {
-        "pagePath": "pages/circle/index",
-        "text": "圈子"
+        "text": "计划",
+        "iconPath": "assets/tabbar/plan.png",
+        "selectedIconPath": "assets/tabbar/plan-active.png"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
       }
     ]
   },

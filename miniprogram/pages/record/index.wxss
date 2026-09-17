@@ -1,1 +1,2 @@
 .record-title { margin-top: 0; }
+.record-icon { width:64rpx; height:64rpx; flex:0 0 64rpx; image-rendering:pixelated; }

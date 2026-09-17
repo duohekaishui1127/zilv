@@ -2,14 +2,15 @@
   <view class="card"><view class="row"><view><view class="h1">{{profile.user.nickname}}</view><view class="sub">好友码 {{profile.user.shareCode}}</view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view></view>
   <view class="card">
     <view class="list-item row" data-url="/pages/profile/edit" bindtap="go"><view><view class="value">身体与营养档案</view><view class="sub">身高、生日、目标、活动水平</view></view><view>›</view></view>
-    <view class="list-item row" data-url="/pages/profile/home-settings" bindtap="go"><view><view class="value">今日页设置</view><view class="sub">选择首页显示的自律数据</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/profile/home-settings" bindtap="go"><view><view class="value">今日页设置</view><view class="sub">选择“今日”中显示的自律数据</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/privacy" bindtap="go"><view><view class="value">隐私设置</view><view class="sub">控制好友可见范围</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/food-custom" bindtap="go"><view><view class="value">自定义食物</view><view class="sub">添加包装食品或自己的食物数据</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/notes/index" bindtap="go"><view><view class="value">我的历程</view><view class="sub">体态照片、学习笔记和训练复盘</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/circle/index" bindtap="go"><view><view class="value">好友与群组</view><view class="sub">好友弱监督、群组计划监督</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/notifications/index" bindtap="go"><view><view class="value">消息中心</view><view class="sub">查看计划提醒、版本更新和反馈进展</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/feedback/index" bindtap="go"><view><view class="value">意见与建议</view><view class="sub">告诉我们哪里可以做得更好</view></view><view>›</view></view>
     <view wx:if="{{profile.isFeedbackAdmin}}" class="list-item row" data-url="/pages/feedback/admin" bindtap="go"><view><view class="value">反馈管理</view><view class="sub">查看并处理用户提交的建议</view></view><view>›</view></view>
-    <view class="list-item row" data-url="/pages/report/week" bindtap="go"><view><view class="value">趋势与复盘</view><view class="sub">身体、能量、运动、学习和活跃日历</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/report/week" bindtap="go"><view><view class="value">趋势与复盘</view><view class="sub">身体、能量、运动和学习趋势</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/profile/about" bindtap="go"><view><view class="value">关于与诊断</view><view class="sub">版本、环境与问题定位信息</view></view><view>›</view></view>
   </view>
   <view class="card warn-card"><view class="value">数据说明</view><view class="sub">BMR、日常消耗和运动热量均为估算，用于自我记录，不代替医学或营养诊疗。</view></view>

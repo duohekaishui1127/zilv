@@ -1,0 +1,54 @@
+.calendar-page { min-height:100vh; background:linear-gradient(180deg,#eceff3 0,#f6f7f9 300rpx); }
+.calendar-hero { padding:20rpx 8rpx 4rpx; }
+.pixel-kicker { margin-bottom:8rpx; color:#6b7280; font-size:19rpx; font-weight:700; letter-spacing:8rpx; }
+.calendar-card { margin-top:26rpx; padding:24rpx; border:2rpx solid #111827; box-shadow:8rpx 8rpx 0 rgba(17,24,39,.12); }
+.month-nav { margin-bottom:24rpx; }
+.month-title { min-width:220rpx; text-align:center; font-size:34rpx; font-weight:800; letter-spacing:2rpx; }
+.month-button { margin:0; padding:0; width:66rpx; height:58rpx; line-height:54rpx; border:2rpx solid #111827; border-radius:10rpx; background:#fff; color:#111827; font-size:38rpx; }
+.month-button::after { border:0; }
+.weekday-grid,.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8rpx; }
+.weekday { padding:8rpx 0; text-align:center; color:#6b7280; font-size:21rpx; font-weight:700; }
+.calendar-grid { margin-top:8rpx; }
+.calendar-day { position:relative; aspect-ratio:1; min-width:0; overflow:hidden; border:1rpx solid #d4d7dc; border-radius:8rpx; background:#f8f9fa; }
+.calendar-blank { border-color:transparent; background:transparent; }
+.day-number { position:absolute; top:5rpx; left:7rpx; z-index:1; color:#5f6670; font-size:19rpx; font-weight:700; }
+.calendar-mood { position:absolute; left:50%; top:50%; width:48rpx; height:48rpx; transform:translate(-50%,-42%); image-rendering:pixelated; }
+.note-mark { position:absolute; left:50%; top:54%; width:12rpx; height:12rpx; transform:translate(-50%,-50%); background:#111827; }
+.calendar-today { outline:3rpx solid #111827; outline-offset:-2rpx; }
+.activity-0 { background:#fafafa; }
+.activity-1 { background:#f0f1f3; }
+.activity-2 { background:#e3e5e8; }
+.activity-3 { background:#d4d7dc; }
+.activity-4 { background:#c2c6cc; }
+.calendar-summary { margin-top:24rpx; color:#4b5563; font-size:23rpx; text-align:center; }
+.calendar-hint { margin-top:10rpx; color:#9ca3af; font-size:21rpx; text-align:center; }
+.retry-button { margin:18rpx auto 0; }
+
+.review-mask { position:fixed; inset:0; z-index:120; display:flex; align-items:flex-end; background:rgba(17,24,39,.48); }
+.review-sheet { width:100%; max-height:86vh; overflow-y:auto; box-sizing:border-box; padding:16rpx 30rpx calc(32rpx + env(safe-area-inset-bottom)); border-radius:28rpx 28rpx 0 0; background:#fff; }
+.sheet-handle { width:72rpx; height:8rpx; margin:0 auto 24rpx; border-radius:999rpx; background:#cfd3d8; }
+.review-header { padding-bottom:24rpx; border-bottom:2rpx solid #111827; }
+.review-mood { width:70rpx; height:70rpx; image-rendering:pixelated; }
+.sheet-close { padding:10rpx; color:#6b7280; font-size:42rpx; line-height:1; }
+.day-overview { display:grid; grid-template-columns:repeat(3,1fr); gap:12rpx; margin:24rpx 0; }
+.day-overview>view { padding:18rpx 8rpx; border:1rpx solid #d9dce1; border-radius:12rpx; background:#f7f8f9; text-align:center; }
+.overview-value { font-size:32rpx; font-weight:800; }
+.review-section { padding:8rpx 0 22rpx; }
+.review-title { margin:0; }
+.note-block { margin-top:16rpx; padding:20rpx; border-left:6rpx solid #111827; background:#f4f5f6; }
+.note-type { padding:4rpx 10rpx; border:1rpx solid #9ca3af; border-radius:6rpx; color:#626975; font-size:20rpx; }
+.note-content { margin-top:14rpx; color:#303846; font-size:26rpx; line-height:1.7; white-space:pre-wrap; }
+.note-tags { margin-top:12rpx; color:#747b86; font-size:22rpx; }
+.note-photos { display:flex; flex-wrap:wrap; gap:10rpx; margin-top:14rpx; }
+.note-photo { width:128rpx; height:128rpx; border-radius:8rpx; background:#e5e7eb; }
+.note-empty { padding-bottom:10rpx; }
+.task-section { border-top:1rpx solid #e5e7eb; }
+.task-toggle { padding:16rpx 0; }
+.task-chevron { color:#606874; font-size:34rpx; }
+.task-list { border-top:1rpx dashed #d1d5db; }
+.task-item { padding:22rpx 0; border-bottom:1rpx solid #e7e9ec; }
+.task-item:last-child { border-bottom:0; }
+.task-main { align-items:flex-start; }
+.task-mood { width:48rpx; height:48rpx; image-rendering:pixelated; }
+.task-description,.task-timer,.task-note { margin-top:10rpx; color:#68707c; font-size:23rpx; line-height:1.55; }
+.task-note { padding:12rpx 14rpx; background:#f5f6f7; color:#343b46; }

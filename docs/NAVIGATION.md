@@ -2,7 +2,8 @@
 
 ```mermaid
 flowchart TD
-    A[启动] --> T[今日]
+    A[启动] --> CA[自律日历]
+    CA --> CD[当日详情浮层]
     T --> B[身体记录]
     T --> F[饮食记录]
     T --> W[运动记录]
@@ -24,21 +25,22 @@ flowchart TD
     P[计划] --> PE[新增/编辑]
     P --> PB[绑定群组]
 
-    C[圈子] --> CF[好友]
+    C[好友与群组] --> CF[好友]
     C --> CG[群组]
     CG --> GD[群组详情]
 
     M[我的] --> MP[身体与营养档案]
+    M --> C
     M --> PR[隐私设置]
     M --> N
     M --> WR[趋势与复盘]
     M --> NT
     M --> AB[关于与诊断]
 
+    CA -.TabBar.-> T
     T -.TabBar.-> R
     R -.TabBar.-> P
-    P -.TabBar.-> C
-    C -.TabBar.-> M
+    P -.TabBar.-> M
 ```
 
 ## 自动业务联动

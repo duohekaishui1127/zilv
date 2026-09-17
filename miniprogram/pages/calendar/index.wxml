@@ -1,0 +1,80 @@
+<view class="container calendar-page">
+  <view class="hero calendar-hero">
+    <view class="pixel-kicker">MY DAYS</view>
+    <view class="h1">自律日历</view>
+    <view class="sub">让每一天，都留下真实的心情和进步</view>
+  </view>
+
+  <view class="card calendar-card">
+    <view class="row month-nav">
+      <button class="month-button" bindtap="previousMonth">‹</button>
+      <picker mode="date" fields="month" value="{{month}}" bindchange="monthChange"><view class="month-title">{{month}}</view></picker>
+      <button class="month-button" bindtap="nextMonth">›</button>
+    </view>
+    <view wx:if="{{loading && !calendar}}" class="empty compact">正在翻开这个月…</view>
+    <view wx:elif="{{error && !calendar}}" class="empty compact"><view>{{error}}</view><button class="btn btn-small retry-button" bindtap="retry">重新加载</button></view>
+    <block wx:elif="{{calendar}}">
+      <view class="weekday-grid"><view wx:for="{{weekdayLabels}}" wx:key="*this" class="weekday">{{item}}</view></view>
+      <view class="calendar-grid">
+        <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}}">
+          <block wx:if="{{!item.blank}}">
+            <view class="day-number">{{item.day}}</view>
+            <image wx:if="{{item.moodIcon}}" class="calendar-mood" src="{{item.moodIcon}}" mode="aspectFit"/>
+            <view wx:elif="{{item.noteCount}}" class="note-mark"></view>
+          </block>
+        </view>
+      </view>
+      <view class="calendar-summary">本月活跃 {{calendar.summary.activeDays}} 天 · 完成 {{calendar.summary.checkinCount}} 项 · 小记 {{calendar.summary.noteDays || 0}} 天</view>
+      <view class="calendar-hint">点击日期查看当天内容</view>
+    </block>
+  </view>
+</view>
+
+<view wx:if="{{reviewVisible}}" class="review-mask" bindtap="closeReview">
+  <view class="review-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="row review-header">
+      <view class="row-start">
+        <image wx:if="{{selectedDay.moodIcon}}" class="review-mood" src="{{selectedDay.moodIcon}}" mode="aspectFit"/>
+        <view><view class="h2">{{selectedDay.title}}</view><view class="sub">{{selectedDay.moodLabel || '平静的一天'}}</view></view>
+      </view>
+      <view class="sheet-close" bindtap="closeReview">×</view>
+    </view>
+
+    <view wx:if="{{reviewLoading}}" class="empty compact">正在整理当天记录…</view>
+    <block wx:else>
+      <view class="day-overview">
+        <view><view class="overview-value">{{selectedDay.checkinCount || 0}}</view><view class="label">完成任务</view></view>
+        <view><view class="overview-value">{{selectedDay.studyMinutes || 0}}</view><view class="label">学习分钟</view></view>
+        <view><view class="overview-value">{{selectedDay.workoutMinutes || 0}}</view><view class="label">运动分钟</view></view>
+      </view>
+
+      <view class="review-section">
+        <view class="section-title review-title">备注小记</view>
+        <view wx:for="{{dayReview.notes}}" wx:for-index="noteIndex" wx:key="_id" class="note-block">
+          <view class="row"><view class="value">{{item.title}}</view><view class="note-type">{{item.typeLabel}}</view></view>
+          <view class="note-content">{{item.content || '这条小记没有填写正文'}}</view>
+          <view class="note-tags" wx:if="{{item.tags.length}}"><text wx:for="{{item.tags}}" wx:key="*this">#{{item}} </text></view>
+          <view class="note-photos" wx:if="{{item.attachments.length}}"><image wx:for="{{item.attachments}}" wx:for-item="photo" wx:key="*this" class="note-photo" src="{{photo}}" mode="aspectFill" data-index="{{noteIndex}}" data-src="{{photo}}" bindtap="previewImages"/></view>
+        </view>
+        <view wx:if="{{!dayReview.notes.length}}" class="empty compact note-empty">当天没有备注小记</view>
+      </view>
+
+      <view class="review-section task-section">
+        <view class="row task-toggle" bindtap="toggleTasks">
+          <view><view class="section-title review-title">完成任务</view><view class="sub">共 {{dayReview.tasks.length}} 项</view></view>
+          <view class="task-chevron">{{tasksExpanded ? '⌃' : '⌄'}}</view>
+        </view>
+        <view wx:if="{{tasksExpanded}}" class="task-list">
+          <view wx:for="{{dayReview.tasks}}" wx:key="_id" class="task-item">
+            <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.completedTime ? ' · ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view><image wx:if="{{item.moodIcon}}" class="task-mood" src="{{item.moodIcon}}" mode="aspectFit"/></view>
+            <view class="task-description" wx:if="{{item.description}}">{{item.description}}</view>
+            <view class="task-timer" wx:if="{{item.timerSummary}}">{{item.timerSummary}}</view>
+            <view class="task-note" wx:if="{{item.note}}">{{item.note}}</view>
+          </view>
+          <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">当天没有完成任务</view>
+        </view>
+      </view>
+    </block>
+  </view>
+</view>

@@ -27,7 +27,15 @@ const TIMER_MODES = [
 ]
 const CATEGORY_LABELS = PLAN_CATEGORIES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
 const REPEAT_LABELS = REPEAT_TYPES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
-const MOOD_LABELS = Object.freeze({ GREAT: '😄 很棒', GOOD: '🙂 不错', OKAY: '😐 一般', TIRED: '😮‍💨 疲惫', BAD: '😞 低落' })
+const MOODS = Object.freeze([
+  { value: 'GREAT', label: '很棒', icon: '/assets/moods/great.png' },
+  { value: 'GOOD', label: '不错', icon: '/assets/moods/good.png' },
+  { value: 'OKAY', label: '一般', icon: '/assets/moods/okay.png' },
+  { value: 'TIRED', label: '疲惫', icon: '/assets/moods/tired.png' },
+  { value: 'BAD', label: '低落', icon: '/assets/moods/bad.png' }
+])
+const MOOD_LABELS = Object.freeze(Object.fromEntries(MOODS.map(item => [item.value, item.label])))
+const MOOD_ICONS = Object.freeze(Object.fromEntries(MOODS.map(item => [item.value, item.icon])))
 
 const NOTE_TYPES = Object.freeze([
   { key: 'GENERAL', label: '日常' },
@@ -44,4 +52,4 @@ const POSE_TYPES = Object.freeze([
   { key: 'BACK', label: '背面' }
 ])
 
-module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES, CATEGORY_LABELS, REPEAT_LABELS, MOOD_LABELS }
+module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES, CATEGORY_LABELS, REPEAT_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS }

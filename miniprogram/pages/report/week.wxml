@@ -41,18 +41,4 @@
     </view>
   </block>
 
-  <view class="card calendar-card">
-    <view class="row"><button class="month-button" bindtap="previousMonth">‹</button><picker mode="date" fields="month" value="{{month}}" bindchange="monthChange"><view class="h2">{{month}} 活跃日历</view></picker><button class="month-button" bindtap="nextMonth">›</button></view>
-    <view wx:if="{{calendarLoading && !calendar}}" class="empty compact">正在加载日历…</view>
-    <block wx:elif="{{calendar}}">
-      <view class="weekday-grid"><view wx:for="{{weekdayLabels}}" wx:key="*this" class="weekday">{{item}}</view></view>
-      <view class="calendar-grid">
-        <view wx:for="{{calendar.cells}}" wx:key="key" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}}" title="{{item.detail}}">
-          <block wx:if="{{!item.blank}}"><view>{{item.day}}</view><view class="checkin-dot" wx:if="{{item.checkinCount}}">{{item.checkinCount}}</view></block>
-        </view>
-      </view>
-      <view class="calendar-summary">活跃 {{calendar.summary.activeDays}} 天 · 打卡 {{calendar.summary.checkinCount}} 次 · 运动 {{calendar.summary.workoutDays}} 天 · 学习 {{calendar.summary.studyDays}} 天</view>
-      <view class="activity-legend"><text>少</text><text class="legend-box activity-0"></text><text class="legend-box activity-1"></text><text class="legend-box activity-2"></text><text class="legend-box activity-3"></text><text class="legend-box activity-4"></text><text>多</text></view>
-    </block>
-  </view>
 </view>

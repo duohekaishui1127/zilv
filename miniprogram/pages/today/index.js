@@ -1,15 +1,6 @@
 const api = require('../../utils/api')
 const fmt = require('../../utils/format')
-const { CATEGORY_LABELS } = require('../../utils/constants')
-
-const MOODS = [
-  { value: 'GREAT', emoji: '😄', label: '很棒' },
-  { value: 'GOOD', emoji: '🙂', label: '不错' },
-  { value: 'OKAY', emoji: '😐', label: '一般' },
-  { value: 'TIRED', emoji: '😮‍💨', label: '疲惫' },
-  { value: 'BAD', emoji: '😞', label: '低落' }
-]
-const MOOD_LABELS = Object.fromEntries(MOODS.map(item => [item.value, `${item.emoji} ${item.label}`]))
+const { CATEGORY_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS } = require('../../utils/constants')
 
 function emptyEditor() {
   return {
@@ -81,7 +72,7 @@ function decoratePlan(plan, nowMs) {
   return {
     ...plan,
     categoryLabel: CATEGORY_LABELS[plan.category] || '计划',
-    checkin: plan.checkin ? { ...plan.checkin, moodLabel: MOOD_LABELS[plan.checkin.mood] || '' } : null,
+    checkin: plan.checkin ? { ...plan.checkin, moodLabel: MOOD_LABELS[plan.checkin.mood] || '', moodIcon: MOOD_ICONS[plan.checkin.mood] || '' } : null,
     ...timerView(plan, nowMs)
   }
 }

@@ -45,7 +45,7 @@
               <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.moodLabel || item.checkin.note || item.checkin.timerStatus)}}">
                 <text wx:if="{{item.checkin.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</text>
                 <text wx:elif="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
-                <text wx:if="{{item.checkin.moodLabel}}"> · {{item.checkin.moodLabel}}</text>
+                <image wx:if="{{item.checkin.moodIcon}}" class="inline-mood-icon" src="{{item.checkin.moodIcon}}" mode="aspectFit"/><text wx:if="{{item.checkin.moodLabel}}"> {{item.checkin.moodLabel}}</text>
                 <text wx:if="{{item.checkin.note}}"> · {{item.checkin.note}}</text>
               </view>
             </view>
@@ -109,7 +109,7 @@
     <view class="field">
       <view class="label">完成后的心情</view>
       <view class="mood-row">
-        <view wx:for="{{moods}}" wx:key="value" class="mood-chip {{completionEditor.mood === item.value ? 'mood-chip-active' : ''}}" data-value="{{item.value}}" bindtap="chooseMood">{{item.emoji}} {{item.label}}</view>
+        <view wx:for="{{moods}}" wx:key="value" class="mood-chip {{completionEditor.mood === item.value ? 'mood-chip-active' : ''}}" data-value="{{item.value}}" bindtap="chooseMood"><image class="mood-picker-icon" src="{{item.icon}}" mode="aspectFit"/><text>{{item.label}}</text></view>
       </view>
     </view>
     <view class="field">

@@ -1,9 +1,9 @@
 <view class="container">
   <view class="hero"><view class="h1">记录</view><view class="sub">真实记录，才能看到真实变化</view></view>
   <view class="section-title record-title">分类记录</view>
-  <view class="card" data-url="/pages/notes/index" bindtap="go"><view class="row"><view><view class="h2">📝 日志与笔记</view><view class="sub">体态照片、学习笔记、训练复盘与日常记录</view></view><view>›</view></view></view>
-  <view class="card" data-url="/pages/record/body" bindtap="go"><view class="row"><view><view class="h2">⚖ 身体数据</view><view class="sub">体重、体脂率、身体围度</view></view><view>›</view></view></view>
-  <view class="card" data-url="/pages/record/food" bindtap="go"><view class="row"><view><view class="h2">🍚 饮食</view><view class="sub">食物、克数、热量与三大营养素</view></view><view>›</view></view></view>
-  <view class="card" data-url="/pages/record/workout" bindtap="go"><view class="row"><view><view class="h2">🏃 运动</view><view class="sub">运动时长、强度、重量与组数</view></view><view>›</view></view></view>
-  <view class="card" data-url="/pages/record/study" bindtap="go"><view class="row"><view><view class="h2">📚 学习</view><view class="sub">学习科目、内容和时长</view></view><view>›</view></view></view>
+  <view class="card" data-url="/pages/notes/index" bindtap="go"><view class="row"><view class="row-start"><image class="record-icon" src="/assets/categories/notes.png" mode="aspectFit"/><view><view class="h2">日志与笔记</view><view class="sub">体态照片、学习笔记、训练复盘与日常记录</view></view></view><view>›</view></view></view>
+  <view class="card" data-url="/pages/record/body" bindtap="go"><view class="row"><view class="row-start"><image class="record-icon" src="/assets/categories/body.png" mode="aspectFit"/><view><view class="h2">身体数据</view><view class="sub">体重、体脂率、身体围度</view></view></view><view>›</view></view></view>
+  <view class="card" data-url="/pages/record/food" bindtap="go"><view class="row"><view class="row-start"><image class="record-icon" src="/assets/categories/food.png" mode="aspectFit"/><view><view class="h2">饮食</view><view class="sub">食物、克数、热量与三大营养素</view></view></view><view>›</view></view></view>
+  <view class="card" data-url="/pages/record/workout" bindtap="go"><view class="row"><view class="row-start"><image class="record-icon" src="/assets/categories/workout.png" mode="aspectFit"/><view><view class="h2">运动</view><view class="sub">运动时长、强度、重量与组数</view></view></view><view>›</view></view></view>
+  <view class="card" data-url="/pages/record/study" bindtap="go"><view class="row"><view class="row-start"><image class="record-icon" src="/assets/categories/study.png" mode="aspectFit"/><view><view class="h2">学习</view><view class="sub">学习科目、内容和时长</view></view></view><view>›</view></view></view>
 </view>

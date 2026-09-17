@@ -67,7 +67,14 @@ function checkPages() {
       if (!fs.existsSync(path.join(root, rel))) fail(`页面资源缺失: ${rel}`)
     }
   }
+  const tabs = app.tabBar?.list || []
+  if (tabs.length < 2 || tabs.length > 5) fail(`tabBar 数量必须为2到5项，当前为${tabs.length}项`)
   for (const tab of app.tabBar?.list || []) if (!(app.pages || []).includes(tab.pagePath)) fail(`tabBar 页面未注册: ${tab.pagePath}`)
+  for (const tab of tabs) {
+    for (const field of ['iconPath', 'selectedIconPath']) {
+      if (!tab[field] || !fs.existsSync(path.join(root, 'miniprogram', tab[field]))) fail(`tabBar 素材缺失: ${tab[field] || `${tab.pagePath}.${field}`}`)
+    }
+  }
 }
 
 function exportedActions() {

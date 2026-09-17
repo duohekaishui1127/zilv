@@ -1,5 +1,6 @@
 const { db, _, C } = require('../lib/db')
 const { dateRange, monthRange, buildProgressReport, buildActivityCalendar } = require('../domain/progress-report')
+const { attachmentsForNotes } = require('./notes')
 
 async function fetchAll(collection, where, orderField) {
   const rows = []
@@ -39,7 +40,55 @@ async function loadProgressReport(userId, endDate, days) {
 
 async function loadActivityCalendar(userId, month) {
   const dates = monthRange(month)
-  return buildActivityCalendar(await loadRangeData(userId, dates, false))
+  const [rangeData, notes] = await Promise.all([
+    loadRangeData(userId, dates, false),
+    fetchAll(C.NOTES, { userId, recordDate: _.gte(dates[0]).and(_.lte(dates[dates.length - 1])), status: 'ACTIVE' }, 'recordDate')
+  ])
+  return buildActivityCalendar({ ...rangeData, notes })
 }
 
-module.exports = { loadProgressReport, loadActivityCalendar }
+async function loadDayReview(userId, date) {
+  const [checkins, notes, plans] = await Promise.all([
+    fetchAll(C.CHECKINS, { userId, date, completed: true }, 'completedAt'),
+    fetchAll(C.NOTES, { userId, recordDate: date, status: 'ACTIVE' }, 'createdAt'),
+    fetchAll(C.PLANS, { userId }, 'createdAt')
+  ])
+  const attachmentMap = await attachmentsForNotes(notes.map(note => note._id))
+  const planMap = Object.fromEntries(plans.map(plan => [plan._id, plan]))
+  const tasks = checkins.map(checkin => {
+    const plan = planMap[checkin.planId] || {}
+    return {
+      _id: checkin._id,
+      planId: checkin.planId,
+      name: plan.name || '已完成计划',
+      description: plan.description || '',
+      category: plan.category || 'CUSTOM',
+      actualValue: checkin.actualValue,
+      unit: plan.unit || '',
+      durationMinutes: checkin.durationMinutes,
+      mood: checkin.mood || '',
+      note: checkin.note || '',
+      completedAt: checkin.completedAt,
+      timerMode: checkin.timerMode || '',
+      timerEffectiveSeconds: Number(checkin.timerEffectiveSeconds || 0),
+      timerTotalSeconds: Number(checkin.timerTotalSeconds || 0),
+      timerPausedSeconds: Number(checkin.timerPausedSeconds || 0)
+    }
+  }).sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
+  return {
+    date,
+    tasks,
+    notes: notes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(note => ({
+      _id: note._id,
+      type: note.type,
+      title: note.title || '',
+      content: note.content || '',
+      tags: note.tags || [],
+      attachmentCount: Number(note.attachmentCount || 0),
+      attachments: (attachmentMap[note._id] || []).map(item => item.fileId),
+      createdAt: note.createdAt
+    }))
+  }
+}
+
+module.exports = { loadProgressReport, loadActivityCalendar, loadDayReview }
