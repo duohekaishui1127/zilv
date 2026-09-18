@@ -1,0 +1,16 @@
+{
+  "CreateIndexes": [
+    {
+      "IndexName": "user_completed_time",
+      "MgoKeySchema": {
+        "MgoIndexKeys": [
+          { "Name": "userId", "Direction": "1" },
+          { "Name": "completed", "Direction": "1" },
+          { "Name": "completedAt", "Direction": "-1" }
+        ],
+        "MgoIsUnique": false,
+        "MgoIsSparse": false
+      }
+    }
+  ]
+}
