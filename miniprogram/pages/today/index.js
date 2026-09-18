@@ -124,6 +124,7 @@ Page({
         energyState: fmt.energyState(d.energy.estimatedCalorieBalance)
       })
       this.startTicker()
+      this.maybePromptDailyReview(d)
       this.finishExpiredCountdown()
     } catch (error) {
       this.setData({ error: api.messageOf(error) })
@@ -163,6 +164,19 @@ Page({
     }
   },
   retry() { this.load() },
+  maybePromptDailyReview(dashboard) {
+    const review = dashboard?.dailyReview
+    if (!review || review.mood || !dashboard.completion?.total || dashboard.completion.completed !== dashboard.completion.total) return
+    if (this._promptedDailyReviewDate === review.date || this._dailyPromptScheduledDate === review.date) return
+    this._dailyPromptScheduledDate = review.date
+    setTimeout(() => {
+      if (this._visible && this.data.dashboard?.dailyReview?.date === review.date && !this.data.dashboard.dailyReview.mood) {
+        this._promptedDailyReviewDate = review.date
+        this.openDailyReview()
+      }
+      if (this._dailyPromptScheduledDate === review.date) this._dailyPromptScheduledDate = ''
+    }, 300)
+  },
   togglePlans() { this.setData({ plansExpanded: !this.data.plansExpanded }) },
   toggleEnergy() { this.setData({ energyExpanded: !this.data.energyExpanded }) },
   goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
@@ -173,6 +187,18 @@ Page({
     if (!plan) return
     if (plan.completed) return this.showCompletion(plan)
     wx.showToast({ title: plan.timerEnabled ? '请使用计时按钮完成' : '点击右侧圆圈即可完成', icon: 'none' })
+  },
+  async revokeCompletion(plan) {
+    this._quickCompleting = true
+    try {
+      await api.call('revokePlanCompletion', { planId: plan._id })
+      this._promptedDailyReviewDate = ''
+      this._dailyPromptScheduledDate = ''
+      wx.showToast({ title: '已撤回', icon: 'success', duration: 1000 })
+      await this.load()
+    } finally {
+      this._quickCompleting = false
+    }
   },
   showCompletion(plan) {
     const checkin = plan.checkin || {}
@@ -193,7 +219,7 @@ Page({
   async quickComplete(e) {
     const plan = this.planFromEvent(e)
     if (!plan || this._quickCompleting) return
-    if (plan.completed) return this.showCompletion(plan)
+    if (plan.completed) return this.revokeCompletion(plan)
     if (plan.timerEnabled) {
       if (plan.timerStatus === 'FINISHED') return this.completeFinishedTimer(plan)
       return wx.showToast({ title: plan.timerStatus ? '请先结束计时' : '请使用计时按钮开始', icon: 'none' })
@@ -274,8 +300,7 @@ Page({
   },
   openDailyReview() {
     const review = this.data.dashboard?.dailyReview
-    const completion = this.data.dashboard?.completion
-    if (!review && completion?.completed !== completion?.total) return wx.showToast({ title: '完成全部计划后再打卡', icon: 'none' })
+    if (!review) return
     this.setData({ dailyReviewEditor: { visible: true, mood: review?.mood || '', note: review?.note || '' } })
   },
   closeDailyReview() { if (!this.data.completionSaving) this.setData({ dailyReviewEditor: emptyDailyReviewEditor() }) },
@@ -288,7 +313,7 @@ Page({
     try {
       await api.call('saveDailyReview', { mood: editor.mood, note: editor.note })
       this.setData({ dailyReviewEditor: emptyDailyReviewEditor() })
-      wx.showToast({ title: '今日已打卡', icon: 'success' })
+      wx.showToast({ title: '心情与小记已保存', icon: 'success' })
       await this.load()
     } finally { this.setData({ completionSaving: false }) }
   }

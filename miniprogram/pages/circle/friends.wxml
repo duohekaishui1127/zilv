@@ -5,6 +5,7 @@
   <view class="card">
     <view class="list-item" wx:for="{{friends}}" wx:key="_id">
       <view class="row"><view class="flex-1"><view class="value">{{item.nickname}}</view><view class="sub" wx:if="{{item.planStatus}}">今日总计划 {{item.planStatus.completed}} / {{item.planStatus.total}}</view><view class="sub" wx:else>对方已隐藏计划状态</view><view class="row-start" style="margin-top:10rpx"><view wx:if="{{item.studyStatus}}" class="tag">学习 {{item.studyStatus.done?'✓':'未完成'}}</view><view wx:if="{{item.workoutStatus}}" class="tag">健身 {{item.workoutStatus.done?'✓':'未完成'}}</view></view></view><button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="remove">删除</button></view>
+      <view class="friend-settings"><view class="row setting-row"><view><view class="setting-title">特别关心</view><view class="sub">即使不在同一群，也在圈子看到对方打卡</view></view><switch checked="{{item.specialCare}}" data-id="{{item._id}}" bindchange="specialChange" color="#222222"/></view><view wx:if="{{item.specialCare}}" class="row setting-row"><view><view class="setting-title">微信提醒</view><view class="sub">订阅下一次打卡提醒</view></view><switch checked="{{item.specialCareWechat}}" data-id="{{item._id}}" bindchange="specialWechatChange" color="#222222"/></view></view>
     </view>
     <view class="empty compact" wx:if="{{!friends.length}}">暂无好友</view>
   </view>

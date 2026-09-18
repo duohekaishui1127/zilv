@@ -163,6 +163,9 @@ function checkReminderFunction() {
   if (!permissions.includes('subscribeMessage.send')) fail('reminder-dispatch 缺少 subscribeMessage.send OpenAPI 权限')
   const timer = (config.triggers || []).find(trigger => trigger.type === 'timer')
   if (!timer?.config) fail('reminder-dispatch 缺少定时触发器')
+  const apiConfig = json('cloudfunctions/api/config.json')
+  const apiPermissions = apiConfig.permissions?.openapi || []
+  if (!apiPermissions.includes('subscribeMessage.send')) fail('api 缺少社交提醒所需的 subscribeMessage.send OpenAPI 权限')
 }
 
 function checkLegacyModules() {

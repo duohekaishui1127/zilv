@@ -1,0 +1,5 @@
+.other-card { padding-top: 24rpx; padding-bottom: 24rpx; }
+.other-toggle { min-height: 66rpx; }
+.other-chevron { min-width: 34rpx; color: #8a8f98; font-size: 30rpx; text-align: center; }
+.other-list { margin-top: 14rpx; padding-top: 2rpx; border-top: 1rpx solid #eef0f2; }
+.data-note { margin-top: 20rpx; padding: 18rpx; border-radius: 16rpx; background: #f7f8fa; color: #8a8f98; font-size: 23rpx; line-height: 1.55; }

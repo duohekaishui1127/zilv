@@ -9,7 +9,10 @@
   <block wx:elif="{{dashboard}}">
     <view class="hero row">
       <view><view class="h1">自律</view><view class="sub">{{dashboard.user.nickname}} · 今日事今日毕</view></view>
-      <view class="tag" bindtap="goNotifications">消息{{dashboard.unreadNotificationCount ? ' ' + dashboard.unreadNotificationCount : ''}}</view>
+      <view class="message-entry {{dashboard.unreadNotificationCount ? 'message-entry-unread' : ''}}" bindtap="goNotifications" aria-label="消息中心">
+        <view class="message-envelope"></view>
+        <view wx:if="{{dashboard.unreadNotificationCount}}" class="message-red-dot"></view>
+      </view>
     </view>
 
     <view class="card plan-card">
@@ -18,6 +21,11 @@
         <view class="row compact-row"><view class="big">{{dashboard.completion.completed}}/{{dashboard.completion.total}}</view><view class="chevron">{{plansExpanded ? '⌃' : '⌄'}}</view></view>
       </view>
       <view class="progress"><view class="progress-inner" style="width: {{completionPct}}%;"></view></view>
+      <view wx:if="{{dashboard.dailyReview}}" class="streak-row" bindtap="openDailyReview">
+        <text>✓ 今日已自动打卡 · 已连续打卡 {{dashboard.currentStreak}} 天</text>
+        <text class="streak-action">{{dashboard.dailyReview.mood ? dashboard.dailyReview.moodLabel + ' ›' : '记录心情 ›'}}</text>
+      </view>
+      <view wx:elif="{{dashboard.completion.total}}" class="sub auto-checkin-hint">完成全部计划后自动打卡</view>
 
       <view wx:if="{{plansExpanded}}" class="plan-list">
         <view class="plan-item {{item.completed ? 'plan-item-completed' : ''}}" wx:for="{{dashboard.plans}}" wx:key="_id" data-index="{{index}}" bindtap="openCompletion">
@@ -49,21 +57,6 @@
         </view>
         <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
         <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈直接完成；完成后点任务可补充备注。计划内容与群组关联请到“计划”页修改。</view>
-      </view>
-    </view>
-
-    <view class="card daily-checkin-card {{dashboard.dailyReview || dashboard.completion.completed === dashboard.completion.total ? '' : 'daily-checkin-disabled'}}" bindtap="openDailyReview">
-      <view class="row">
-        <view class="row-start">
-          <image wx:if="{{dashboard.dailyReview && dashboard.dailyReview.moodIcon}}" class="daily-mood-icon" src="{{dashboard.dailyReview.moodIcon}}" mode="aspectFit"/>
-          <view>
-            <view class="h2">{{dashboard.dailyReview ? '今日已打卡' : '完成今日打卡'}}</view>
-            <view class="sub" wx:if="{{dashboard.dailyReview}}">{{dashboard.dailyReview.moodLabel}}{{dashboard.dailyReview.note ? ' · ' + dashboard.dailyReview.note : ''}}</view>
-            <view class="sub" wx:elif="{{dashboard.completion.completed === dashboard.completion.total}}">记录整日心情和一句小记</view>
-            <view class="sub" wx:else>完成全部计划后即可打卡</view>
-          </view>
-        </view>
-        <view>›</view>
       </view>
     </view>
 
@@ -120,7 +113,7 @@
 <view wx:if="{{dailyReviewEditor.visible}}" class="sheet-mask" bindtap="closeDailyReview">
   <view class="completion-sheet" catchtap="noop">
     <view class="sheet-handle"></view>
-    <view class="row"><view><view class="h2">今日打卡</view><view class="sub">为完整的一天留下心情和小记</view></view><view class="sheet-close" bindtap="closeDailyReview">×</view></view>
+    <view class="row"><view><view class="h2">记录今日心情</view><view class="sub">已自动打卡 · 连续 {{dashboard.currentStreak}} 天</view></view><view class="sheet-close" bindtap="closeDailyReview">×</view></view>
     <view class="field completion-field">
       <view class="label">今天整体感觉如何？</view>
       <view class="mood-row">
@@ -128,6 +121,6 @@
       </view>
     </view>
     <view class="field"><view class="label">今日小记（可选）</view><textarea class="input note-input" maxlength="1000" value="{{dailyReviewEditor.note}}" bindinput="dailyReviewInput" placeholder="写下今天值得记住的一句话"/></view>
-    <button class="btn" loading="{{completionSaving}}" bindtap="saveDailyReview">保存今日打卡</button>
+    <button class="btn" loading="{{completionSaving}}" bindtap="saveDailyReview">保存心情与小记</button>
   </view>
 </view>

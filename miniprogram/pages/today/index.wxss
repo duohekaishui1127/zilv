@@ -1,4 +1,9 @@
 .retry-btn { margin-top: 20rpx; }
+.message-entry { position: relative; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; color: #a0a6af; border-radius: 18rpx; background: #eef0f3; }
+.message-entry-unread { color: #303846; background: #fff; box-shadow: 0 4rpx 16rpx rgba(17,24,39,.08); }
+.message-envelope { position: relative; width: 34rpx; height: 25rpx; box-sizing: border-box; border: 4rpx solid currentColor; border-radius: 4rpx; }
+.message-envelope::after { content: ''; position: absolute; left: 5rpx; top: -2rpx; width: 17rpx; height: 17rpx; box-sizing: border-box; border-left: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; transform: rotate(-45deg); }
+.message-red-dot { position: absolute; top: 8rpx; right: 8rpx; width: 16rpx; height: 16rpx; border: 4rpx solid #fff; border-radius: 50%; background: #e5484d; }
 .card-toggle { min-height: 52rpx; }
 .compact-row { gap: 12rpx; }
 .chevron { color: #8a8f98; font-size: 30rpx; min-width: 30rpx; text-align: center; }
@@ -20,9 +25,9 @@
 .timer-actions .btn { min-width: 126rpx; }
 .timer-primary { background: #111827; color: #fff; }
 .plan-tip { padding-top: 18rpx; }
-.daily-checkin-card { border: 2rpx solid #d9dee7; }
-.daily-checkin-disabled { opacity: .58; }
-.daily-mood-icon { width: 64rpx; height: 64rpx; margin-right: 18rpx; image-rendering: pixelated; }
+.streak-row { display:flex; justify-content:space-between; gap:16rpx; margin-top:16rpx; color:#303846; font-size:23rpx; font-weight:600; }
+.streak-action { flex:0 0 auto; color:#697386; font-weight:400; }
+.auto-checkin-hint { margin-top:14rpx; text-align:right; }
 .energy-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 22rpx; }
 .energy-metric { min-width: 0; background: #f8f9fb; border-radius: 18rpx; padding: 20rpx 10rpx; text-align: center; }
 .energy-value { margin: 5rpx 0; font-size: 34rpx; font-weight: 700; overflow-wrap: anywhere; }

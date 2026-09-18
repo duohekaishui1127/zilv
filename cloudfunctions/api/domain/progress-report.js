@@ -57,7 +57,7 @@ function latestBodyByDate(records) {
 }
 
 function dailyReviewByDate(reviews) {
-  return reviews.reduce((map, item) => {
+  return reviews.filter(item => item.status !== 'REVOKED').reduce((map, item) => {
     const current = map[item.date]
     const itemTime = new Date(item.updatedAt || item.checkedInAt || item.createdAt || 0).getTime()
     if (!current || itemTime >= current.time) map[item.date] = { value: item, time: itemTime }

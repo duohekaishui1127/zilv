@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
+const { trimNotificationHistory } = require('./notification-retention')
 
 function configuredAdminCodes() {
   return [...new Set(String(process.env.FEEDBACK_ADMIN_SHARE_CODES || '')
@@ -47,6 +48,7 @@ async function notifyFeedbackAdmins(feedback, submitter) {
       createdAt: timestamp,
       updatedAt: timestamp
     } })
+    await trimNotificationHistory(admin._id)
   }
   return { configured: configuredAdminCodes().length > 0, notified: admins.length }
 }
@@ -66,6 +68,7 @@ async function notifyFeedbackStatus(feedback, statusLabel) {
     createdAt: timestamp,
     updatedAt: timestamp
   } })
+  await trimNotificationHistory(feedback.userId)
 }
 
 module.exports = {

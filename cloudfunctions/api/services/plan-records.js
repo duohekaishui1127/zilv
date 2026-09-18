@@ -128,4 +128,12 @@ async function syncPlanCategoryRecord({ user, plan, checkin, localDate }) {
   if (plan.category === 'WORKOUT') return syncWorkoutRecord(user, plan, checkin, localDate)
 }
 
-module.exports = { syncPlanCategoryRecord }
+async function revokePlanCategoryRecord({ user, plan, localDate }) {
+  const collection = plan.category === 'STUDY' ? C.STUDY : (plan.category === 'WORKOUT' ? C.WORKOUTS : '')
+  if (!collection) return
+  const records = await relatedRecords(collection, user._id, plan._id, localDate)
+  const generated = records.filter(item => item.source === 'PLAN_CHECKIN')
+  await Promise.all(generated.map(item => db.collection(collection).doc(item._id).remove()))
+}
+
+module.exports = { syncPlanCategoryRecord, revokePlanCategoryRecord }

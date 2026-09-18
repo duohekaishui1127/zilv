@@ -62,6 +62,16 @@ test('日历只使用整日打卡心情作为当天印记', () => {
   assert.equal(calendar.days[1].mood, '')
 })
 
+test('撤回任务后同步取消当日打卡印记', () => {
+  const calendar = buildActivityCalendar({
+    dates: ['2026-09-18'],
+    dailyReviews: [{ date: '2026-09-18', mood: 'GOOD', note: '稍后继续', status: 'REVOKED' }]
+  })
+  assert.equal(calendar.days[0].dailyCheckedIn, false)
+  assert.equal(calendar.days[0].mood, '')
+  assert.equal(calendar.days[0].noteCount, 0)
+})
+
 test('同一天多次更新营养目标时使用最新版本', () => {
   const report = buildProgressReport({
     dates: ['2026-09-16'],

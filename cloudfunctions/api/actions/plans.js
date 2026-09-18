@@ -3,6 +3,7 @@ const { now, fail, weekRange } = require('../lib/utils')
 const { isBasePlanDue, assertNoActiveTimer } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
+const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
 const { TIMER_MODES, MAX_TIMER_MINUTES, completedTimerFields } = require('../domain/plan-timer')
 function normalizePlan(input, localDate, existing = {}) {
   const p = input || {}
@@ -54,19 +55,16 @@ function normalizePlan(input, localDate, existing = {}) {
     timerDurationMinutes: timerMode === 'COUNT_DOWN' ? Math.round(timerDurationMinutes) : null
   }
 }
-
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
   const add = await db.collection(C.PLANS).add({ data })
   return { plan: { _id: add._id, ...data } }
 }
-
 async function getPlan({ user, event }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   return { plan }
 }
-
 async function updatePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
@@ -74,7 +72,6 @@ async function updatePlan({ user, event, localDate }) {
   await db.collection(C.PLANS).doc(plan._id).update({ data })
   return { plan: { ...plan, ...data } }
 }
-
 async function setPlanEnabled({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
@@ -83,7 +80,6 @@ async function setPlanEnabled({ user, event, localDate }) {
   await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled, updatedAt: now() } })
   return { enabled }
 }
-
 async function deletePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
@@ -93,18 +89,15 @@ async function deletePlan({ user, event, localDate }) {
   await Promise.all(bindings.data.map(b => db.collection(C.PLAN_GROUPS).doc(b._id).update({ data: { enabled: false, updatedAt: now() } })))
   return { deleted: true }
 }
-
 async function getPlans({ user }) {
   const r = await db.collection(C.PLANS).where({ userId: user._id }).orderBy('createdAt', 'desc').get()
   return { plans: r.data.filter(p => !p.deletedAt) }
 }
-
 async function completePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (!plan.enabled) throw fail('PLAN_DISABLED', '计划已停用')
   if (!isBasePlanDue(plan, localDate)) throw fail('PLAN_NOT_DUE', '该计划今天无需执行')
-
   const cr = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: localDate }).limit(1).get()
   if (plan.repeatType === 'WEEKLY_COUNT' && !cr.data.length) {
     const { startDate, endDate } = weekRange(localDate)
@@ -137,9 +130,11 @@ async function completePlan({ user, event, localDate }) {
   }
   let checkin
   const shouldEmitGroupEvent = !existingCheckin?.completed
+  const completionVersion = shouldEmitGroupEvent ? Number(existingCheckin?.completionVersion || 0) + 1 : Number(existingCheckin?.completionVersion || 1)
   const data = {
     actualValue, completed: true,
-    durationMinutes: timerDurationMinutes, mood, completedAt: existingCheckin?.completedAt || completionTime,
+    durationMinutes: timerDurationMinutes, mood, completedAt: shouldEmitGroupEvent ? completionTime : (existingCheckin?.completedAt || completionTime),
+    completionVersion, revokedAt: null,
     note, ...finalizedTimer, updatedAt: completionTime
   }
   if (cr.data.length) {
@@ -151,8 +146,14 @@ async function completePlan({ user, event, localDate }) {
     checkin = { _id: add._id, ...base }
   }
   await syncPlanCategoryRecord({ user, plan, checkin, localDate })
-  if (shouldEmitGroupEvent) await emitGroupEventsForCheckin(user, plan, checkin)
-  return { checkin }
+  if (shouldEmitGroupEvent) await emitGroupEventsForCheckin(user, plan, checkin).catch(error => {
+    console.warn('[social-checkin]', error?.message || error)
+  })
+  const dailyReview = await ensureDailyReviewAfterCompletion(user._id, localDate).catch(error => {
+    console.warn('[auto-daily-review]', error?.message || error)
+    return null
+  })
+  return { checkin, dailyReview }
 }
 function roundTimerMinutes(seconds) { const value = Number(seconds); return Number.isFinite(value) && value >= 0 ? Math.round(value / 6) / 10 : null }
 module.exports = { createPlan, getPlan, updatePlan, setPlanEnabled, deletePlan, getPlans, completePlan }

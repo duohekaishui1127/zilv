@@ -5,16 +5,18 @@ const { getTodayPlans: getTodayPlansService } = require('../services/plans')
 const { nutritionSummary, workoutSummary, studySummary } = require('../services/summaries')
 const { homePreferencesOf } = require('../services/preferences')
 const { ensureReleaseAnnouncement } = require('../services/release-announcements')
+const { ensureDailyReviewAfterCompletion, dailyReviewStreak } = require('../services/daily-reviews')
+const { notificationWindow } = require('../services/notification-retention')
 
 async function dashboard({ user, localDate }) {
   await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
-  const [weight, plans, nutrition, workout, study, unreadNotifications, dailyReviewResult] = await Promise.all([
+  const [weight, plans, nutrition, workout, study, notifications, dailyReviewResult] = await Promise.all([
     latestWeight(user._id),
     getTodayPlansService(user._id, localDate),
     nutritionSummary(user._id, localDate),
     workoutSummary(user._id, localDate),
     studySummary(user._id, localDate),
-    db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).count(),
+    notificationWindow(user._id),
     db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get()
   ])
   let target = await currentNutritionTarget(user._id)
@@ -22,6 +24,15 @@ async function dashboard({ user, localDate }) {
   const base = Number(target?.baseDailyExpenditure || 0)
   const totalExpenditure = round1(base + workout.estimatedCalories)
   const balance = round1(nutrition.calorieIntake - totalExpenditure)
+  let dailyReview = dailyReviewResult.data.find(item => item.status !== 'REVOKED') || null
+  if (!dailyReview) dailyReview = await ensureDailyReviewAfterCompletion(user._id, localDate, plans).catch(error => {
+    console.warn('[auto-daily-review]', error?.message || error)
+    return null
+  })
+  const currentStreak = dailyReview ? await dailyReviewStreak(user._id, localDate).catch(error => {
+    console.warn('[daily-review-streak]', error?.message || error)
+    return 1
+  }) : 0
   return {
     serverTime: now(),
     user: { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode },
@@ -31,8 +42,9 @@ async function dashboard({ user, localDate }) {
     nutrition,
     workout,
     study,
-    unreadNotificationCount: unreadNotifications.total,
-    dailyReview: dailyReviewResult.data[0] || null,
+    unreadNotificationCount: notifications.unreadCount,
+    dailyReview,
+    currentStreak,
     energy: {
       baseDailyExpenditure: base,
       exerciseExpenditure: workout.estimatedCalories,

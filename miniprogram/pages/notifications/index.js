@@ -40,7 +40,13 @@ Page({
     const index = Number(e.currentTarget.dataset.index)
     const item = this.data.notifications[index]
     const id = item?._id
-    if (id) await api.call('markNotificationRead', { notificationId: id }, { silent: true }).catch(() => {})
+    if (id && item.status === 'UNREAD') {
+      this.setData({
+        [`notifications[${index}].status`]:'READ',
+        unreadCount:Math.max(0, this.data.unreadCount - 1)
+      })
+      await api.call('markNotificationRead', { notificationId: id }, { silent: true }).catch(() => {})
+    }
     if (item?.page) return wx.navigateTo({ url: item.page })
     if (item?.type === 'PLAN_REMINDER') return wx.switchTab({ url: '/pages/today/index' })
     await this.load()

@@ -79,7 +79,7 @@ async function loadDayReview(userId, date) {
   }).sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
   return {
     date,
-    dailyReview: dailyReviewResult.data[0] || null,
+    dailyReview: dailyReviewResult.data.find(item => item.status !== 'REVOKED') || null,
     tasks,
     notes: notes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(note => ({
       _id: note._id,

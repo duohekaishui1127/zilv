@@ -1,6 +1,6 @@
-# 云数据库集合设计（应用 1.4.0 / Schema 7）
+# 云数据库集合设计（应用 1.5.0 / Schema 8）
 
-> Schema 7 新增 `daily_reviews`，用于保存每天唯一一条整日心情与小记；`meals` 增加时间戳、备注与照片文件 ID。旧任务、饮食和分类记录继续兼容保留。
+> Schema 8 新增群动态点赞与好友特别关心；完成与撤回计划会同步更新整日打卡、分类记录及群动态。
 
 ## 计划专注计时字段
 
@@ -34,6 +34,8 @@ groups
 group_members
 plan_group_bindings
 group_events
+group_event_likes
+special_cares
 notes
 note_attachments
 notifications
@@ -51,11 +53,20 @@ migration_history
 audit_logs
 ```
 
-共 29 个集合。
+共 31 个集合。
+
+## 社交鼓励与撤回
+
+- `group_events`: 增加 `completionVersion`、`status`、`likeCount`，撤回后原完成动态标记为 `REVOKED`。
+- `group_event_likes`: `eventId`、`groupId`、`userId`、`createdAt`，每名群成员对每条有效完成动态最多一条。
+- `special_cares`: `userId`、`targetUserId`、`enabled`、`wechatEnabled`、授权时间；解除好友后自动停用。
+- `group_members.wechatCheckinEnabled`: 当前群组下一次微信打卡提醒授权，发送或确认无授权后自动关闭。
+- `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
+- `daily_reviews.status`: `ACTIVE` / `REVOKED`；撤回时保留原心情与小记，重新完成全部任务后恢复。
 
 ## 整日打卡与进食时间流
 
-- `daily_reviews`: `userId`、`date`、`mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`。
+- `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`。
 - `meals.recordedAt`: 本次进食的服务端时间戳。
 - `meals.note`: 本次进食的可选文字。
 - `meals.photoFileIds`: 最多三张饮食照片的云文件 ID。
@@ -68,9 +79,11 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 ## 计划提醒字段
 
-`plans` 增加：`reminderEnabled`、`reminderTime`、`reminderTimezoneOffset`、`reminderPushEnabled`。
+`plans` 增加：`reminderEnabled`、`reminderTime`、`reminderTimezoneOffset`、`reminderPushEnabled`、`lastReminderNotificationDate`。
 
-`notifications` 保存站内消息及推送结果：`userId`、`planId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。
+`notifications` 保存站内消息及推送结果：`userId`、`planId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。每名用户只保留按 `createdAt` 排序的最新 20 条。
+
+`users.lastReleaseAnnouncementId` 和 `plans.lastReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日计划提醒不会重复创建。
 
 ## 推荐索引
 
@@ -91,7 +104,9 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `privacy_settings`: `userId`
 - `group_members`: `groupId + userId + status`；`userId + status`
 - `plan_group_bindings`: `planId + groupId + userId`
-- `group_events`: `groupId + createdAt desc`；`groupId + checkinId + eventType`
+- `group_events`: `groupId + createdAt desc`；`groupId + checkinId + eventType + completionVersion`
+- `group_event_likes`: `eventId + userId`（建议唯一）；`groupId + userId`
+- `special_cares`: `userId + targetUserId`（建议唯一）；`targetUserId + enabled`
 - `notes`: `userId + status + createdAt desc`；`userId + type + status + createdAt desc`；`userId + clientMutationId + status`；`userId + recordDate + status`
 - `note_attachments`: `noteId + sort`；`userId + noteId`
 - `notifications`: `userId + createdAt desc`；`userId + status + createdAt desc`；`userId + planId + recordDate`

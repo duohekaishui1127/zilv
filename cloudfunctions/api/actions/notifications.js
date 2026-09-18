@@ -1,5 +1,6 @@
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
+const { notificationWindow, trimNotificationHistory } = require('../services/notification-retention')
 
 function reminderTemplateId() {
   return String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
@@ -14,13 +15,8 @@ async function getReminderConfig() {
   }
 }
 
-async function getNotifications({ user, event }) {
-  const limit = Math.min(Math.max(Number(event.limit || 50), 1), 100)
-  const [result, unread] = await Promise.all([
-    db.collection(C.NOTIFICATIONS).where({ userId: user._id }).orderBy('createdAt', 'desc').limit(limit).get(),
-    db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).count()
-  ])
-  return { notifications: result.data, unreadCount: unread.total }
+async function getNotifications({ user }) {
+  return notificationWindow(user._id)
 }
 
 async function markNotificationRead({ user, event }) {
@@ -35,6 +31,7 @@ async function markNotificationRead({ user, event }) {
 }
 
 async function markAllNotificationsRead({ user }) {
+  await trimNotificationHistory(user._id)
   const timestamp = now()
   const result = await db.collection(C.NOTIFICATIONS).where({ userId: user._id, status: 'UNREAD' }).update({
     data: { status: 'READ', readAt: timestamp, updatedAt: timestamp }

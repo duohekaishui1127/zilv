@@ -12,6 +12,7 @@ const COLLECTIONS = Object.freeze({
   CHECKINS: 'checkins',
   NOTIFICATIONS: 'notifications'
 })
+const NOTIFICATION_LIMIT = 20
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
 
@@ -52,6 +53,19 @@ function templateData(plan, context) {
 
 async function updateNotification(id, data) {
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).update({ data: { ...data, updatedAt: new Date() } })
+}
+
+async function trimNotificationHistory(userId) {
+  while (true) {
+    const overflow = await db.collection(COLLECTIONS.NOTIFICATIONS)
+      .where({ userId })
+      .orderBy('createdAt', 'desc')
+      .skip(NOTIFICATION_LIMIT)
+      .limit(100)
+      .get()
+    if (!overflow.data.length) return
+    await Promise.all(overflow.data.map(item => db.collection(COLLECTIONS.NOTIFICATIONS).doc(item._id).remove()))
+  }
 }
 
 async function sendWechatReminder(plan, context, notification) {
@@ -100,8 +114,12 @@ async function sendWechatReminder(plan, context, notification) {
 async function processPlan(plan, at) {
   const context = reminderContext(plan, at)
   if (!context || await alreadyCompleted(plan, context.date)) return 'skipped'
+  if (plan.lastReminderNotificationDate === context.date) return 'duplicate'
   const id = notificationId(plan.userId, plan._id, context.date)
-  if (await document(COLLECTIONS.NOTIFICATIONS, id)) return 'duplicate'
+  if (await document(COLLECTIONS.NOTIFICATIONS, id)) {
+    await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { lastReminderNotificationDate: context.date, updatedAt: new Date() } })
+    return 'duplicate'
+  }
   const timestamp = new Date()
   const notification = {
     _id: id,
@@ -119,6 +137,8 @@ async function processPlan(plan, at) {
   }
   const { _id, ...notificationData } = notification
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
+  await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { lastReminderNotificationDate: context.date, updatedAt: timestamp } })
+  await trimNotificationHistory(plan.userId)
   return sendWechatReminder(plan, context, notification)
 }
 

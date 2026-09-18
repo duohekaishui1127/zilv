@@ -1,0 +1,4 @@
+.friend-settings { margin-top: 20rpx; padding: 12rpx 16rpx; border-radius: 18rpx; background: #f7f7f7; }
+.setting-row { min-height: 72rpx; }
+.setting-row + .setting-row { border-top: 1rpx solid #e8e8e8; }
+.setting-title { font-size: 27rpx; color: #222; }

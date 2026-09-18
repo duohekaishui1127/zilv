@@ -113,16 +113,31 @@ async function memberProgress(groupId, member, localDate) {
 }
 
 async function getGroupDetail({ user, event, localDate }) {
-  if (!(await isGroupMember(event.groupId, user._id))) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
+  const membership = await isGroupMember(event.groupId, user._id)
+  if (!membership) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
   const group = await db.collection(C.GROUPS).doc(event.groupId).get().then(x => x.data).catch(() => null)
   if (!group) throw fail('NOT_FOUND', '群组不存在')
   const [events, members] = await Promise.all([
     db.collection(C.GROUP_EVENTS).where({ groupId: group._id }).orderBy('createdAt', 'desc').limit(50).get(),
     db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).get()
   ])
-  const memberViews = await Promise.all(members.data.map(member => memberProgress(group._id, member, localDate)))
+  const [memberViews, likes] = await Promise.all([
+    Promise.all(members.data.map(member => memberProgress(group._id, member, localDate))),
+    db.collection(C.GROUP_EVENT_LIKES).where({ groupId: group._id, userId: user._id }).get()
+  ])
   const currentMember = members.data.find(member => member.userId === user._id)
-  return { group, events: events.data, members: memberViews.filter(Boolean), currentRole: currentMember?.role || 'MEMBER' }
+  const likedIds = new Set(likes.data.map(item => item.eventId))
+  const eventViews = events.data.map(item => ({
+    ...item,
+    status: item.status || 'ACTIVE',
+    likeCount: Number(item.likeCount || 0),
+    likedByMe: likedIds.has(item._id)
+  }))
+  return {
+    group, events: eventViews, members: memberViews.filter(Boolean),
+    currentRole: currentMember?.role || 'MEMBER',
+    wechatCheckinEnabled: Boolean(membership.wechatCheckinEnabled)
+  }
 }
 
 module.exports = { createGroup, joinGroup, leaveGroup, getGroups, bindPlanToGroup, unbindPlanFromGroup, getPlanBindings, getGroupDetail }

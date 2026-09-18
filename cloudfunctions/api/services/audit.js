@@ -3,11 +3,12 @@ const { now } = require('../lib/utils')
 
 const MUTATING_ACTIONS = new Set([
   'updateProfile','addBodyRecord','createCustomFood','addMealItem','addMealEntry','deleteMealItem','deleteMealEntry','addWorkout',
-  'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','startPlanTimer','pausePlanTimer',
+  'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','revokePlanCompletion','startPlanTimer','pausePlanTimer',
   'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','removeFriend','createGroup','joinGroup','leaveGroup',
   'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
-  'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus'
+  'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus',
+  'setGroupWechatNotification','toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
 ])
 
 function inferEntityId(event = {}, data = {}) {

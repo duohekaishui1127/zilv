@@ -2,10 +2,11 @@
 
 ## 行为边界
 
-- 站内消息：开启计划提醒后持续生效，到点且未打卡时写入消息中心。
+- 站内消息：开启计划提醒后持续生效，到点且未打卡时写入消息中心；每名用户只保留最近 20 条。
 - 微信提醒：使用一次性订阅消息。用户每同意一次，通常只可发送一条对应模板消息。
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
+- 群组打卡和特别关心动态始终写入应用内；对应微信提醒同样是一次性订阅，成功发送后自动关闭开关。
 
 ## 执行流程
 
@@ -43,6 +44,11 @@ reminder-dispatch 每5分钟扫描
 
 ```text
 PLAN_REMINDER_TEMPLATE_ID=模板ID
+SOCIAL_CHECKIN_TEMPLATE_ID=好友/群成员打卡模板ID
+SOCIAL_TEMPLATE_MEMBER_KEY=thing1
+SOCIAL_TEMPLATE_PLAN_KEY=thing2
+SOCIAL_TEMPLATE_TIME_KEY=time3
+SOCIAL_MINIPROGRAM_STATE=trial
 ```
 
 `reminder-dispatch`：
@@ -59,6 +65,8 @@ REMINDER_MINIPROGRAM_STATE=trial
 体验环境使用 `trial`，正式环境改为 `formal`，开发环境可用 `developer`。
 
 `PLAN_REMINDER_TEMPLATE_ID` 不是密钥，但两个云函数必须保持一致。AppSecret 不应放入小程序前端或仓库。
+
+社交打卡模板默认依次使用成员、计划、完成时间三个字段。实际模板字段不同，只需调整 `SOCIAL_TEMPLATE_*_KEY`。`api/config.json` 已声明 `subscribeMessage.send` 权限，部署后仍需在云开发控制台确认权限生效。
 
 ## 定时触发器
 
@@ -81,7 +89,7 @@ reminderTimezoneOffset
 reminderPushEnabled
 ```
 
-`notifications` 保存：用户、计划、业务日期、未读状态、微信推送状态和错误码。消息中心只允许当前用户读取和修改自己的消息。
+`notifications` 保存：用户、计划、业务日期、未读状态、微信推送状态和错误码。消息中心只允许当前用户读取和修改自己的消息；新增第 21 条时自动清理最旧记录，计划上的日期凭证继续负责防止同日重复提醒。
 
 ## 验收建议
 

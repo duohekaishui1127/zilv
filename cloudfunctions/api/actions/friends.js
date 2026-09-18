@@ -53,14 +53,23 @@ async function removeFriend({ user, event }) {
   const friendship = await friendshipBetween(user._id, event.friendUserId)
   if (!friendship || friendship.status !== 'ACCEPTED') throw fail('NOT_FOUND', '好友关系不存在')
   await db.collection(C.FRIENDSHIPS).doc(friendship._id).remove()
+  const [mine, theirs] = await Promise.all([
+    db.collection(C.SPECIAL_CARES).where({ userId: user._id, targetUserId: event.friendUserId }).get(),
+    db.collection(C.SPECIAL_CARES).where({ userId: event.friendUserId, targetUserId: user._id }).get()
+  ])
+  await Promise.all([...mine.data, ...theirs.data].map(care => db.collection(C.SPECIAL_CARES).doc(care._id).update({
+    data: { enabled: false, wechatEnabled: false, updatedAt: now() }
+  })))
   return { removed: true }
 }
 
 async function getFriends({ user, localDate }) {
-  const [a, b] = await Promise.all([
+  const [a, b, cares] = await Promise.all([
     db.collection(C.FRIENDSHIPS).where({ userA: user._id, status: 'ACCEPTED' }).get(),
-    db.collection(C.FRIENDSHIPS).where({ userB: user._id, status: 'ACCEPTED' }).get()
+    db.collection(C.FRIENDSHIPS).where({ userB: user._id, status: 'ACCEPTED' }).get(),
+    db.collection(C.SPECIAL_CARES).where({ userId: user._id }).get()
   ])
+  const careMap = new Map(cares.data.map(item => [item.targetUserId, item]))
   const friends = await Promise.all([...a.data, ...b.data].map(async friendship => {
     const other = await getUserById(friendship.userA === user._id ? friendship.userB : friendship.userA)
     if (!other) return null
@@ -68,8 +77,11 @@ async function getFriends({ user, localDate }) {
     const plans = privacy.showPlanStatusToFriends ? await getTodayPlans(other._id, localDate) : []
     const studyPlans = plans.filter(x => x.category === 'STUDY')
     const workoutPlans = plans.filter(x => x.category === 'WORKOUT')
+    const care = careMap.get(other._id)
     return {
       ...publicUser(other),
+      specialCare: Boolean(care?.enabled),
+      specialCareWechat: Boolean(care?.enabled && care?.wechatEnabled),
       planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null,
       studyStatus: privacy.showStudyStatusToFriends && privacy.showPlanStatusToFriends
         ? { total: studyPlans.length, completed: studyPlans.filter(x => x.completed).length, done: studyPlans.length > 0 && studyPlans.every(x => x.completed) }

@@ -1,4 +1,4 @@
-# 页面跳转图（1.4.0）
+# 页面跳转图（1.5.0）
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,6 @@ flowchart TD
     M --> PR[隐私设置]
     M --> N
     M --> WR[趋势与复盘]
-    M --> NT
     M --> AB[关于与诊断]
 
     CA -.TabBar.-> T

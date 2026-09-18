@@ -1,2 +1,7 @@
-.notification-unread { border-left: 6rpx solid #111827; padding-left: 18rpx; }
+.notification-item { margin: 0 -14rpx; padding: 24rpx 14rpx; border-radius: 16rpx; }
+.notification-unread { background: #fff; }
+.notification-read { opacity: .58; background: #f5f6f8; }
+.notification-title-row { min-width: 0; gap: 12rpx; }
+.notification-dot { width: 14rpx; height: 14rpx; flex: 0 0 14rpx; border-radius: 50%; background: #e5484d; }
+.notification-read .value, .notification-read .notification-content { color: #8a8f98; }
 .notification-content { margin-top: 10rpx; line-height: 1.55; color: #374151; white-space: pre-wrap; }
