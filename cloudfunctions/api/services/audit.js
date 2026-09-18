@@ -6,7 +6,7 @@ const MUTATING_ACTIONS = new Set([
   'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','revokePlanCompletion','startPlanTimer','pausePlanTimer',
   'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','rejectFriendRequest','cancelFriendRequest','removeFriend','updateFriendSettings','createGroup','joinGroup','leaveGroup',
-  'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
+  'inviteUsersToGroup','bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus',
   'setGroupWechatNotification','toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
 ])

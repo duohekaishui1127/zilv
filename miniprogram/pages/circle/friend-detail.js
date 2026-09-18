@@ -25,7 +25,7 @@ function displayTime(value) {
 Page({
   data:{
     friendUserId:'', friend:null, records:[], recordsVisible:true, settings:null,
-    settingsVisible:false, privacyFields:[], notificationConfig:null, saving:false
+    settingsVisible:false, privacyFields:[], notificationConfig:null, isLongTerm:false, saving:false
   },
   onLoad(options){ this.setData({ friendUserId:options.id || '' }); this.load() },
   onShow(){ if (this.data.friendUserId && this.data.friend) this.load() },
@@ -45,7 +45,8 @@ Page({
       recordsVisible:result.recordsVisible,
       settings,
       privacyFields:PRIVACY_FIELDS.map(([key,label]) => ({ key,label,checked:Boolean(settings.privacy[key]) })),
-      notificationConfig:config
+      notificationConfig:config,
+      isLongTerm:config?.subscriptionType === 'LONG_TERM'
     })
     wx.setNavigationBarTitle({ title:result.friend.displayName || '好友资料' })
   },
@@ -97,7 +98,8 @@ Page({
       const accepted=result[config.templateId] === 'accept'
       await api.call('setSpecialCareWechat',{ targetUserId:this.data.friendUserId,enabled:accepted,grantAccepted:accepted })
       this.setData({ 'settings.specialCareWechat':accepted })
-      wx.showToast({ title:accepted?'已订阅下次提醒':'未开启提醒',icon:'none' })
+      const title=accepted ? (this.data.isLongTerm ? '已开启长期提醒' : '已订阅下次提醒') : '未开启提醒'
+      wx.showToast({ title,icon:'none' })
     } catch (error) {
       this.setData({ 'settings.specialCareWechat':false })
       wx.showToast({ title:'未开启提醒',icon:'none' })

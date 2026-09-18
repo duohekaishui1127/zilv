@@ -1,9 +1,17 @@
 <view class="container" wx:if="{{group}}">
   <view class="hero"><view class="h1">{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
-  <view class="card"><view class="row"><view><view class="label">群组邀请码</view><view class="big code-text">{{group.inviteCode}}</view></view><button class="btn btn-light btn-small" bindtap="copyCode">复制</button></view><view class="sub">群组只强制公开绑定计划的执行情况，不公开体重、体脂、饮食等私密数据。</view></view>
-  <view class="card notification-setting"><view class="row"><view class="flex-1"><view class="value">微信打卡提醒</view><view class="sub">订阅后，下次有成员打卡时微信提醒一次；群内动态始终保留</view></view><switch checked="{{wechatEnabled}}" bindchange="toggleWechat" color="#222222"/></view></view>
-  <view class="card"><view class="h2">今日监督</view><view class="list-item row" wx:for="{{members}}" wx:key="_id"><view><view class="value">{{item.nickname}}</view><view class="sub">{{item.role}}</view></view><view>{{item.completed}} / {{item.total}}</view></view></view>
-  <view class="section-title">动态</view>
-  <view class="card"><view class="list-item event-item {{item.status === 'REVOKED' ? 'event-revoked' : ''}}" wx:for="{{events}}" wx:key="_id"><view class="value">{{item.title}}</view><view class="row event-meta"><view class="sub">{{item.summary}}</view><button wx:if="{{item.eventType === 'PLAN_COMPLETED' && item.status !== 'REVOKED'}}" class="like-button {{item.likedByMe ? 'liked' : ''}}" data-index="{{index}}" bindtap="toggleLike">{{item.likedByMe ? '♥' : '♡'}} {{item.likeCount || ''}}</button></view></view><view class="empty compact" wx:if="{{!events.length}}">暂无打卡动态</view></view>
+
+  <view class="card partner-card">
+    <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><view class="member-arrow">›</view></view></view>
+  </view>
+
+  <view class="card event-card">
+    <view class="row event-toggle" bindtap="toggleEvents"><view><view class="h2">打卡动态</view><view class="sub">{{events.length ? events.length + ' 条记录 · 默认折叠' : '暂无打卡动态'}}</view></view><view class="event-chevron">{{eventsExpanded ? '⌃' : '⌄'}}</view></view>
+    <view wx:if="{{eventsExpanded}}" class="event-list">
+      <view class="list-item event-item {{item.status === 'REVOKED' ? 'event-revoked' : ''}}" wx:for="{{events}}" wx:key="_id"><view class="value">{{item.title}}</view><view class="row event-meta"><view><view class="sub">{{item.summary}}</view><view class="event-time">{{item.displayTime}}</view></view><button wx:if="{{item.eventType === 'PLAN_COMPLETED' && item.status !== 'REVOKED'}}" class="like-button {{item.likedByMe ? 'liked' : ''}}" data-index="{{index}}" catchtap="toggleLike">{{item.likedByMe ? '♥' : '♡'}} {{item.likeCount || ''}}</button></view></view>
+      <view class="empty compact" wx:if="{{!events.length}}">完成绑定计划后，记录会显示在这里</view>
+    </view>
+  </view>
+  <view class="card notification-setting"><view class="row"><view class="flex-1"><view class="value">{{isLongTerm ? '长期微信打卡提醒' : '微信打卡提醒'}}</view><view class="sub">{{isLongTerm ? '开启后，每次有成员打卡都会尝试微信提醒；消息中心始终同步' : '当前为微信一次性订阅：授权后提醒下一次；消息中心始终同步'}}</view></view><switch checked="{{wechatEnabled}}" bindchange="toggleWechat" color="#222222"/></view></view>
   <button wx:if="{{!isOwner}}" class="btn btn-danger" bindtap="leave">退出群组</button>
 </view>

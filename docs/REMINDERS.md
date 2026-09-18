@@ -3,10 +3,10 @@
 ## 行为边界
 
 - 站内消息：开启计划提醒后持续生效，到点且未打卡时写入消息中心；每名用户只保留最近 20 条。
-- 微信提醒：使用一次性订阅消息。用户每同意一次，通常只可发送一条对应模板消息。
+- 微信提醒：默认使用一次性订阅消息；只有微信公众平台向当前类目授予长期订阅模板时，才能保持长期提醒开关。
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
-- 群组打卡和特别关心动态始终写入应用内；对应微信提醒同样是一次性订阅，成功发送后自动关闭开关。
+- 群组打卡和特别关心动态始终写入应用内和消息中心。长期模板发送后保持开关；一次性模板发送成功后自动关闭。
 
 ## 执行流程
 
@@ -45,6 +45,7 @@ reminder-dispatch 每5分钟扫描
 ```text
 PLAN_REMINDER_TEMPLATE_ID=模板ID
 SOCIAL_CHECKIN_TEMPLATE_ID=好友/群成员打卡模板ID
+SOCIAL_CHECKIN_SUBSCRIPTION_TYPE=ONE_TIME
 SOCIAL_TEMPLATE_MEMBER_KEY=thing1
 SOCIAL_TEMPLATE_PLAN_KEY=thing2
 SOCIAL_TEMPLATE_TIME_KEY=time3
@@ -67,6 +68,8 @@ REMINDER_MINIPROGRAM_STATE=trial
 `PLAN_REMINDER_TEMPLATE_ID` 不是密钥，但两个云函数必须保持一致。AppSecret 不应放入小程序前端或仓库。
 
 社交打卡模板默认依次使用成员、计划、完成时间三个字段。实际模板字段不同，只需调整 `SOCIAL_TEMPLATE_*_KEY`。`api/config.json` 已声明 `subscribeMessage.send` 权限，部署后仍需在云开发控制台确认权限生效。
+
+`SOCIAL_CHECKIN_SUBSCRIPTION_TYPE` 默认且建议保持 `ONE_TIME`。只有微信后台明确显示该模板为长期订阅时才设置为 `LONG_TERM`；代码会在成功发送后保留群组和特别关心开关。该配置不能把一次性模板变成长效模板。
 
 ## 定时触发器
 

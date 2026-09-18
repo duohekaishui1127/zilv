@@ -4,6 +4,7 @@ const { now } = require('../lib/utils')
 const { getUserById } = require('./users')
 const { visibilityFor, canSharePlanWithFriend } = require('./friend-visibility')
 const { trimNotificationHistory } = require('./notification-retention')
+const { normalizeSocialSubscriptionType, shouldConsumeSocialSubscription } = require('../domain/social-subscription')
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
 
@@ -26,7 +27,8 @@ async function isGroupMember(groupId, userId) {
 
 function socialNotificationConfig() {
   const templateId = String(process.env.SOCIAL_CHECKIN_TEMPLATE_ID || '').trim()
-  return { configured: !!templateId, templateId, subscriptionType: 'ONE_TIME' }
+  const subscriptionType = normalizeSocialSubscriptionType(process.env.SOCIAL_CHECKIN_SUBSCRIPTION_TYPE)
+  return { configured: !!templateId, templateId, subscriptionType }
 }
 
 function notificationId(recipientId, checkin) {
@@ -72,14 +74,14 @@ async function sendSocialWechat(notification, recipient, actor, plan, checkin, s
     const code = Number(result.errCode ?? result.errcode ?? 0)
     if (code !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
     await db.collection(C.NOTIFICATIONS).doc(notification._id).update({ data: { pushStatus: 'SENT', pushedAt: now(), updatedAt: now() } })
-    await clearWechatSources(sources)
+    if (shouldConsumeSocialSubscription(config.subscriptionType)) await clearWechatSources(sources)
   } catch (error) {
     const code = Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
     await db.collection(C.NOTIFICATIONS).doc(notification._id).update({ data: {
       pushStatus: code === 43101 ? 'NOT_SUBSCRIBED' : 'FAILED', pushErrorCode: code,
       pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120), updatedAt: now()
     } })
-    if (code === 43101) await clearWechatSources(sources)
+    if (shouldConsumeSocialSubscription(config.subscriptionType, code) && code === 43101) await clearWechatSources(sources)
   }
 }
 

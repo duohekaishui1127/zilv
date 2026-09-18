@@ -1,0 +1,17 @@
+.group-row { padding:26rpx 0; }
+.group-actions { display:flex; align-items:center; gap:10rpx; flex:0 0 auto; }
+.mini-action { min-width:82rpx; height:50rpx; margin:0; padding:0 15rpx; border:0; border-radius:999rpx; background:#eef0f3; color:#555; font-size:22rpx; line-height:50rpx; }
+.mini-action::after { border:0; }
+.mini-action.primary { background:#222; color:#fff; }
+.group-arrow { margin-left:2rpx; color:#9ca3af; font-size:34rpx; }
+.sheet-mask { position:fixed; inset:0; z-index:100; display:flex; align-items:flex-end; background:rgba(17,24,39,.42); }
+.invite-sheet { width:100%; max-height:88vh; overflow-y:auto; box-sizing:border-box; padding:18rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); border-radius:30rpx 30rpx 0 0; background:#fff; }
+.sheet-handle { width:72rpx; height:8rpx; margin:0 auto 24rpx; border-radius:999rpx; background:#d6dae0; }
+.sheet-close { padding:12rpx; color:#8a8f98; font-size:42rpx; line-height:1; }
+.friend-picker { max-height:430rpx; margin-bottom:18rpx; overflow-y:auto; border-radius:18rpx; background:#f7f8fa; padding:0 20rpx; }
+.invite-friend { min-height:92rpx; }
+.select-circle { width:40rpx; height:40rpx; border:2rpx solid #c9cdd4; border-radius:50%; color:#fff; font-size:24rpx; line-height:40rpx; text-align:center; }
+.select-circle.selected { border-color:#222; background:#222; }
+.divider { position:relative; margin:30rpx 0; color:#9ca3af; font-size:22rpx; text-align:center; }
+.divider::before { content:''; position:absolute; top:50%; left:0; right:0; height:1rpx; background:#e5e7eb; }
+.divider text { position:relative; padding:0 18rpx; background:#fff; }

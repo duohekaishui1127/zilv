@@ -15,6 +15,7 @@
     "pages/circle/friend-detail",
     "pages/circle/groups",
     "pages/circle/group-detail",
+    "pages/circle/group-member",
     "pages/circle/group-create",
     "pages/profile/index",
     "pages/profile/edit",

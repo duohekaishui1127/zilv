@@ -68,7 +68,9 @@ audit_logs
 - `group_events`: 增加 `completionVersion`、`status`、`likeCount`，撤回后原完成动态标记为 `REVOKED`。
 - `group_event_likes`: `eventId`、`groupId`、`userId`、`createdAt`，每名群成员对每条有效完成动态最多一条。
 - `special_cares`: `userId`、`targetUserId`、`enabled`、`wechatEnabled`、授权时间；解除好友后自动停用。
-- `group_members.wechatCheckinEnabled`: 当前群组下一次微信打卡提醒授权，发送或确认无授权后自动关闭。
+- `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
+- 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
+- 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态，不读取 `daily_reviews`、`notes` 或任务备注字段。
 - `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
 - `daily_reviews.status`: `ACTIVE` / `REVOKED`；撤回时保留原心情与小记，重新完成全部任务后恢复。
 

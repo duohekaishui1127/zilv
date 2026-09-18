@@ -1,7 +1,18 @@
-.notification-setting { padding-top: 26rpx; padding-bottom: 26rpx; }
-.event-item { transition: opacity .2s ease; }
-.event-revoked { opacity: .45; }
-.event-meta { margin-top: 8rpx; }
-.like-button { margin: 0; padding: 0 14rpx; min-width: 76rpx; height: 52rpx; line-height: 52rpx; border: 0; border-radius: 26rpx; background: #f2f2f2; color: #555; font-size: 25rpx; }
-.like-button::after { border: 0; }
-.like-button.liked { background: #222; color: #fff; }
+.partner-card { margin-top:0; padding-top:0; padding-bottom:0; }
+.member-row { min-height:94rpx; }
+.member-complete { opacity:.4; filter:grayscale(1); }
+.member-no-plan { opacity:.62; }
+.owner-label { margin-top:5rpx; color:#6b7280; font-size:21rpx; }
+.member-arrow { margin-left:12rpx; color:#9ca3af; font-size:32rpx; }
+.progress-text { min-width:92rpx; color:#111827; font-size:27rpx; font-weight:650; text-align:right; }
+.notification-setting { padding-top:26rpx; padding-bottom:26rpx; }
+.event-toggle { min-height:74rpx; }
+.event-chevron { color:#8a8f98; font-size:34rpx; }
+.event-list { margin-top:12rpx; border-top:1rpx solid #eceef1; }
+.event-item { transition:opacity .2s ease; }
+.event-revoked { opacity:.45; }
+.event-meta { margin-top:8rpx; }
+.event-time { margin-top:5rpx; color:#9ca3af; font-size:21rpx; }
+.like-button { min-width:76rpx; height:52rpx; margin:0; padding:0 14rpx; border:0; border-radius:26rpx; background:#f2f2f2; color:#555; font-size:25rpx; line-height:52rpx; }
+.like-button::after { border:0; }
+.like-button.liked { background:#222; color:#fff; }

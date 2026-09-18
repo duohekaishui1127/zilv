@@ -14,6 +14,8 @@ module.exports = {
   ...require('./friend-requests'),
   ...require('./friend-details'),
   ...require('./groups'),
+  ...require('./group-invitations'),
+  ...require('./group-member-calendar'),
   ...require('./social-engagement'),
   ...require('./notes'),
   ...require('./notifications'),

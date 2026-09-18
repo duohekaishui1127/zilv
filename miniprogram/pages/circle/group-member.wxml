@@ -1,0 +1,21 @@
+<view class="container member-page" wx:if="{{member}}">
+  <view class="hero member-hero"><view class="h1">{{member.nickname}}</view><view class="sub" wx:if="{{member.role === 'OWNER'}}">群主</view><view class="sub" wx:else>仅展示该成员主动绑定到本群的任务进度</view></view>
+  <view class="card calendar-card">
+    <view class="month-title">{{calendar.month}}</view>
+    <view class="weekday-grid"><view class="weekday" wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view></view>
+    <view class="calendar-grid">
+      <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.statusClass}} {{item.today ? 'calendar-today' : ''}}">
+        <block wx:if="{{!item.blank}}"><view class="day-number">{{item.day}}</view><view wx:if="{{item.total}}" class="day-progress">{{item.completed}}/{{item.total}}</view></block>
+      </view>
+    </view>
+    <view class="legend"><text class="legend-dot pending"></text>未完成 <text class="legend-dot partial"></text>部分完成 <text class="legend-dot complete"></text>全部完成</view>
+    <view class="calendar-summary">本月全部完成 {{calendar.summary.completedDays}} 天 · 完成 {{calendar.summary.completedTasks}} / {{calendar.summary.totalTasks}} 项</view>
+  </view>
+  <view class="card day-card" wx:if="{{selectedDay}}">
+    <view class="row"><view><view class="h2">{{selectedDay.title}}</view><view class="sub">群组任务 {{selectedDay.completed}} / {{selectedDay.total}}</view></view></view>
+    <view class="list-item row task-row {{item.completed ? 'task-complete' : ''}}" wx:for="{{selectedDay.tasks}}" wx:key="planId"><view class="value">{{item.name}}</view><view class="task-status">{{item.completed ? '已完成' : '未完成'}}</view></view>
+    <view class="empty compact" wx:if="{{!selectedDay.tasks.length}}">当天没有需要在本群监督的任务</view>
+  </view>
+  <view class="privacy-note">这里只展示群组任务完成进度，不包含心情、备注、小记或其他个人记录。</view>
+</view>
+<view class="empty" wx:elif="{{loading}}">正在加载成员进度…</view>

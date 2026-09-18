@@ -1,1 +1,29 @@
-<view class="container"><view class="card"><view class="h2">加入群组</view><view class="row"><input class="input" style="flex:1" value="{{inviteCode}}" bindinput="input" placeholder="输入群组邀请码"/><button class="btn btn-small" bindtap="join">加入</button></view></view><view class="card"><view class="list-item" wx:for="{{groups}}" wx:key="_id" data-id="{{item._id}}" bindtap="detail"><view class="row"><view><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}}人 · 邀请码 {{item.inviteCode}}</view></view><view>›</view></view></view><view class="empty" wx:if="{{!groups.length}}">还没有群组</view></view><view class="fab" bindtap="create">+</view></view>
+<view class="container">
+  <view class="card">
+    <view class="h2">加入群组</view>
+    <view class="row"><input class="input flex-1" value="{{inviteCode}}" bindinput="input" placeholder="输入群组 ID"/><button class="btn btn-small" bindtap="join">加入</button></view>
+  </view>
+  <view class="card">
+    <view class="list-item group-row" wx:for="{{groups}}" wx:key="_id" data-id="{{item._id}}" bindtap="detail">
+      <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}} 人 · ID {{item.inviteCode}}</view></view><view class="group-actions"><button class="mini-action" data-code="{{item.inviteCode}}" catchtap="copyGroupId">复制</button><button class="mini-action primary" data-id="{{item._id}}" catchtap="openInvite">邀请</button><view class="group-arrow">›</view></view></view>
+    </view>
+    <view class="empty" wx:if="{{!groups.length}}">还没有群组</view>
+  </view>
+  <view class="fab" bindtap="create">+</view>
+</view>
+
+<view wx:if="{{inviteVisible}}" class="sheet-mask" bindtap="closeInvite">
+  <view class="invite-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="row"><view><view class="h2">邀请加入{{inviteGroup ? '「' + inviteGroup.name + '」' : ''}}</view><view class="sub">对方将在消息中心收到邀请，确认后才会加入</view></view><view class="sheet-close" bindtap="closeInvite">×</view></view>
+    <view class="section-title">从好友中选择</view>
+    <view class="friend-picker">
+      <view class="list-item row invite-friend" wx:for="{{inviteFriends}}" wx:key="_id" data-index="{{index}}" bindtap="toggleInviteFriend"><view><view class="value">{{item.displayName}}</view><view class="sub">个人 ID {{item.shareCode}}{{item.remark ? ' · 昵称 ' + item.nickname : ''}}</view></view><view class="select-circle {{item.selected ? 'selected' : ''}}">{{item.selected ? '✓' : ''}}</view></view>
+      <view class="empty compact" wx:if="{{!inviteFriends.length}}">没有可邀请的新好友</view>
+    </view>
+    <button class="btn" disabled="{{!selectedCount || inviting}}" loading="{{inviting}}" bindtap="sendSelectedInvites">邀请已选好友{{selectedCount ? '（' + selectedCount + '）' : ''}}</button>
+    <view class="divider"><text>或</text></view>
+    <view class="label">根据个人 ID 邀请</view>
+    <view class="row"><input class="input flex-1" value="{{personalId}}" bindinput="personalInput" placeholder="输入对方个人 ID / 好友码"/><button class="btn btn-small" loading="{{inviting}}" bindtap="sendPersonalInvite">邀请</button></view>
+  </view>
+</view>

@@ -3,6 +3,7 @@ const { now, fail, weekRange } = require('../lib/utils')
 const { getUserById, uniqueCode } = require('../services/users')
 const { isBasePlanDue } = require('../services/plans')
 const { isGroupMember } = require('../services/social')
+const { sortGroupMemberProgress } = require('../domain/group-progress')
 
 async function createGroup({ user, event }) {
   const name = String(event.name || '').trim()
@@ -134,7 +135,7 @@ async function getGroupDetail({ user, event, localDate }) {
     likedByMe: likedIds.has(item._id)
   }))
   return {
-    group, events: eventViews, members: memberViews.filter(Boolean),
+    group, events: eventViews, members: sortGroupMemberProgress(memberViews.filter(Boolean)),
     currentRole: currentMember?.role || 'MEMBER',
     wechatCheckinEnabled: Boolean(membership.wechatCheckinEnabled)
   }
