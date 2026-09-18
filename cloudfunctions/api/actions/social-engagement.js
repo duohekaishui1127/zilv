@@ -1,7 +1,8 @@
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
-const { getUserById, getPrivacy } = require('../services/users')
+const { getUserById } = require('../services/users')
 const { friendshipBetween, isGroupMember, socialNotificationConfig } = require('../services/social')
+const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../services/friend-visibility')
 
 async function setGroupWechatNotification({ user, event }) {
   const member = await isGroupMember(event.groupId, user._id)
@@ -73,27 +74,36 @@ async function getSocialNotificationConfig() {
 }
 
 async function getSpecialCareFeed({ user }) {
-  const cares = await db.collection(C.SPECIAL_CARES).where({ userId: user._id, enabled: true }).get()
+  const [cares, requestsA, requestsB] = await Promise.all([
+    db.collection(C.SPECIAL_CARES).where({ userId: user._id, enabled: true }).get(),
+    db.collection(C.FRIENDSHIPS).where({ userA: user._id, status: 'PENDING' }).get(),
+    db.collection(C.FRIENDSHIPS).where({ userB: user._id, status: 'PENDING' }).get()
+  ])
   const batches = await Promise.all(cares.data.map(async care => {
     const friendship = await friendshipBetween(user._id, care.targetUserId)
-    const privacy = await getPrivacy(care.targetUserId)
-    if (!friendship || friendship.status !== 'ACCEPTED' || !privacy.showPlanStatusToFriends) return []
-    const [target, checkins, plans] = await Promise.all([
+    const visibility = await visibilityFor(care.targetUserId, user._id)
+    if (!friendship || friendship.status !== 'ACCEPTED' || !visibility.effective.showPlanStatusToFriends) return []
+    const [target, settings, checkins, plans] = await Promise.all([
       getUserById(care.targetUserId),
+      friendSettingsOf(user._id, care.targetUserId),
       db.collection(C.CHECKINS).where({ userId: care.targetUserId, completed: true }).limit(100).get(),
       db.collection(C.PLANS).where({ userId: care.targetUserId }).limit(100).get()
     ])
     if (!target) return []
     const planMap = new Map(plans.data.map(plan => [plan._id, plan]))
-    return checkins.data.map(checkin => ({
-      _id: `${checkin._id}-${Number(checkin.completionVersion || 1)}`,
-      actorUserId: target._id, nickname: target.nickname, avatar: target.avatar,
-      planName: planMap.get(checkin.planId)?.name || '一项计划', category: planMap.get(checkin.planId)?.category || 'CUSTOM',
-      date: checkin.date, completedAt: checkin.completedAt
-    }))
+    return checkins.data.map(checkin => ({ checkin, plan: planMap.get(checkin.planId) || {} }))
+      .filter(item => canSharePlanWithFriend(item.plan, visibility.effective))
+      .map(({ checkin, plan }) => ({
+        _id: `${checkin._id}-${Number(checkin.completionVersion || 1)}`,
+        actorUserId: target._id, nickname: settings?.remark || target.nickname, avatar: target.avatar,
+        planName: plan.name || '一项计划', category: plan.category || 'CUSTOM',
+        date: checkin.date, completedAt: checkin.completedAt
+      }))
   }))
   const feed = batches.flat().sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0)).slice(0, 50)
-  return { feed }
+  const pendingFriendRequestCount = [...requestsA.data, ...requestsB.data]
+    .filter(item => item.requestedBy !== user._id).length
+  return { feed, pendingFriendRequestCount }
 }
 
 module.exports = {

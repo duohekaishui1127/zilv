@@ -11,6 +11,8 @@ module.exports = {
   ...require('./daily-reviews'),
   ...require('./privacy'),
   ...require('./friends'),
+  ...require('./friend-requests'),
+  ...require('./friend-details'),
   ...require('./groups'),
   ...require('./social-engagement'),
   ...require('./notes'),

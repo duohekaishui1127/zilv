@@ -18,6 +18,7 @@ const C = Object.freeze({
   DAILY_REVIEWS: 'daily_reviews',
   STUDY: 'study_sessions',
   FRIENDSHIPS: 'friendships',
+  FRIEND_SETTINGS: 'friend_settings',
   PRIVACY: 'privacy_settings',
   GROUPS: 'groups',
   GROUP_MEMBERS: 'group_members',

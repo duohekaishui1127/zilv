@@ -12,6 +12,7 @@
     "pages/plan/bind",
     "pages/circle/index",
     "pages/circle/friends",
+    "pages/circle/friend-detail",
     "pages/circle/groups",
     "pages/circle/group-detail",
     "pages/circle/group-create",

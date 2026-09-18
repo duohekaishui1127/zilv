@@ -1,6 +1,7 @@
 const DEFAULT_PRIVACY = Object.freeze({
   showPlanStatusToFriends: true,
   showStudyStatusToFriends: true,
+  showStudyDetailsToFriends: false,
   showWorkoutStatusToFriends: true,
   showWeightToFriends: false,
   showBodyFatToFriends: false,

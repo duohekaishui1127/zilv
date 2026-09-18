@@ -1,7 +1,8 @@
 const crypto = require('crypto')
 const { cloud, db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
-const { getUserById, getPrivacy } = require('./users')
+const { getUserById } = require('./users')
+const { visibilityFor, canSharePlanWithFriend } = require('./friend-visibility')
 const { trimNotificationHistory } = require('./notification-retention')
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
@@ -111,13 +112,13 @@ async function addGroupEventsAndRecipients(actor, plan, checkin, recipients) {
   }))
 }
 
-async function addSpecialCareRecipients(actor, recipients) {
-  const privacy = await getPrivacy(actor._id)
-  if (!privacy.showPlanStatusToFriends) return
+async function addSpecialCareRecipients(actor, plan, recipients) {
   const result = await db.collection(C.SPECIAL_CARES).where({ targetUserId: actor._id, enabled: true }).get()
   await Promise.all(result.data.map(async care => {
     const friendship = await friendshipBetween(care.userId, actor._id)
     if (!friendship || friendship.status !== 'ACCEPTED') return
+    const visibility = await visibilityFor(actor._id, care.userId)
+    if (!canSharePlanWithFriend(plan, visibility.effective)) return
     const entry = recipientEntry(recipients, care.userId)
     entry.specialCare = true
     if (care.wechatEnabled) entry.sources.push({ collection: C.SPECIAL_CARES, id: care._id, field: 'wechatEnabled' })
@@ -149,7 +150,7 @@ async function notifyRecipients(recipients, actor, plan, checkin) {
 async function emitGroupEventsForCheckin(actor, plan, checkin) {
   const recipients = new Map()
   await addGroupEventsAndRecipients(actor, plan, checkin, recipients)
-  await addSpecialCareRecipients(actor, recipients)
+  await addSpecialCareRecipients(actor, plan, recipients)
   await notifyRecipients(recipients, actor, plan, checkin)
 }
 

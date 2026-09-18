@@ -5,14 +5,14 @@ const MUTATING_ACTIONS = new Set([
   'updateProfile','addBodyRecord','createCustomFood','addMealItem','addMealEntry','deleteMealItem','deleteMealEntry','addWorkout',
   'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','revokePlanCompletion','startPlanTimer','pausePlanTimer',
   'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
-  'sendFriendRequest','acceptFriendRequest','removeFriend','createGroup','joinGroup','leaveGroup',
+  'sendFriendRequest','acceptFriendRequest','rejectFriendRequest','cancelFriendRequest','removeFriend','updateFriendSettings','createGroup','joinGroup','leaveGroup',
   'bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','submitFeedback','updateFeedbackStatus',
   'setGroupWechatNotification','toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
 ])
 
 function inferEntityId(event = {}, data = {}) {
-  return event.planId || event.groupId || event.friendshipId || event.itemId || event.foodId || event.targetUserId ||
+  return event.planId || event.groupId || event.friendshipId || event.friendUserId || event.itemId || event.foodId || event.targetUserId ||
     data.plan?._id || data.group?._id || data.record?._id || data.food?._id || data.item?._id ||
     data.workout?._id || data.session?._id || data.checkin?._id || data.friendship?._id || data.note?._id ||
     data.notification?._id || data.feedback?._id || null

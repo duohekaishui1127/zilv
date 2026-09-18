@@ -1,0 +1,23 @@
+<view class="container" wx:if="{{friend}}">
+  <view class="hero row">
+    <view class="row-start"><view class="friend-avatar">{{friend.initial}}</view><view><view class="h1">{{friend.displayName}}</view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
+    <button class="more-button" bindtap="openSettings">•••</button>
+  </view>
+  <view class="section-title">打卡记录</view>
+  <view class="card">
+    <view class="list-item" wx:for="{{records}}" wx:key="_id"><view class="row"><view class="flex-1"><view class="value">{{item.planName}}</view><view class="sub">{{item.categoryLabel}}{{item.durationMinutes ? ' · ' + item.durationMinutes + ' 分钟' : ''}}</view></view><view class="record-time">{{item.displayTime}}</view></view></view>
+    <view class="empty compact" wx:if="{{!recordsVisible}}">对方没有向你公开计划打卡记录</view>
+    <view class="empty compact" wx:elif="{{!records.length}}">暂时没有可见的打卡记录</view>
+  </view>
+</view>
+
+<view wx:if="{{settingsVisible}}" class="sheet-mask" bindtap="closeSettings">
+  <view class="settings-sheet" catchtap="noop">
+    <view class="sheet-handle"></view><view class="row"><view class="h2">好友设置</view><view class="sheet-close" bindtap="closeSettings">×</view></view>
+    <view class="field"><view class="label">备注名（仅自己可见）</view><input class="input" maxlength="30" value="{{settings.remark}}" bindinput="remarkInput" placeholder="给好友添加备注"/></view>
+    <view class="setting-block"><view class="row"><view><view class="value">特别关心</view><view class="sub">在圈子查看对方允许公开的打卡</view></view><switch checked="{{settings.specialCare}}" bindchange="specialChange" color="#222222"/></view><view wx:if="{{settings.specialCare}}" class="row nested-setting"><view><view class="value">微信提醒</view><view class="sub">订阅对方下一次打卡提醒</view></view><switch checked="{{settings.specialCareWechat}}" bindchange="specialWechatChange" color="#222222"/></view></view>
+    <view class="setting-block"><view class="row"><view><view class="value">单独设置向 TA 公开的内容</view><view class="sub">关闭时跟随“我的”中的统一隐私设置</view></view><switch checked="{{settings.privacyMode === 'CUSTOM'}}" bindchange="privacyModeChange" color="#222222"/></view><view wx:if="{{settings.privacyMode === 'CUSTOM'}}" class="privacy-list"><view class="row privacy-row" wx:for="{{privacyFields}}" wx:key="key"><view>{{item.label}}</view><switch checked="{{item.checked}}" data-key="{{item.key}}" bindchange="privacyChange" color="#222222"/></view></view></view>
+    <button class="btn" loading="{{saving}}" bindtap="saveSettings">保存备注与隐私</button>
+    <button class="btn btn-danger remove-button" bindtap="removeFriend">删除好友</button>
+  </view>
+</view>

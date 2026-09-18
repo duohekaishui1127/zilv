@@ -65,6 +65,6 @@ chore: bump schema version
 当前版本：
 
 ```text
-APP_VERSION    1.5.0
+APP_VERSION    1.6.0
 SCHEMA_VERSION 7
 ```

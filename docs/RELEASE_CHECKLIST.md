@@ -1,4 +1,4 @@
-# 1.5.0 发布检查清单
+# 1.6.0 发布检查清单
 
 ## 代码质量
 
@@ -12,11 +12,11 @@
 ## 数据库
 
 - [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 8`
+- [ ] 确认 `system_meta.schemaVersion = 9`
 - [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
 - [ ] 修改并核对 `cloudfunctions/api/config/release-announcement.js`
 - [ ] 确认 `004_plan_reminders` migration 已记录
-- [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences`、`notifications` 已创建
+- [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences`、`notifications`、`friend_settings` 已创建
 - [ ] 按 `DATABASE_SCHEMA.md` 建议建立索引
 - [ ] 真实数据升级前完成备份
 

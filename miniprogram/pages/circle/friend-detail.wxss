@@ -1,0 +1,13 @@
+.friend-avatar { width:84rpx; height:84rpx; border-radius:22rpx; display:flex; align-items:center; justify-content:center; background:#111827; color:#fff; font-size:36rpx; font-weight:700; }
+.more-button { width:72rpx; height:58rpx; margin:0; padding:0; border:0; border-radius:18rpx; background:#eef0f3; color:#4b5563; font-size:28rpx; line-height:50rpx; letter-spacing:2rpx; }
+.more-button::after { border:0; }
+.record-time { flex:0 0 auto; max-width:190rpx; color:#8a8f98; font-size:22rpx; text-align:right; }
+.sheet-mask { position:fixed; inset:0; z-index:100; display:flex; align-items:flex-end; background:rgba(17,24,39,.42); }
+.settings-sheet { width:100%; max-height:88vh; overflow-y:auto; box-sizing:border-box; padding:18rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); background:#fff; border-radius:30rpx 30rpx 0 0; }
+.sheet-handle { width:72rpx; height:8rpx; margin:0 auto 24rpx; border-radius:999rpx; background:#d6dae0; }
+.sheet-close { padding:12rpx; color:#8a8f98; font-size:42rpx; line-height:1; }
+.setting-block { margin:24rpx 0; padding:22rpx; border-radius:18rpx; background:#f7f8fa; }
+.nested-setting { margin-top:18rpx; padding-top:18rpx; border-top:1rpx solid #e5e7eb; }
+.privacy-list { margin-top:18rpx; padding-top:8rpx; border-top:1rpx solid #e5e7eb; }
+.privacy-row { min-height:76rpx; font-size:26rpx; }
+.remove-button { width:100%; margin-top:16rpx; }

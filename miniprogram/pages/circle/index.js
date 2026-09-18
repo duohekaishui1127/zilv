@@ -8,18 +8,25 @@ function displayTime(value) {
 }
 
 Page({
-  data: { feed:[], loading:true },
+  data: { feed:[], pendingFriendRequestCount:0, loading:true },
   onShow() { this.load() },
   async load() {
     this.setData({ loading:true })
     try {
       const result = await api.call('getSpecialCareFeed', {}, { silent:true })
-      this.setData({ feed:(result.feed || []).map(item => ({ ...item, displayTime:displayTime(item.completedAt) })) })
+      const pendingFriendRequestCount=Number(result.pendingFriendRequestCount || 0)
+      this.setData({
+        feed:(result.feed || []).map(item => ({ ...item, displayTime:displayTime(item.completedAt) })),
+        pendingFriendRequestCount
+      })
+      if (pendingFriendRequestCount) wx.showTabBarRedDot({ index:3 })
+      else wx.hideTabBarRedDot({ index:3 })
     } catch (error) {
       wx.showToast({ title:api.messageOf(error), icon:'none' })
     } finally {
       this.setData({ loading:false })
     }
   },
-  go(e){ wx.navigateTo({ url:e.currentTarget.dataset.url }) }
+  go(e){ wx.navigateTo({ url:e.currentTarget.dataset.url }) },
+  openFriend(e){ wx.navigateTo({ url:`/pages/circle/friend-detail?id=${e.currentTarget.dataset.id}` }) }
 })

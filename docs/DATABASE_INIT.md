@@ -1,16 +1,16 @@
-# 1.5.0 数据库初始化（Schema 8）
+# 1.6.0 数据库初始化（Schema 9）
 
 `cloudfunctions/admin-init` 是一次性管理函数。
 
 执行后：
 
-- 自动确保 31 个集合存在；
+- 自动确保 32 个集合存在；
 - 幂等写入 63 条基础食物；
 - 幂等写入 15 个运动项目；
 - 幂等写入 12 个身体指标；
 - 幂等写入 7 项应用配置；
-- 将 `system_meta.schemaVersion` 更新为 8；
-- 写入 Schema 1 至 8 的 migration 记录。
+- 将 `system_meta.schemaVersion` 更新为 9；
+- 写入 Schema 1 至 9 的 migration 记录。
 
 重复执行不会无限新增同名系统数据。
 

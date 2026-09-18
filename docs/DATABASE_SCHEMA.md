@@ -1,6 +1,6 @@
-# 云数据库集合设计（应用 1.5.0 / Schema 8）
+# 云数据库集合设计（应用 1.6.0 / Schema 9）
 
-> Schema 8 新增群动态点赞与好友特别关心；完成与撤回计划会同步更新整日打卡、分类记录及群动态。
+> Schema 9 新增好友资料设置，支持备注、全局隐私默认和单好友可见范围例外；好友申请增加处理状态与通知版本。
 
 ## 计划专注计时字段
 
@@ -29,6 +29,7 @@ checkins
 daily_reviews
 study_sessions
 friendships
+friend_settings
 privacy_settings
 groups
 group_members
@@ -53,7 +54,14 @@ migration_history
 audit_logs
 ```
 
-共 31 个集合。
+共 32 个集合。
+
+## 好友资料与权限
+
+- `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重。
+- `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`privacyMode` 与 `privacyOverrides`。
+- `privacy_settings`: 保存对所有好友生效的默认规则；`friend_settings` 只在 `CUSTOM` 模式覆盖指定好友。
+- 单好友例外只能决定“我向对方公开什么”，不能扩大对方授予我的权限；特别关心同样不能绕过被关注人的可见规则。
 
 ## 社交鼓励与撤回
 
@@ -97,10 +105,11 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `meal_items`: `userId + recordDate`；`mealId`
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `plans`: `userId + enabled`
-- `checkins`: `userId + planId + date`；`userId + date`
+- `checkins`: `userId + planId + date`；`userId + date`；`userId + completed + completedAt desc`
 - `daily_reviews`: `userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`
-- `friendships`: `userA + userB`
+- `friendships`: `userA + userB`；`userA + status`；`userB + status`
+- `friend_settings`: `userId + friendUserId`（建议唯一）
 - `privacy_settings`: `userId`
 - `group_members`: `groupId + userId + status`；`userId + status`
 - `plan_group_bindings`: `planId + groupId + userId`
