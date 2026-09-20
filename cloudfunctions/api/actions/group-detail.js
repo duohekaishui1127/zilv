@@ -66,7 +66,8 @@ async function getGroupDetail({ user, event, localDate }) {
     ...item, status: item.status || 'ACTIVE', likeCount: Number(item.likeCount || 0), likedByMe: likedIds.has(item._id)
   }))
   return {
-    group, events: eventViews, members: sortGroupMemberProgress(memberViews.filter(Boolean)),
+    group:{ ...group,remark:membership.remark || '',displayName:membership.remark || group.name,pinned:Boolean(membership.pinned) },
+    events: eventViews, members: sortGroupMemberProgress(memberViews.filter(Boolean)),
     currentRole: currentMember?.role || 'MEMBER', pendingRequests:pendingRequests.filter(Boolean),
     pendingPlanChanges:pendingPlanChanges.filter(Boolean), permissions:normalizeGroupPermissions(group),
     wechatCheckinEnabled: Boolean(membership.wechatCheckinEnabled)

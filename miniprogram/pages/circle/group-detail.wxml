@@ -1,5 +1,5 @@
 <view class="container" wx:if="{{group}}">
-  <view class="hero"><view class="h1">{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
+  <view class="hero"><view class="h1">{{group.displayName || group.name}}</view><view class="sub" wx:if="{{group.remark}}">群名称：{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
 
   <view class="card partner-card">
     <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view class="row-start"><image wx:if="{{item.avatar}}" class="member-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.initial}}</view><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><button wx:if="{{isOwner && item.role !== 'OWNER'}}" class="kick-button" data-id="{{item._id}}" data-name="{{item.nickname}}" catchtap="kickMember">移出</button><view class="member-arrow">›</view></view></view>

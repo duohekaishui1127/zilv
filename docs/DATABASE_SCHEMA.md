@@ -60,7 +60,7 @@ audit_logs
 ## 好友资料与权限
 
 - `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重；`requestMessage` 保存最多 60 字的选填申请备注。
-- `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`privacyMode` 与 `privacyOverrides`。
+- `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`pinned`、`privacyMode` 与 `privacyOverrides`；`pinned` 只影响本人好友列表排序。
 - `privacy_settings`: 保存对所有好友生效的默认规则；`friend_settings` 只在 `CUSTOM` 模式覆盖指定好友。
 - 单好友例外只能决定“我向对方公开什么”，不能扩大对方授予我的权限；特别关心同样不能绕过被关注人的可见规则。
 
@@ -72,6 +72,7 @@ audit_logs
 - `groups.joinApprovalRequired`、`autoRemoveInactiveDays`、`blockRejoinAfterAutoRemove`: 分别控制入群审批、连续未打卡自动移出天数和自动移出后的重新加入限制。
 - `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
 - `group_members.joinedDate`: 成员最近一次正式入群的本地日期；历史数据缺失时由 `joinedAt` 兼容推导。成员日历只显示该日期至当前日期的打卡。
+- `group_members.remark`、`pinned`: 当前成员私有的群聊备注和置顶状态，只影响本人看到的群名与群组列表顺序。
 - `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
 - 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
 - `plan_group_bindings.commitment` 保存绑定时可公开的计划承诺快照；不包含计划描述、备注、心情、小记和计时执行详情。

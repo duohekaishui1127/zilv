@@ -4,3 +4,4 @@
 .friend-row { padding:26rpx 0; }
 .friend-arrow { color:#9ca3af; font-size:34rpx; }
 .care-tag { padding:5rpx 10rpx; border-radius:999rpx; background:#111827; color:#fff; font-size:20rpx; }
+.pin-tag { padding:5rpx 10rpx; border-radius:999rpx; background:#e8f0ff; color:#315ea8; font-size:20rpx; }

@@ -55,6 +55,7 @@ async function getFriendDetail({ user, event, localDate }) {
     calendar,
     settings: {
       remark: mySettings?.remark || '',
+      pinned: Boolean(mySettings?.pinned),
       privacyMode: outbound.privacyMode,
       privacy: Object.fromEntries(Object.keys(DEFAULT_PRIVACY).map(key => [key, Boolean(outbound.effective[key])])),
       specialCare: Boolean(specialCare?.enabled),
@@ -70,6 +71,7 @@ async function updateFriendSettings({ user, event }) {
   const privacyMode = event.privacyMode === 'CUSTOM' ? 'CUSTOM' : 'DEFAULT'
   const data = {
     remark: String(event.remark || '').trim().slice(0, 30),
+    pinned: event.pinned === undefined ? Boolean(existing?.pinned) : Boolean(event.pinned),
     privacyMode,
     privacyOverrides: privacyMode === 'CUSTOM' ? normalizedOverrides(event.privacy) : {},
     updatedAt: now()

@@ -65,6 +65,7 @@ Page({
   closeSettings(){ if (!this.data.saving) { this.setData({ settingsVisible:false }); this.load() } },
   noop(){},
   remarkInput(e){ this.setData({ 'settings.remark':e.detail.value }) },
+  pinnedChange(e){ this.setData({ 'settings.pinned':e.detail.value }) },
   privacyModeChange(e){ this.setData({ 'settings.privacyMode':e.detail.value ? 'CUSTOM' : 'DEFAULT' }) },
   privacyChange(e){
     const key=e.currentTarget.dataset.key
@@ -81,6 +82,7 @@ Page({
       await api.call('updateFriendSettings',{
         friendUserId:this.data.friendUserId,
         remark:this.data.settings.remark,
+        pinned:this.data.settings.pinned,
         privacyMode:this.data.settings.privacyMode,
         privacy:this.data.settings.privacy
       })

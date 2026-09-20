@@ -3,6 +3,7 @@ const { now, fail } = require('../lib/utils')
 const { uniqueCode } = require('../services/users')
 const { isGroupMember } = require('../services/social')
 const { normalizeGroupPermissions } = require('../domain/group-policy')
+const { pinnedFirst } = require('../domain/social-list')
 const { publicCommitment, requestGroupPlanChange } = require('../services/group-plan-changes')
 
 async function groupById(groupId) {
@@ -50,13 +51,32 @@ async function getGroups({ user }) {
     const group = await groupById(member.groupId)
     if (!group) return null
     const count = await db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).count()
-    return { ...group, memberCount: count.total, role: member.role }
+    return {
+      ...group, memberCount:count.total,role:member.role,
+      remark:member.remark || '',displayName:member.remark || group.name,pinned:Boolean(member.pinned)
+    }
   }))
   const pendingGroups = await Promise.all(pendingMemberships.data.map(async member => {
     const group = await groupById(member.groupId)
     return group ? { _id:group._id,name:group.name,requestedAt:member.requestedAt } : null
   }))
-  return { groups:groups.filter(Boolean),pendingGroups:pendingGroups.filter(Boolean) }
+  return {
+    groups:pinnedFirst(groups.filter(Boolean)),
+    pendingGroups:pendingGroups.filter(Boolean)
+  }
+}
+
+async function updateGroupMemberSettings({ user, event }) {
+  const groupId = String(event.groupId || '')
+  const membership = await isGroupMember(groupId,user._id)
+  if (!membership) throw fail('GROUP_PERMISSION_DENIED','你不是该群成员')
+  const data = {
+    remark:String(event.remark || '').trim().slice(0,30),
+    pinned:event.pinned === undefined ? Boolean(membership.pinned) : Boolean(event.pinned),
+    updatedAt:now()
+  }
+  await db.collection(C.GROUP_MEMBERS).doc(membership._id).update({ data })
+  return { settings:data }
 }
 
 async function bindPlanToGroup({ user, event }) {
@@ -98,5 +118,5 @@ async function getPlanBindings({ user, event }) {
 
 module.exports = {
   createGroup, leaveGroup, getGroups, bindPlanToGroup, unbindPlanFromGroup,
-  getPlanBindings
+  getPlanBindings, updateGroupMemberSettings
 }

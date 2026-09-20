@@ -9,7 +9,8 @@ function inviteResultTitle(result) {
 Page({
   data: {
     inviteCode:'', groups:[], pendingGroups:[], pendingInviteCode:'', pendingInviteName:'', invitationHandled:false,
-    inviteVisible:false, inviteGroup:null, inviteFriends:[], selectedCount:0, personalId:'', inviting:false
+    inviteVisible:false, inviteGroup:null, inviteFriends:[], selectedCount:0, personalId:'', inviting:false,
+    settingsVisible:false,settingGroup:null,savingSettings:false
   },
   onLoad(options = {}) {
     let pendingInviteName = ''
@@ -50,6 +51,25 @@ Page({
     await this.joinByCode(code)
   },
   copyGroupId(e) { wx.setClipboardData({ data:e.currentTarget.dataset.code }) },
+  openGroupSettings(e) {
+    const group=this.data.groups.find(item => item._id === e.currentTarget.dataset.id)
+    if(group)this.setData({ settingsVisible:true,settingGroup:{ ...group } })
+  },
+  closeGroupSettings(){ if(!this.data.savingSettings)this.setData({ settingsVisible:false,settingGroup:null }) },
+  groupRemarkInput(e){ this.setData({ 'settingGroup.remark':e.detail.value }) },
+  groupPinnedChange(e){ this.setData({ 'settingGroup.pinned':e.detail.value }) },
+  async saveGroupSettings(){
+    if(this.data.savingSettings||!this.data.settingGroup)return
+    this.setData({ savingSettings:true })
+    try{
+      await api.call('updateGroupMemberSettings',{
+        groupId:this.data.settingGroup._id,remark:this.data.settingGroup.remark,pinned:this.data.settingGroup.pinned
+      })
+      this.setData({ settingsVisible:false,settingGroup:null })
+      wx.showToast({ title:'群聊设置已保存',icon:'success' })
+      await this.load()
+    }finally{this.setData({ savingSettings:false })}
+  },
   async openInvite(e) {
     const result=await api.call('getGroupInviteCandidates',{ groupId:e.currentTarget.dataset.id })
     this.setData({

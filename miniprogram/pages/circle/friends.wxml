@@ -5,7 +5,7 @@
   <view class="section-title">我的好友</view>
   <view class="card">
     <view class="list-item friend-row" wx:for="{{friends}}" wx:key="_id" data-id="{{item._id}}" bindtap="openFriend">
-      <view class="row"><view class="flex-1"><view class="row-start"><view class="value">{{item.displayName}}</view><view wx:if="{{item.specialCare}}" class="care-tag">特别关心</view></view><view class="sub" wx:if="{{item.remark}}">昵称：{{item.nickname}}</view><view class="sub" wx:if="{{item.planStatus}}">今日总计划 {{item.planStatus.completed}} / {{item.planStatus.total}}</view><view class="sub" wx:else>对方已隐藏计划状态</view><view class="row-start" style="margin-top:10rpx"><view wx:if="{{item.studyStatus}}" class="tag">学习 {{item.studyStatus.done?'✓':'未完成'}}</view><view wx:if="{{item.workoutStatus}}" class="tag">健身 {{item.workoutStatus.done?'✓':'未完成'}}</view></view></view><view class="friend-arrow">›</view></view>
+      <view class="row"><view class="flex-1"><view class="row-start"><view class="value">{{item.displayName}}</view><view wx:if="{{item.pinned}}" class="pin-tag">置顶</view><view wx:if="{{item.specialCare}}" class="care-tag">特别关心</view></view><view class="sub" wx:if="{{item.remark}}">昵称：{{item.nickname}}</view><view class="sub" wx:if="{{item.planStatus}}">今日总计划 {{item.planStatus.completed}} / {{item.planStatus.total}}</view><view class="sub" wx:else>对方已隐藏计划状态</view><view class="row-start" style="margin-top:10rpx"><view wx:if="{{item.studyStatus}}" class="tag">学习 {{item.studyStatus.done?'✓':'未完成'}}</view><view wx:if="{{item.workoutStatus}}" class="tag">健身 {{item.workoutStatus.done?'✓':'未完成'}}</view></view></view><view class="friend-arrow">›</view></view>
     </view>
     <view class="empty compact" wx:if="{{!friends.length}}">暂无好友</view>
   </view>

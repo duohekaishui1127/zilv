@@ -9,11 +9,21 @@
   </view>
   <view class="card">
     <view class="list-item group-row" wx:for="{{groups}}" wx:key="_id" data-id="{{item._id}}" bindtap="detail">
-      <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}} 人 · ID {{item.inviteCode}}</view></view><view class="group-actions"><button class="mini-action" data-code="{{item.inviteCode}}" catchtap="copyGroupId">复制</button><button class="mini-action primary" data-id="{{item._id}}" catchtap="openInvite">邀请</button><view class="group-arrow">›</view></view></view>
+      <view class="row"><view class="flex-1"><view class="row-start"><view class="value">{{item.displayName}}</view><view wx:if="{{item.pinned}}" class="pin-tag">置顶</view></view><view class="sub" wx:if="{{item.remark}}">群名称：{{item.name}}</view><view class="sub">{{item.memberCount}} 人 · ID {{item.inviteCode}}</view></view><view class="group-actions"><button class="mini-action" data-code="{{item.inviteCode}}" catchtap="copyGroupId">复制</button><button class="mini-action primary" data-id="{{item._id}}" catchtap="openInvite">邀请</button><button class="more-action" data-id="{{item._id}}" catchtap="openGroupSettings">•••</button></view></view>
     </view>
     <view class="empty" wx:if="{{!groups.length}}">还没有群组</view>
   </view>
   <view class="fab" bindtap="create">+</view>
+</view>
+
+<view wx:if="{{settingsVisible}}" class="sheet-mask" bindtap="closeGroupSettings">
+  <view class="invite-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="row"><view><view class="h2">群聊设置</view><view class="sub">备注和置顶仅自己可见</view></view><view class="sheet-close" bindtap="closeGroupSettings">×</view></view>
+    <view class="field group-remark-field"><view class="label">群聊备注</view><input class="input" maxlength="30" value="{{settingGroup.remark}}" bindinput="groupRemarkInput" placeholder="给群聊添加备注"/></view>
+    <view class="group-setting-row row"><view><view class="value">置顶群聊</view><view class="sub">在你自己的群组列表优先显示</view></view><switch checked="{{settingGroup.pinned}}" bindchange="groupPinnedChange" color="#222222"/></view>
+    <button class="btn group-setting-save" loading="{{savingSettings}}" bindtap="saveGroupSettings">保存群聊设置</button>
+  </view>
 </view>
 
 <view wx:if="{{inviteVisible}}" class="sheet-mask" bindtap="closeInvite">

@@ -25,7 +25,7 @@ const migrations = [
   { migrationId: '007_daily_review_and_meal_timeline', schemaVersion: 7, description: '整日心情打卡、进食时间流与照片记录' },
   { migrationId: '008_social_encouragement', schemaVersion: 8, description: '群组点赞、微信打卡提醒、好友特别关心与撤回同步' },
   { migrationId: '009_friend_profiles', schemaVersion: 9, description: '好友资料、备注、单好友隐私例外与申请通知' },
-  { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批与群主移出成员' }
+  { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批、群主移出成员及个人社交列表设置' }
 ]
 
 async function ensureCollection(name) {

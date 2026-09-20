@@ -37,6 +37,7 @@ Page({
       notificationConfig:config,
       isLongTerm:config?.subscriptionType === 'LONG_TERM'
     })
+    wx.setNavigationBarTitle({ title:detail.group.displayName || detail.group.name || '群组详情' })
   },
   permissionSwitch(e) {
     const key=e.currentTarget.dataset.key

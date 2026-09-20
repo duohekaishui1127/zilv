@@ -6,6 +6,7 @@ const { friendshipBetween } = require('../services/social')
 const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../services/friend-visibility')
 const { notifyFriendRequest, notifyFriendAccepted, resolveFriendRequestNotification } = require('../services/friend-notifications')
 const { normalizeFriendRequestMessage } = require('../domain/friend-request')
+const { pinnedFirst } = require('../domain/social-list')
 
 function publicUser(user) {
   return { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode }
@@ -126,6 +127,7 @@ async function getFriends({ user, localDate }) {
       ...publicUser(other),
       remark: mySettings?.remark || '',
       displayName: mySettings?.remark || other.nickname,
+      pinned: Boolean(mySettings?.pinned),
       specialCare: Boolean(care?.enabled),
       specialCareWechat: Boolean(care?.enabled && care?.wechatEnabled),
       planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null,
@@ -137,7 +139,7 @@ async function getFriends({ user, localDate }) {
         : null
     }
   }))
-  return { friends: friends.filter(Boolean) }
+  return { friends:pinnedFirst(friends.filter(Boolean)) }
 }
 
 module.exports = {
