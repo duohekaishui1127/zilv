@@ -4,36 +4,26 @@ const { getUserById, uniqueCode } = require('../services/users')
 const { isBasePlanDue } = require('../services/plans')
 const { isGroupMember } = require('../services/social')
 const { sortGroupMemberProgress } = require('../domain/group-progress')
+const { normalizeGroupPermissions } = require('../domain/group-policy')
+const { enforceGroupInactivity } = require('../services/group-policy')
 
-async function createGroup({ user, event }) {
+async function groupById(groupId) {
+  return db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
+}
+
+async function createGroup({ user, event, localDate }) {
   const name = String(event.name || '').trim()
   if (!name) throw fail('INVALID_PARAMETER', '群组名称不能为空')
   const inviteCode = await uniqueCode(C.GROUPS, 'inviteCode', 6)
   const group = {
     name: name.slice(0, 80), avatar: '', ownerUserId: user._id,
     description: String(event.description || '').slice(0, 300), inviteCode,
+    ...normalizeGroupPermissions(event.permissions),
     createdAt: now(), updatedAt: now()
   }
   const add = await db.collection(C.GROUPS).add({ data: group })
-  await db.collection(C.GROUP_MEMBERS).add({ data: { groupId: add._id, userId: user._id, role: 'OWNER', status: 'ACTIVE', joinedAt: now() } })
+  await db.collection(C.GROUP_MEMBERS).add({ data: { groupId: add._id, userId: user._id, role: 'OWNER', status: 'ACTIVE', joinedDate: localDate, joinedAt: now() } })
   return { group: { _id: add._id, ...group } }
-}
-
-async function joinGroup({ user, event }) {
-  const code = String(event.inviteCode || '').trim().toUpperCase()
-  const result = await db.collection(C.GROUPS).where({ inviteCode: code }).limit(1).get()
-  if (!result.data.length) throw fail('NOT_FOUND', '群组邀请码无效')
-  const group = result.data[0]
-  const active = await isGroupMember(group._id, user._id)
-  if (!active) {
-    const existing = await db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, userId: user._id }).limit(1).get()
-    if (existing.data.length) {
-      await db.collection(C.GROUP_MEMBERS).doc(existing.data[0]._id).update({ data: { status: 'ACTIVE', joinedAt: now() } })
-    } else {
-      await db.collection(C.GROUP_MEMBERS).add({ data: { groupId: group._id, userId: user._id, role: 'MEMBER', status: 'ACTIVE', joinedAt: now() } })
-    }
-  }
-  return { group }
 }
 
 async function leaveGroup({ user, event }) {
@@ -47,14 +37,21 @@ async function leaveGroup({ user, event }) {
 }
 
 async function getGroups({ user }) {
-  const memberships = await db.collection(C.GROUP_MEMBERS).where({ userId: user._id, status: 'ACTIVE' }).get()
+  const [memberships,pendingMemberships] = await Promise.all([
+    db.collection(C.GROUP_MEMBERS).where({ userId:user._id,status:'ACTIVE' }).get(),
+    db.collection(C.GROUP_MEMBERS).where({ userId:user._id,status:'PENDING' }).get()
+  ])
   const groups = await Promise.all(memberships.data.map(async member => {
-    const group = await db.collection(C.GROUPS).doc(member.groupId).get().then(x => x.data).catch(() => null)
+    const group = await groupById(member.groupId)
     if (!group) return null
     const count = await db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).count()
     return { ...group, memberCount: count.total, role: member.role }
   }))
-  return { groups: groups.filter(Boolean) }
+  const pendingGroups = await Promise.all(pendingMemberships.data.map(async member => {
+    const group = await groupById(member.groupId)
+    return group ? { _id:group._id,name:group.name,requestedAt:member.requestedAt } : null
+  }))
+  return { groups:groups.filter(Boolean),pendingGroups:pendingGroups.filter(Boolean) }
 }
 
 async function bindPlanToGroup({ user, event }) {
@@ -114,17 +111,25 @@ async function memberProgress(groupId, member, localDate) {
 }
 
 async function getGroupDetail({ user, event, localDate }) {
+  const group = await groupById(event.groupId)
+  if (!group) throw fail('NOT_FOUND', '群组不存在')
+  await enforceGroupInactivity(group, localDate)
   const membership = await isGroupMember(event.groupId, user._id)
   if (!membership) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
-  const group = await db.collection(C.GROUPS).doc(event.groupId).get().then(x => x.data).catch(() => null)
-  if (!group) throw fail('NOT_FOUND', '群组不存在')
-  const [events, members] = await Promise.all([
+  const [events, members, pending] = await Promise.all([
     db.collection(C.GROUP_EVENTS).where({ groupId: group._id }).orderBy('createdAt', 'desc').limit(50).get(),
-    db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).get()
+    db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).get(),
+    membership.role === 'OWNER'
+      ? db.collection(C.GROUP_MEMBERS).where({ groupId:group._id,status:'PENDING' }).get()
+      : Promise.resolve({ data:[] })
   ])
-  const [memberViews, likes] = await Promise.all([
+  const [memberViews, likes, pendingRequests] = await Promise.all([
     Promise.all(members.data.map(member => memberProgress(group._id, member, localDate))),
-    db.collection(C.GROUP_EVENT_LIKES).where({ groupId: group._id, userId: user._id }).get()
+    db.collection(C.GROUP_EVENT_LIKES).where({ groupId: group._id, userId: user._id }).get(),
+    Promise.all(pending.data.map(async item => {
+      const applicant = await getUserById(item.userId)
+      return applicant ? { membershipId:item._id,user:{ _id:applicant._id,nickname:applicant.nickname,avatar:applicant.avatar },requestedAt:item.requestedAt } : null
+    }))
   ])
   const currentMember = members.data.find(member => member.userId === user._id)
   const likedIds = new Set(likes.data.map(item => item.eventId))
@@ -136,9 +141,13 @@ async function getGroupDetail({ user, event, localDate }) {
   }))
   return {
     group, events: eventViews, members: sortGroupMemberProgress(memberViews.filter(Boolean)),
-    currentRole: currentMember?.role || 'MEMBER',
+    currentRole: currentMember?.role || 'MEMBER', pendingRequests:pendingRequests.filter(Boolean),
+    permissions:normalizeGroupPermissions(group),
     wechatCheckinEnabled: Boolean(membership.wechatCheckinEnabled)
   }
 }
 
-module.exports = { createGroup, joinGroup, leaveGroup, getGroups, bindPlanToGroup, unbindPlanFromGroup, getPlanBindings, getGroupDetail }
+module.exports = {
+  createGroup, leaveGroup, getGroups, bindPlanToGroup, unbindPlanFromGroup,
+  getPlanBindings, getGroupDetail
+}

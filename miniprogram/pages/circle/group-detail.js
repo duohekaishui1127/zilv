@@ -10,7 +10,8 @@ function displayTime(value) {
 Page({
   data: {
     id:'', group:null, members:[], events:[], eventsExpanded:false, isOwner:false,
-    wechatEnabled:false, notificationConfig:null, isLongTerm:false
+    wechatEnabled:false, notificationConfig:null, isLongTerm:false,
+    permissions:null,pendingRequests:[],savingPermissions:false
   },
   onLoad(options) { this.setData({ id:options.id || '' }) },
   onShow() { if (this.data.id) this.load() },
@@ -21,13 +22,44 @@ Page({
     ])
     this.setData({
       group:detail.group,
-      members:detail.members,
+      members:detail.members.map(item => ({ ...item,initial:(item.nickname || '?').slice(0,1) })),
       events:detail.events.map(item => ({ ...item,displayTime:displayTime(item.createdAt) })),
       isOwner:detail.currentRole === 'OWNER',
+      permissions:detail.permissions,
+      pendingRequests:(detail.pendingRequests || []).map(item => ({ ...item,user:{ ...item.user,initial:(item.user.nickname || '?').slice(0,1) } })),
       wechatEnabled:detail.wechatCheckinEnabled,
       notificationConfig:config,
       isLongTerm:config?.subscriptionType === 'LONG_TERM'
     })
+  },
+  permissionSwitch(e) {
+    const key=e.currentTarget.dataset.key
+    this.setData({ [`permissions.${key}`]:e.detail.value })
+  },
+  autoRemoveSwitch(e) {
+    this.setData({ 'permissions.autoRemoveInactiveDays':e.detail.value ? (this.data.permissions.autoRemoveInactiveDays || 7) : 0 })
+  },
+  autoRemoveDaysInput(e) {
+    this.setData({ 'permissions.autoRemoveInactiveDays':e.detail.value })
+  },
+  async savePermissions() {
+    if (this.data.savingPermissions) return
+    const days=Number(this.data.permissions.autoRemoveInactiveDays || 0)
+    if (!Number.isInteger(days) || days < 0 || days > 365) return wx.showToast({ title:'请输入 1-365 天',icon:'none' })
+    this.setData({ savingPermissions:true })
+    try {
+      const result=await api.call('updateGroupSettings',{ groupId:this.data.id,permissions:{ ...this.data.permissions,autoRemoveInactiveDays:days } })
+      this.setData({ permissions:result.permissions })
+      wx.showToast({ title:'群权限已保存',icon:'success' })
+      await this.load()
+    } finally { this.setData({ savingPermissions:false }) }
+  },
+  async reviewJoin(e) {
+    const membershipId=e.currentTarget.dataset.id
+    const approve=e.currentTarget.dataset.approve === 'true'
+    await api.call('reviewGroupJoinRequest',{ groupId:this.data.id,membershipId,approve })
+    wx.showToast({ title:approve ? '已同意入群' : '已拒绝',icon:approve ? 'success' : 'none' })
+    await this.load()
   },
   openMember(e) {
     wx.navigateTo({ url:`/pages/circle/group-member?groupId=${this.data.id}&memberUserId=${e.currentTarget.dataset.id}` })

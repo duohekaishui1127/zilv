@@ -10,11 +10,35 @@ const COLLECTIONS = Object.freeze({
   USERS: 'users',
   PLANS: 'plans',
   CHECKINS: 'checkins',
-  NOTIFICATIONS: 'notifications'
+  NOTIFICATIONS: 'notifications',
+  GROUPS: 'groups',
+  GROUP_MEMBERS: 'group_members',
+  PLAN_GROUPS: 'plan_group_bindings'
 })
 const NOTIFICATION_LIMIT = 20
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
+
+function dateOnly(date = new Date()) {
+  const rawOffset = Number(process.env.GROUP_TIMEZONE_OFFSET_MINUTES ?? 480)
+  const offset = Number.isFinite(rawOffset) ? Math.min(840, Math.max(-720, rawOffset)) : 480
+  const shifted = new Date(date.getTime() + offset * 60000)
+  const year = shifted.getUTCFullYear()
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(shifted.getUTCDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function daysBetween(from, to) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(from || ''))) return 0
+  return Math.max(0, Math.floor((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 86400000))
+}
+
+function joinedDateOf(member, fallback) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(member.joinedDate || ''))) return member.joinedDate
+  const joinedAt = new Date(member.joinedAt || '')
+  return Number.isNaN(joinedAt.getTime()) ? fallback : dateOnly(joinedAt)
+}
 
 function notificationId(userId, planId, date) {
   return crypto.createHash('sha256').update(`${userId}:${planId}:${date}`).digest('hex').slice(0, 32)
@@ -142,10 +166,46 @@ async function processPlan(plan, at) {
   return sendWechatReminder(plan, context, notification)
 }
 
+async function enforceInactiveGroup(group, localDate) {
+  const threshold = Math.min(365, Math.max(0, Math.round(Number(group.autoRemoveInactiveDays || 0))))
+  if (!threshold || group.lastInactivitySweepDate === localDate) return 0
+  const members = await db.collection(COLLECTIONS.GROUP_MEMBERS).where({ groupId:group._id,status:'ACTIVE' }).get()
+  let removed = 0
+  for (const member of members.data) {
+    if (member.role === 'OWNER') continue
+    const bindings = await db.collection(COLLECTIONS.PLAN_GROUPS).where({ groupId:group._id,userId:member.userId,enabled:true }).get()
+    const planIds = new Set(bindings.data.map(item => item.planId))
+    const joinedDate = joinedDateOf(member, localDate)
+    let lastDate = ''
+    if (planIds.size) {
+      const result = await db.collection(COLLECTIONS.CHECKINS).where({
+        userId:member.userId,completed:true,date:_.gte(joinedDate).and(_.lte(localDate))
+      }).get()
+      const dates = result.data.filter(item => planIds.has(item.planId)).map(item => item.date).sort()
+      lastDate = dates[dates.length - 1] || ''
+    }
+    if (daysBetween(lastDate || joinedDate, localDate) < threshold) continue
+    const timestamp = new Date()
+    await db.collection(COLLECTIONS.GROUP_MEMBERS).doc(member._id).update({ data:{
+      status:'AUTO_REMOVED',autoRemovedAt:timestamp,autoRemovedDate:localDate,
+      removalReason:`连续${threshold}天未完成群组打卡`,updatedAt:timestamp
+    } })
+    await Promise.all(bindings.data.map(binding => db.collection(COLLECTIONS.PLAN_GROUPS).doc(binding._id).update({
+      data:{ enabled:false,updatedAt:timestamp }
+    })))
+    removed++
+  }
+  await db.collection(COLLECTIONS.GROUPS).doc(group._id).update({ data:{ lastInactivitySweepDate:localDate,updatedAt:new Date() } })
+  return removed
+}
+
 exports.main = async () => {
   const startedAt = new Date()
-  const result = await db.collection(COLLECTIONS.PLANS).where({ enabled: true, reminderEnabled: true }).limit(100).get()
-  const summary = { scanned: result.data.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0 }
+  const [result, groups] = await Promise.all([
+    db.collection(COLLECTIONS.PLANS).where({ enabled: true, reminderEnabled: true }).limit(100).get(),
+    db.collection(COLLECTIONS.GROUPS).where({ autoRemoveInactiveDays:_.gt(0) }).limit(100).get()
+  ])
+  const summary = { scanned: result.data.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
   for (const plan of result.data) {
     const status = await processPlan(plan, startedAt)
     if (status === 'sent') summary.sent++
@@ -154,6 +214,8 @@ exports.main = async () => {
     else if (status === 'duplicate') summary.duplicate++
     else summary.skipped++
   }
+  const localDate = dateOnly(startedAt)
+  for (const group of groups.data) summary.autoRemoved += await enforceInactiveGroup(group, localDate)
   console.log('[reminder-dispatch]', JSON.stringify(summary))
   return { success: true, ...summary }
 }

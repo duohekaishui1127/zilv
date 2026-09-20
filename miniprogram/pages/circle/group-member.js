@@ -6,22 +6,16 @@ function decorate(result,currentDate) {
   const leading=(first.getDay() + 6) % 7
   const blanks=Array.from({ length:leading },(_,index) => ({ key:`blank-${index}`,blank:true }))
   const days=result.days.map(day => ({
-    ...day,key:day.date,today:day.date === currentDate,
-    statusClass:`status-${String(day.status || 'NONE').toLowerCase()}`
+    ...day,key:day.date,today:day.date === currentDate
   }))
   return { ...result,cells:[...blanks,...days] }
-}
-
-function dateTitle(value) {
-  const [year,month,day]=String(value).split('-').map(Number)
-  return `${year}年${month}月${day}日`
 }
 
 Page({
   data:{
     groupId:'',memberUserId:'',month:api.localDate().slice(0,7),currentDate:api.localDate(),
     weekdayLabels:['一','二','三','四','五','六','日'],calendar:null,member:null,
-    friendState:'SELF',selectedDay:null,loading:true
+    friendState:'SELF',loading:true
   },
   onLoad(options = {}) { this.setData({ groupId:options.groupId || '',memberUserId:options.memberUserId || '' }) },
   onShow() { if (this.data.groupId && this.data.memberUserId) this.load() },
@@ -34,16 +28,10 @@ Page({
       this.setData({
         member:result.member,
         friendState:result.friendState || 'NONE',
-        calendar:decorate(result,this.data.currentDate),
-        selectedDay:null
+        calendar:decorate(result,this.data.currentDate)
       })
       wx.setNavigationBarTitle({ title:result.member.nickname || '成员进度' })
     } finally { this.setData({ loading:false }) }
-  },
-  openDay(e) {
-    const day=this.data.calendar?.cells?.[Number(e.currentTarget.dataset.index)]
-    if (!day || day.blank) return
-    this.setData({ selectedDay:{ ...day,title:dateTitle(day.date) } })
   },
   async addFriend() {
     if (this.data.friendState !== 'NONE') return

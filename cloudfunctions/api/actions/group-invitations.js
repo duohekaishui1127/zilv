@@ -24,9 +24,10 @@ async function getGroupInviteCandidates({ user, event }) {
   const group = await groupForMember(String(event.groupId || ''), user._id)
   const [friendIds, members] = await Promise.all([
     acceptedFriendIds(user._id),
-    db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).get()
+    db.collection(C.GROUP_MEMBERS).where({ groupId: group._id }).get()
   ])
-  const memberIds = new Set(members.data.map(item => item.userId))
+  const memberIds = new Set(members.data.filter(item => ['ACTIVE','PENDING'].includes(item.status) ||
+    (item.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false)).map(item => item.userId))
   const friends = await Promise.all(friendIds.filter(id => !memberIds.has(id)).map(async id => {
     const [friend, settings] = await Promise.all([getUserById(id), friendSettingsOf(user._id, id)])
     if (!friend || friend.status !== 'ACTIVE') return null
@@ -59,6 +60,9 @@ async function inviteUsersToGroup({ user, event }) {
   if (!ids.length) throw fail('INVALID_PARAMETER', event.personalId ? '未找到该用户' : '请选择要邀请的人')
   const results = await Promise.all([...new Set(ids)].map(async targetUserId => {
     if (targetUserId === user._id || await isGroupMember(group._id, targetUserId)) return 'skipped'
+    const membership = await db.collection(C.GROUP_MEMBERS).where({ groupId:group._id,userId:targetUserId }).limit(1).get()
+    const prior = membership.data[0]
+    if (prior?.status === 'PENDING' || (prior?.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false)) return 'skipped'
     const target = await getUserById(targetUserId)
     if (!target || target.status !== 'ACTIVE') return 'skipped'
     return sendGroupInvitation(targetUserId, user, group)

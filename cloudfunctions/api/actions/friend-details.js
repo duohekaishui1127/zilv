@@ -25,30 +25,33 @@ function publicUser(user, settings) {
   }
 }
 
-async function getFriendDetail({ user, event }) {
+async function getFriendDetail({ user, event, localDate }) {
   const friendUserId = String(event.friendUserId || '')
   await acceptedFriend(user._id, friendUserId)
   const month = normalizedMonth(event.month)
   const dates = monthDates(month)
-  const [friend, mySettings, inbound, outbound, care, monthCheckins, plans] = await Promise.all([
+  const [friend, mySettings, inbound, outbound, care] = await Promise.all([
     getUserById(friendUserId),
     friendSettingsOf(user._id, friendUserId),
     visibilityFor(friendUserId, user._id),
     visibilityFor(user._id, friendUserId),
-    db.collection(C.SPECIAL_CARES).where({ userId: user._id, targetUserId: friendUserId }).limit(1).get(),
-    db.collection(C.CHECKINS).where({
-      userId: friendUserId,
-      date: _.gte(dates[0]).and(_.lte(dates[dates.length - 1]))
-    }).get(),
-    db.collection(C.PLANS).where({ userId: friendUserId }).limit(100).get()
+    db.collection(C.SPECIAL_CARES).where({ userId: user._id, targetUserId: friendUserId }).limit(1).get()
   ])
   if (!friend) throw fail('NOT_FOUND', '好友不存在')
+  const calendarVisible = Boolean(inbound.effective.showPlanStatusToFriends)
+  const queryEnd = localDate < dates[dates.length - 1] ? localDate : dates[dates.length - 1]
+  const [monthCheckins, plans] = calendarVisible ? await Promise.all([
+    dates[0] <= queryEnd
+      ? db.collection(C.CHECKINS).where({ userId: friendUserId, date: _.gte(dates[0]).and(_.lte(queryEnd)) }).get()
+      : Promise.resolve({ data: [] }),
+    db.collection(C.PLANS).where({ userId: friendUserId }).limit(100).get()
+  ]) : [{ data: [] }, { data: [] }]
   const visiblePlans = plans.data.filter(plan => !plan.deletedAt && canSharePlanWithFriend(plan, inbound.effective))
-  const calendar = buildCheckinCalendar(month, visiblePlans, monthCheckins.data)
+  const calendar = buildCheckinCalendar(month, visiblePlans, monthCheckins.data, { endDate: localDate })
   const specialCare = care.data[0] || null
   return {
     friend: publicUser(friend, mySettings),
-    calendarVisible: Boolean(inbound.effective.showPlanStatusToFriends),
+    calendarVisible,
     calendar,
     settings: {
       remark: mySettings?.remark || '',

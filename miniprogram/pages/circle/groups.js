@@ -8,7 +8,7 @@ function inviteResultTitle(result) {
 
 Page({
   data: {
-    inviteCode:'', groups:[], pendingInviteCode:'', pendingInviteName:'', invitationHandled:false,
+    inviteCode:'', groups:[], pendingGroups:[], pendingInviteCode:'', pendingInviteName:'', invitationHandled:false,
     inviteVisible:false, inviteGroup:null, inviteFriends:[], selectedCount:0, personalId:'', inviting:false
   },
   onLoad(options = {}) {
@@ -21,7 +21,7 @@ Page({
   personalInput(e) { this.setData({ personalId:e.detail.value.trim() }) },
   async load() {
     const result = await api.call('getGroups')
-    this.setData({ groups:result.groups })
+    this.setData({ groups:result.groups,pendingGroups:result.pendingGroups || [] })
     await this.promptInvitation()
   },
   async promptInvitation() {
@@ -38,10 +38,11 @@ Page({
   create() { wx.navigateTo({ url:'/pages/circle/group-create' }) },
   detail(e) { wx.navigateTo({ url:`/pages/circle/group-detail?id=${e.currentTarget.dataset.id}` }) },
   async joinByCode(code) {
-    await api.call('joinGroup', { inviteCode:code })
-    wx.showToast({ title:'已加入',icon:'success' })
+    const result=await api.call('joinGroup', { inviteCode:code })
+    const pending=result.joinStatus === 'PENDING'
+    wx.showToast({ title:pending ? '已提交入群申请' : '已加入',icon:pending ? 'none' : 'success' })
     this.setData({ inviteCode:'', pendingInviteCode:'' })
-    await this.load()
+    if (!pending) await this.load()
   },
   async join() {
     const code=this.data.inviteCode.trim()

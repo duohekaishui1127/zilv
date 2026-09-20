@@ -3,3 +3,8 @@
 .other-chevron { min-width: 34rpx; color: #8a8f98; font-size: 30rpx; text-align: center; }
 .other-list { margin-top: 14rpx; padding-top: 2rpx; border-top: 1rpx solid #eef0f2; }
 .data-note { margin-top: 20rpx; padding: 18rpx; border-radius: 16rpx; background: #f7f8fa; color: #8a8f98; font-size: 23rpx; line-height: 1.55; }
+.avatar-button { flex:0 0 auto; width:92rpx; height:92rpx; margin:0; padding:0; border:0; border-radius:24rpx; background:transparent; overflow:hidden; }
+.avatar-button::after { border:0; }
+.profile-avatar { width:92rpx; height:92rpx; border-radius:24rpx; background:#eef0f3; }
+.avatar-placeholder { display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:42rpx; }
+.avatar-hint { margin-top:5rpx; color:#9ca3af; font-size:20rpx; }

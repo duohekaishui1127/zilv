@@ -12,7 +12,18 @@ function monthDates(month) {
   return Array.from({ length: count }, (_, index) => `${month}-${String(index + 1).padStart(2, '0')}`)
 }
 
-function dayView(date, plans, checkinMap) {
+function dayView(date, plans, checkinMap, range = {}) {
+  const inRange = (!range.startDate || date >= range.startDate) && (!range.endDate || date <= range.endDate)
+  if (!inRange) return {
+    date,
+    day: Number(date.slice(-2)),
+    completed: 0,
+    total: 0,
+    tasks: [],
+    checkedIn: false,
+    inRange: false,
+    status: 'NONE'
+  }
   const tasks = []
   plans.forEach(plan => {
     const checkin = checkinMap.get(`${plan._id}:${date}`)
@@ -34,21 +45,24 @@ function dayView(date, plans, checkinMap) {
     completed,
     total,
     tasks,
+    checkedIn: completed > 0,
+    inRange: true,
     status: !total ? 'NONE' : (completed === total ? 'COMPLETE' : (completed ? 'PARTIAL' : 'PENDING'))
   }
 }
 
-function buildCheckinCalendar(monthValue, plans, checkins) {
+function buildCheckinCalendar(monthValue, plans, checkins, range = {}) {
   const month = normalizedMonth(monthValue)
   const dates = monthDates(month)
   const allowedIds = new Set(plans.map(plan => plan._id))
   const checkinMap = new Map(checkins.filter(item => allowedIds.has(item.planId))
     .map(item => [`${item.planId}:${item.date}`, item]))
-  const days = dates.map(date => dayView(date, plans, checkinMap))
+  const days = dates.map(date => dayView(date, plans, checkinMap, range))
   return {
     month,
     days,
     summary: {
+      checkedInDays: days.filter(day => day.checkedIn).length,
       completedDays: days.filter(day => day.status === 'COMPLETE').length,
       completedTasks: days.reduce((sum, day) => sum + day.completed, 0),
       totalTasks: days.reduce((sum, day) => sum + day.total, 0)

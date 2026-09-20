@@ -1,5 +1,5 @@
 <view class="container" wx:if="{{profile}}">
-  <view class="card"><view class="row"><view><view class="h1">{{profile.user.nickname}}</view><view class="sub">好友码 {{profile.user.shareCode}}</view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view></view>
+  <view class="card"><view class="row"><view class="row-start"><button class="avatar-button" open-type="chooseAvatar" bindchooseavatar="chooseAvatar" loading="{{avatarSaving}}"><image wx:if="{{profile.user.avatar}}" class="profile-avatar" src="{{profile.user.avatar}}" mode="aspectFill"/><view wx:else class="profile-avatar avatar-placeholder">＋</view></button><view><view class="h1">{{profile.user.nickname}}</view><view class="sub">好友码 {{profile.user.shareCode}}</view><view class="avatar-hint">点击头像选择微信头像</view></view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view></view>
   <view class="card">
     <view class="list-item row" data-url="/pages/notes/index" bindtap="go"><view><view class="value">我的历程</view><view class="sub">体态照片、学习笔记和训练复盘</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/record/body" bindtap="go"><view><view class="value">身体数据</view><view class="sub {{profile.weightStatus.needUpdate ? 'danger' : ''}}">{{profile.weightSummary}} · 可附备注留作复盘</view></view><view>›</view></view>

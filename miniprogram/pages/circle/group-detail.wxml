@@ -2,7 +2,21 @@
   <view class="hero"><view class="h1">{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
 
   <view class="card partner-card">
-    <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><view class="member-arrow">›</view></view></view>
+    <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view class="row-start"><image wx:if="{{item.avatar}}" class="member-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.initial}}</view><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><view class="member-arrow">›</view></view></view>
+  </view>
+
+  <view class="card" wx:if="{{isOwner && pendingRequests.length}}">
+    <view class="h2">入群申请</view>
+    <view class="list-item row" wx:for="{{pendingRequests}}" wx:key="membershipId"><view class="row-start"><image wx:if="{{item.user.avatar}}" class="member-avatar" src="{{item.user.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.user.initial}}</view><view class="value">{{item.user.nickname}}</view></view><view class="request-actions"><button class="btn btn-light btn-small" data-id="{{item.membershipId}}" data-approve="false" bindtap="reviewJoin">拒绝</button><button class="btn btn-small" data-id="{{item.membershipId}}" data-approve="true" bindtap="reviewJoin">同意</button></view></view>
+  </view>
+
+  <view class="card" wx:if="{{isOwner && permissions}}">
+    <view class="h2">群权限</view>
+    <view class="setting-row row"><view><view class="value">进群需要审批</view><view class="sub">成员输入群 ID 后由群主确认</view></view><switch checked="{{permissions.joinApprovalRequired}}" data-key="joinApprovalRequired" bindchange="permissionSwitch" color="#222222"/></view>
+    <view class="setting-row row"><view><view class="value">连续未打卡自动移出</view><view class="sub">群主不会被自动移出</view></view><switch checked="{{permissions.autoRemoveInactiveDays > 0}}" bindchange="autoRemoveSwitch" color="#222222"/></view>
+    <view class="field inactive-days" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view class="label">连续未打卡天数（1-365）</view><input class="input" type="number" value="{{permissions.autoRemoveInactiveDays}}" bindinput="autoRemoveDaysInput"/></view>
+    <view class="setting-row row" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view><view class="value">被自动移出后禁止再次加入</view><view class="sub">关闭后仍可重新申请或加入</view></view><switch checked="{{permissions.blockRejoinAfterAutoRemove}}" data-key="blockRejoinAfterAutoRemove" bindchange="permissionSwitch" color="#222222"/></view>
+    <button class="btn settings-save" loading="{{savingPermissions}}" bindtap="savePermissions">保存群权限</button>
   </view>
 
   <view class="card event-card">

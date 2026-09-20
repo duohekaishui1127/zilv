@@ -19,8 +19,7 @@ function decorate(result,currentDate) {
   const leading=(first.getDay() + 6) % 7
   const blanks=Array.from({ length:leading },(_,index) => ({ key:`blank-${index}`,blank:true }))
   const days=result.days.map(day => ({
-    ...day,key:day.date,today:day.date === currentDate,
-    statusClass:`status-${String(day.status || 'NONE').toLowerCase()}`
+    ...day,key:day.date,today:day.date === currentDate
   }))
   return { ...result,cells:[...blanks,...days] }
 }
@@ -59,7 +58,7 @@ Page({
   },
   openDay(e) {
     const day=this.data.calendar?.cells?.[Number(e.currentTarget.dataset.index)]
-    if (!day || day.blank || !this.data.calendarVisible) return
+    if (!day || day.blank || !day.checkedIn || !this.data.calendarVisible) return
     this.setData({ selectedDay:{ ...day,title:dateTitle(day.date) } })
   },
   openSettings(){ this.setData({ settingsVisible:true }) },

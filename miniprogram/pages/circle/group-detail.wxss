@@ -1,5 +1,7 @@
 .partner-card { margin-top:0; padding-top:0; padding-bottom:0; }
 .member-row { min-height:94rpx; }
+.member-avatar { flex:0 0 auto; width:66rpx; height:66rpx; border-radius:18rpx; background:#eef0f3; }
+.member-avatar.fallback { display:flex; align-items:center; justify-content:center; color:#4b5563; font-size:26rpx; font-weight:700; }
 .member-complete { opacity:.4; filter:grayscale(1); }
 .member-no-plan { opacity:.62; }
 .owner-label { margin-top:5rpx; color:#6b7280; font-size:21rpx; }
@@ -16,3 +18,7 @@
 .like-button { min-width:76rpx; height:52rpx; margin:0; padding:0 14rpx; border:0; border-radius:26rpx; background:#f2f2f2; color:#555; font-size:25rpx; line-height:52rpx; }
 .like-button::after { border:0; }
 .like-button.liked { background:#222; color:#fff; }
+.request-actions { display:flex; gap:10rpx; }
+.setting-row { min-height:92rpx; padding:12rpx 0; }
+.inactive-days { margin-top:12rpx; }
+.settings-save { width:100%; margin-top:18rpx; }

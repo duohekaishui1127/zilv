@@ -3,6 +3,10 @@
     <view class="h2">加入群组</view>
     <view class="row"><input class="input flex-1" value="{{inviteCode}}" bindinput="input" placeholder="输入群组 ID"/><button class="btn btn-small" bindtap="join">加入</button></view>
   </view>
+  <view class="card" wx:if="{{pendingGroups.length}}">
+    <view class="h2">等待群主审批</view>
+    <view class="list-item row" wx:for="{{pendingGroups}}" wx:key="_id"><view class="value">{{item.name}}</view><view class="tag">申请中</view></view>
+  </view>
   <view class="card">
     <view class="list-item group-row" wx:for="{{groups}}" wx:key="_id" data-id="{{item._id}}" bindtap="detail">
       <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}} 人 · ID {{item.inviteCode}}</view></view><view class="group-actions"><button class="mini-action" data-code="{{item.inviteCode}}" catchtap="copyGroupId">复制</button><button class="mini-action primary" data-id="{{item._id}}" catchtap="openInvite">邀请</button><view class="group-arrow">›</view></view></view>

@@ -29,6 +29,11 @@ async function updateProfile({ user, event, localDate }) {
   const allowed = ['nickname', 'avatar', 'sex', 'birthday', 'heightCm']
   const data = { updatedAt: now() }
   allowed.forEach(key => { if (profile[key] !== undefined) data[key] = profile[key] })
+  if (data.nickname !== undefined) data.nickname = String(data.nickname || '').trim().slice(0, 30) || '自律用户'
+  if (data.avatar !== undefined) {
+    data.avatar = String(data.avatar || '').trim().slice(0, 500)
+    if (data.avatar && !/^(cloud:\/\/|https:\/\/)/.test(data.avatar)) throw fail('INVALID_PARAMETER', '头像地址不合法')
+  }
   if (data.heightCm !== undefined) {
     const height = sanitizeNumber(data.heightCm, 80, 250)
     if (height == null) throw fail('INVALID_PARAMETER', '身高不合法')
