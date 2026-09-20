@@ -14,6 +14,7 @@ module.exports = {
   ...require('./friend-requests'),
   ...require('./friend-details'),
   ...require('./groups'),
+  ...require('./group-detail'),
   ...require('./group-management'),
   ...require('./group-invitations'),
   ...require('./group-member-calendar'),

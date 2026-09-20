@@ -13,7 +13,8 @@ const COLLECTIONS = Object.freeze({
   NOTIFICATIONS: 'notifications',
   GROUPS: 'groups',
   GROUP_MEMBERS: 'group_members',
-  PLAN_GROUPS: 'plan_group_bindings'
+  PLAN_GROUPS: 'plan_group_bindings',
+  GROUP_PLAN_CHANGES: 'group_plan_change_requests'
 })
 const NOTIFICATION_LIMIT = 20
 
@@ -190,9 +191,13 @@ async function enforceInactiveGroup(group, localDate) {
       status:'AUTO_REMOVED',autoRemovedAt:timestamp,autoRemovedDate:localDate,
       removalReason:`连续${threshold}天未完成群组打卡`,updatedAt:timestamp
     } })
-    await Promise.all(bindings.data.map(binding => db.collection(COLLECTIONS.PLAN_GROUPS).doc(binding._id).update({
-      data:{ enabled:false,updatedAt:timestamp }
-    })))
+    const changes=await db.collection(COLLECTIONS.GROUP_PLAN_CHANGES).where({ userId:member.userId,status:'PENDING' }).get()
+    await Promise.all([
+      ...bindings.data.map(binding => db.collection(COLLECTIONS.PLAN_GROUPS).doc(binding._id).update({ data:{ enabled:false,updatedAt:timestamp } })),
+      ...changes.data.filter(item => item.groupIds?.includes(group._id)).map(item => db.collection(COLLECTIONS.GROUP_PLAN_CHANGES).doc(item._id).update({
+        data:{ status:'REJECTED',rejectedGroupIds:[...(item.rejectedGroupIds || []),group._id],updatedAt:timestamp }
+      }))
+    ])
     removed++
   }
   await db.collection(COLLECTIONS.GROUPS).doc(group._id).update({ data:{ lastInactivitySweepDate:localDate,updatedAt:new Date() } })

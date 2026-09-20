@@ -23,6 +23,7 @@ const C = Object.freeze({
   GROUPS: 'groups',
   GROUP_MEMBERS: 'group_members',
   PLAN_GROUPS: 'plan_group_bindings',
+  GROUP_PLAN_CHANGES: 'group_plan_change_requests',
   GROUP_EVENTS: 'group_events',
   GROUP_EVENT_LIKES: 'group_event_likes',
   SPECIAL_CARES: 'special_cares',

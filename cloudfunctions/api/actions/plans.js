@@ -4,57 +4,9 @@ const { isBasePlanDue, assertNoActiveTimer } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
 const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
-const { TIMER_MODES, MAX_TIMER_MINUTES, completedTimerFields } = require('../domain/plan-timer')
-function normalizePlan(input, localDate, existing = {}) {
-  const p = input || {}
-  const name = String(p.name ?? existing.name ?? '').trim()
-  if (!name) throw fail('INVALID_PARAMETER', '计划名称不能为空')
-  const repeatType = p.repeatType || existing.repeatType || 'DAILY'
-  const targetValue = Number(p.targetValue ?? existing.targetValue ?? 1)
-  if (!Number.isFinite(targetValue) || targetValue <= 0) throw fail('INVALID_PARAMETER', '目标值必须大于0')
-  const repeatConfig = { ...(existing.repeatConfig || {}), ...(p.repeatConfig || {}) }
-  if (repeatType === 'SPECIFIC_WEEKDAYS' && (!Array.isArray(repeatConfig.weekdays) || !repeatConfig.weekdays.length)) {
-    throw fail('INVALID_PARAMETER', '请至少选择一个星期')
-  }
-  if (repeatType === 'WEEKLY_COUNT') {
-    const legacyFallback = existing.repeatType === 'WEEKLY_COUNT' ? existing.targetValue : 1
-    const weeklyCount = Number(repeatConfig.weeklyCount || legacyFallback || 1)
-    if (!Number.isFinite(weeklyCount) || weeklyCount < 1 || weeklyCount > 7) throw fail('INVALID_PARAMETER', '每周次数应为1到7次')
-    repeatConfig.weeklyCount = Math.round(weeklyCount)
-  }
-  const reminderEnabled = Boolean(p.reminderEnabled ?? existing.reminderEnabled ?? false)
-  const reminderTime = String(p.reminderTime ?? existing.reminderTime ?? '21:00')
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(reminderTime)) {
-    throw fail('INVALID_PARAMETER', '提醒时间不合法')
-  }
-  const timezoneOffset = Number(p.reminderTimezoneOffset ?? existing.reminderTimezoneOffset ?? 480)
-  if (!Number.isFinite(timezoneOffset) || timezoneOffset < -720 || timezoneOffset > 840) {
-    throw fail('INVALID_PARAMETER', '提醒时区不合法')
-  }
-  const timerMode = p.timerMode ?? existing.timerMode ?? 'NONE'
-  if (!TIMER_MODES.includes(timerMode)) throw fail('INVALID_PARAMETER', '计时方式不合法')
-  const timerDurationMinutes = timerMode === 'COUNT_DOWN'
-    ? Number(p.timerDurationMinutes ?? existing.timerDurationMinutes ?? 25)
-    : null
-  if (timerMode === 'COUNT_DOWN' && (!Number.isFinite(timerDurationMinutes) || timerDurationMinutes < 1 || timerDurationMinutes > MAX_TIMER_MINUTES)) {
-    throw fail('INVALID_PARAMETER', `倒计时时长应为1到${MAX_TIMER_MINUTES}分钟`)
-  }
-  return {
-    name: name.slice(0, 80), category: p.category || existing.category || 'CUSTOM',
-    description: String(p.description ?? existing.description ?? '').trim().slice(0, 500),
-    targetType: p.targetType || existing.targetType || 'BOOLEAN', targetValue,
-    unit: String(p.unit ?? existing.unit ?? '').slice(0, 20), repeatType, repeatConfig,
-    startDate: p.startDate || existing.startDate || localDate,
-    endDate: p.endDate === undefined ? (existing.endDate || null) : (p.endDate || null),
-    privacyLevel: p.privacyLevel || existing.privacyLevel || 'FRIENDS',
-    reminderEnabled,
-    reminderTime,
-    reminderTimezoneOffset: Math.round(timezoneOffset),
-    reminderPushEnabled: reminderEnabled && Boolean(p.reminderPushEnabled ?? existing.reminderPushEnabled ?? false),
-    timerMode,
-    timerDurationMinutes: timerMode === 'COUNT_DOWN' ? Math.round(timerDurationMinutes) : null
-  }
-}
+const { completedTimerFields } = require('../domain/plan-timer')
+const { normalizePlan } = require('../domain/plan-definition')
+const { requestGroupPlanChange } = require('../services/group-plan-changes')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
   const add = await db.collection(C.PLANS).add({ data })
@@ -68,7 +20,10 @@ async function getPlan({ user, event }) {
 async function updatePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
-  const data = { ...normalizePlan(event.plan, localDate, plan), updatedAt: now() }
+  const normalized = normalizePlan(event.plan, localDate, plan)
+  const request = await requestGroupPlanChange({ userId:user._id,plan,type:'UPDATE',payload:{ plan:normalized } })
+  if (request) return { approvalRequired:true,request }
+  const data = { ...normalized, updatedAt: now() }
   await db.collection(C.PLANS).doc(plan._id).update({ data })
   return { plan: { ...plan, ...data } }
 }
@@ -76,6 +31,10 @@ async function setPlanEnabled({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const enabled = !!event.enabled
+  if (enabled !== Boolean(plan.enabled)) {
+    const request = await requestGroupPlanChange({ userId:user._id,plan,type:'SET_ENABLED',payload:{ enabled } })
+    if (request) return { approvalRequired:true,request }
+  }
   if (!enabled) await assertNoActiveTimer(user._id, plan._id, localDate)
   await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled, updatedAt: now() } })
   return { enabled }
@@ -83,6 +42,8 @@ async function setPlanEnabled({ user, event, localDate }) {
 async function deletePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  const request = await requestGroupPlanChange({ userId:user._id,plan,type:'DELETE' })
+  if (request) return { approvalRequired:true,request }
   await assertNoActiveTimer(user._id, plan._id, localDate)
   await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled: false, deletedAt: now(), updatedAt: now() } })
   const bindings = await db.collection(C.PLAN_GROUPS).where({ planId: plan._id, userId: user._id, enabled: true }).get()

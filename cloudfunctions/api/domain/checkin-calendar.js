@@ -45,7 +45,7 @@ function dayView(date, plans, checkinMap, range = {}) {
     completed,
     total,
     tasks,
-    checkedIn: completed > 0,
+    checkedIn: total > 0 && completed === total,
     inRange: true,
     status: !total ? 'NONE' : (completed === total ? 'COMPLETE' : (completed ? 'PARTIAL' : 'PENDING'))
   }

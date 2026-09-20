@@ -1,6 +1,6 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 9）
+# 云数据库集合设计（应用 1.6.0 / Schema 10）
 
-> Schema 9 新增好友资料设置，支持备注、全局隐私默认和单好友可见范围例外；好友申请增加处理状态与通知版本。
+> Schema 10 新增群监督计划变更申请；绑定计划的修改、停用、删除和解绑需经相关群主审核。
 
 ## 计划专注计时字段
 
@@ -34,6 +34,7 @@ privacy_settings
 groups
 group_members
 plan_group_bindings
+group_plan_change_requests
 group_events
 group_event_likes
 special_cares
@@ -54,7 +55,7 @@ migration_history
 audit_logs
 ```
 
-共 32 个集合。
+共 33 个集合。
 
 ## 好友资料与权限
 
@@ -69,12 +70,14 @@ audit_logs
 - `group_event_likes`: `eventId`、`groupId`、`userId`、`createdAt`，每名群成员对每条有效完成动态最多一条。
 - `special_cares`: `userId`、`targetUserId`、`enabled`、`wechatEnabled`、授权时间；解除好友后自动停用。
 - `groups.joinApprovalRequired`、`autoRemoveInactiveDays`、`blockRejoinAfterAutoRemove`: 分别控制入群审批、连续未打卡自动移出天数和自动移出后的重新加入限制。
-- `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`。
+- `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
 - `group_members.joinedDate`: 成员最近一次正式入群的本地日期；历史数据缺失时由 `joinedAt` 兼容推导。成员日历只显示该日期至当前日期的打卡。
 - `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
 - 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
-- 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态，不读取 `daily_reviews`、`notes` 或任务备注字段。
-- 好友日历只组合经过好友隐私规则过滤后的 `plans` 与 `checkins`，不返回心情、小记、任务备注和计时详情。
+- `plan_group_bindings.commitment` 保存绑定时可公开的计划承诺快照；不包含计划描述、备注、心情、小记和计时执行详情。
+- `group_plan_change_requests`: 保存绑定计划的 `UPDATE`、`SET_ENABLED`、`DELETE`、`UNBIND` 申请；所有受影响群组的群主均同意后才执行，任一群主拒绝则终止申请。群主接口只返回计划名称、目标与重复规则等监督字段，不返回计划内容。
+- 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态；显示计划名称、逐项完成状态和 `完成数 / 总数`，当天所有群绑定计划完成后才显示绿色对号，不读取 `daily_reviews`、`notes` 或任务备注字段。
+- 好友日历只组合经过好友隐私规则过滤后的 `plans` 与 `checkins`；显示获准公开的计划名称、逐项完成状态和 `完成数 / 总数`，当天所有可见计划完成后才显示绿色对号，不返回心情、小记、任务描述、任务备注和计时详情。
 - `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
 - `daily_reviews.status`: `ACTIVE` / `REVOKED`；撤回时保留原心情与小记，重新完成全部任务后恢复。
 
@@ -119,6 +122,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `privacy_settings`: `userId`
 - `group_members`: `groupId + userId + status`；`userId + status`
 - `plan_group_bindings`: `planId + groupId + userId`
+- `group_plan_change_requests`: `userId + planId + status`；`status`
 - `group_events`: `groupId + createdAt desc`；`groupId + checkinId + eventType + completionVersion`
 - `group_event_likes`: `eventId + userId`（建议唯一）；`groupId + userId`
 - `special_cares`: `userId + targetUserId`（建议唯一）；`targetUserId + enabled`

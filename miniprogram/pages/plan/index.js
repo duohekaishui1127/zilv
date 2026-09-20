@@ -17,13 +17,14 @@ Page({
   edit(e) { wx.navigateTo({ url: `/pages/plan/edit?id=${e.currentTarget.dataset.id}` }) },
   bindGroup(e) { wx.navigateTo({ url: `/pages/plan/bind?planId=${e.currentTarget.dataset.id}&name=${encodeURIComponent(e.currentTarget.dataset.name)}` }) },
   async toggle(e) {
-    await api.call('setPlanEnabled', { planId: e.currentTarget.dataset.id, enabled: !e.currentTarget.dataset.enabled })
+    const result=await api.call('setPlanEnabled', { planId: e.currentTarget.dataset.id, enabled: !e.currentTarget.dataset.enabled })
+    if(result.approvalRequired)wx.showToast({title:'已提交群主审核',icon:'none'})
     await this.load()
   },
   async remove(e) {
     if (!await api.confirm('删除后历史打卡会保留，但该计划不再继续执行。确认删除？', '删除计划')) return
-    await api.call('deletePlan', { planId: e.currentTarget.dataset.id })
-    wx.showToast({ title: '已删除', icon: 'success' })
+    const result=await api.call('deletePlan', { planId: e.currentTarget.dataset.id })
+    wx.showToast({ title:result.approvalRequired ? '已提交群主审核' : '已删除',icon:result.approvalRequired ? 'none' : 'success' })
     await this.load()
   }
 })

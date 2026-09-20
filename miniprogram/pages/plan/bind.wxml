@@ -1,5 +1,5 @@
 <view class="container">
-  <view class="card warn-card"><view class="value">{{name}}</view><view class="sub">绑定后，该计划在群组中的执行状态不可隐藏；体重、饮食、身体围度等私密数据不会因此公开。</view></view>
+  <view class="card warn-card"><view class="value">{{name}}</view><view class="sub">绑定后，计划名称和完成状态会在群内公开；修改、停用、删除或解绑必须经相关群主审核。计划描述、备注和其他隐私内容不会公开。</view></view>
   <view class="card">
     <view class="list-item row" wx:for="{{groups}}" wx:key="_id">
       <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.memberCount}}人 · 邀请码 {{item.inviteCode}}</view></view>

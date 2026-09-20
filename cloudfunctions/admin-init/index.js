@@ -5,12 +5,12 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const APP_VERSION = '1.6.0'
-const SCHEMA_VERSION = 9
+const SCHEMA_VERSION = 10
 
 const collections = [
   'users','body_records','nutrition_profiles','nutrition_targets','foods','meals','meal_items',
   'workout_sessions','plans','checkins','study_sessions','friendships','privacy_settings','groups',
-  'group_members','plan_group_bindings','group_events','exercises','body_metric_defs','app_config',
+  'group_members','plan_group_bindings','group_plan_change_requests','group_events','exercises','body_metric_defs','app_config',
   'system_meta','audit_logs','migration_history','notes','note_attachments','body_metric_preferences',
   'notifications','feedbacks','daily_reviews','group_event_likes','special_cares','friend_settings'
 ]
@@ -24,7 +24,8 @@ const migrations = [
   { migrationId: '006_plan_focus_timer', schemaVersion: 6, description: '计划正计时、倒计时及有效时间统计' },
   { migrationId: '007_daily_review_and_meal_timeline', schemaVersion: 7, description: '整日心情打卡、进食时间流与照片记录' },
   { migrationId: '008_social_encouragement', schemaVersion: 8, description: '群组点赞、微信打卡提醒、好友特别关心与撤回同步' },
-  { migrationId: '009_friend_profiles', schemaVersion: 9, description: '好友资料、备注、单好友隐私例外与申请通知' }
+  { migrationId: '009_friend_profiles', schemaVersion: 9, description: '好友资料、备注、单好友隐私例外与申请通知' },
+  { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批与群主移出成员' }
 ]
 
 async function ensureCollection(name) {
@@ -75,7 +76,7 @@ exports.main = async (event = {}) => {
     .catch(() => null)
   const currentSchemaVersion = Number(schema?.schemaVersion || 0)
   const isIncrementalUpgrade = currentSchemaVersion >= 4
-  const collectionsToEnsure = isIncrementalUpgrade ? ['feedbacks', 'daily_reviews', 'group_event_likes', 'special_cares', 'friend_settings'] : collections
+  const collectionsToEnsure = isIncrementalUpgrade ? ['feedbacks', 'daily_reviews', 'group_event_likes', 'special_cares', 'friend_settings', 'group_plan_change_requests'] : collections
   const collectionResults = []
   for (const name of collectionsToEnsure) collectionResults.push(await ensureCollection(name))
 

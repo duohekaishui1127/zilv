@@ -12,9 +12,11 @@ Page({
   async toggle(e) {
     const groupId = e.currentTarget.dataset.id
     const bound = !!e.currentTarget.dataset.bound
-    if (bound) await api.call('unbindPlanFromGroup', { planId: this.data.planId, groupId })
-    else await api.call('bindPlanToGroup', { planId: this.data.planId, groupId })
-    wx.showToast({ title: bound ? '已解除绑定' : '已绑定', icon: 'success' })
+    const result=bound
+      ? await api.call('unbindPlanFromGroup',{ planId:this.data.planId,groupId })
+      : await api.call('bindPlanToGroup',{ planId:this.data.planId,groupId })
+    const approval=Boolean(result.approvalRequired)
+    wx.showToast({ title:approval ? '解绑申请已提交' : (bound ? '已解除绑定' : '已绑定'),icon:approval ? 'none' : 'success' })
     await this.load()
   }
 })

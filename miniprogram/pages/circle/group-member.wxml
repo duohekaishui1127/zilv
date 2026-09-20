@@ -10,12 +10,16 @@
     <view class="month-title">{{calendar.month}}</view>
     <view class="weekday-grid"><view class="weekday" wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view></view>
     <view class="calendar-grid">
-      <view wx:for="{{calendar.cells}}" wx:key="key" class="calendar-day {{item.blank ? 'calendar-blank' : ''}} {{!item.blank && !item.inRange ? 'calendar-outside-range' : ''}} {{item.today ? 'calendar-today' : ''}}">
+      <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : ''}} {{!item.blank && !item.inRange ? 'calendar-outside-range' : ''}} {{item.today ? 'calendar-today' : ''}}">
         <block wx:if="{{!item.blank}}"><view class="day-number">{{item.day}}</view><view wx:if="{{item.checkedIn}}" class="calendar-check">✓</view></block>
       </view>
     </view>
     <view class="calendar-summary">本月打卡 {{calendar.summary.checkedInDays}} 天</view>
-    <view class="calendar-hint">仅显示 {{calendar.trackingStartDate}} 入群后至今天的打卡</view>
+    <view class="calendar-hint">仅显示 {{calendar.trackingStartDate}} 入群后至今天的记录，全部完成后显示绿色对号</view>
+  </view>
+  <view class="card day-card" wx:if="{{selectedDay}}">
+    <view class="row"><view><view class="h2">{{selectedDay.today ? '今日群组计划' : selectedDay.title}}</view><view class="sub">完成进度 {{selectedDay.completed}} / {{selectedDay.total}}</view></view><view wx:if="{{selectedDay.checkedIn}}" class="day-complete-mark">✓</view></view>
+    <view class="list-item row task-row {{item.completed ? 'task-complete' : ''}}" wx:for="{{selectedDay.tasks}}" wx:key="planId"><view class="value">{{item.name}}</view><view class="task-status">{{item.completed ? '已完成' : '未完成'}}</view></view>
   </view>
   <view class="privacy-note">这里只展示群组任务完成进度，不包含心情、备注、小记或其他个人记录。</view>
 </view>

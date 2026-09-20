@@ -13,7 +13,7 @@
       </view>
     </view>
     <view class="calendar-summary">本月打卡 {{calendar.summary.checkedInDays}} 天</view>
-    <view class="calendar-hint">仅已打卡日期显示绿色对号</view>
+    <view class="calendar-hint">全部可见计划完成后显示绿色对号，点击日期查看计划名称与进度</view>
   </view>
   <view class="card" wx:else><view class="empty compact">对方没有向你公开计划打卡记录</view></view>
   <view class="card day-card" wx:if="{{selectedDay}}">

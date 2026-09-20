@@ -37,9 +37,13 @@ async function enforceGroupInactivity(group, localDate) {
       status:'AUTO_REMOVED', autoRemovedAt:timestamp, autoRemovedDate:localDate,
       removalReason:`连续${permissions.autoRemoveInactiveDays}天未完成群组打卡`, updatedAt:timestamp
     } })
-    await Promise.all(activity.bindings.map(binding => db.collection(C.PLAN_GROUPS).doc(binding._id).update({
-      data:{ enabled:false,updatedAt:timestamp }
-    })))
+    const changes=await db.collection(C.GROUP_PLAN_CHANGES).where({ userId:member.userId,status:'PENDING' }).get()
+    await Promise.all([
+      ...activity.bindings.map(binding => db.collection(C.PLAN_GROUPS).doc(binding._id).update({ data:{ enabled:false,updatedAt:timestamp } })),
+      ...changes.data.filter(item => item.groupIds?.includes(group._id)).map(item => db.collection(C.GROUP_PLAN_CHANGES).doc(item._id).update({
+        data:{ status:'REJECTED',rejectedGroupIds:[...(item.rejectedGroupIds || []),group._id],updatedAt:timestamp }
+      }))
+    ])
     removed++
   }
   return { removed }

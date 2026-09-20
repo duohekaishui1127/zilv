@@ -148,9 +148,11 @@ Page({
     }
     this.setData({ saving: true })
     try {
-      if (this.data.editMode) await api.call('updatePlan', { planId: this.data.id, plan })
-      else await api.call('createPlan', { plan })
-      wx.showToast({ title: this.data.editMode ? '计划已更新' : '计划已创建', icon: 'success' })
+      const result=this.data.editMode
+        ? await api.call('updatePlan',{ planId:this.data.id,plan })
+        : await api.call('createPlan',{ plan })
+      const approval=Boolean(result.approvalRequired)
+      wx.showToast({ title:approval ? '已提交群主审核' : (this.data.editMode ? '计划已更新' : '计划已创建'),icon:approval ? 'none' : 'success' })
       setTimeout(() => wx.navigateBack(), 350)
     } finally { this.setData({ saving: false }) }
   }

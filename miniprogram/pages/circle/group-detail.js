@@ -11,7 +11,7 @@ Page({
   data: {
     id:'', group:null, members:[], events:[], eventsExpanded:false, isOwner:false,
     wechatEnabled:false, notificationConfig:null, isLongTerm:false,
-    permissions:null,pendingRequests:[],savingPermissions:false
+    permissions:null,pendingRequests:[],pendingPlanChanges:[],savingPermissions:false
   },
   onLoad(options) { this.setData({ id:options.id || '' }) },
   onShow() { if (this.data.id) this.load() },
@@ -27,6 +27,12 @@ Page({
       isOwner:detail.currentRole === 'OWNER',
       permissions:detail.permissions,
       pendingRequests:(detail.pendingRequests || []).map(item => ({ ...item,user:{ ...item.user,initial:(item.user.nickname || '?').slice(0,1) } })),
+      pendingPlanChanges:(detail.pendingPlanChanges || []).map(item => ({
+        ...item,
+        detail:item.proposedPlan
+          ? `${item.currentPlan.name} → ${item.proposedPlan.name} · 目标 ${item.proposedPlan.targetValue}${item.proposedPlan.unit || ''}`
+          : `${item.currentPlan.name} · 已通过 ${item.approvedCount}/${item.requiredCount} 个群`
+      })),
       wechatEnabled:detail.wechatCheckinEnabled,
       notificationConfig:config,
       isLongTerm:config?.subscriptionType === 'LONG_TERM'
@@ -59,6 +65,23 @@ Page({
     const approve=e.currentTarget.dataset.approve === 'true'
     await api.call('reviewGroupJoinRequest',{ groupId:this.data.id,membershipId,approve })
     wx.showToast({ title:approve ? '已同意入群' : '已拒绝',icon:approve ? 'success' : 'none' })
+    await this.load()
+  },
+  async reviewPlanChange(e) {
+    const requestId=e.currentTarget.dataset.id
+    const approve=e.currentTarget.dataset.approve === 'true'
+    const result=await api.call('reviewGroupPlanChange',{ groupId:this.data.id,requestId,approve })
+    const title=!approve ? '已拒绝变更' : (result.waiting ? '已同意，等待其他群主' : '已同意并生效')
+    wx.showToast({ title,icon:approve && !result.waiting ? 'success' : 'none' })
+    await this.load()
+  },
+  async kickMember(e) {
+    let choice
+    try { choice=await wx.showActionSheet({ itemList:['移出，允许重新申请','移出并禁止再次加入'] }) } catch (error) { return }
+    const blockRejoin=choice.tapIndex === 1
+    if(!await api.confirm(`确认将${e.currentTarget.dataset.name || '该成员'}移出群组？`,'移出成员'))return
+    await api.call('removeGroupMember',{ groupId:this.data.id,memberUserId:e.currentTarget.dataset.id,blockRejoin })
+    wx.showToast({ title:'已移出成员',icon:'success' })
     await this.load()
   },
   openMember(e) {

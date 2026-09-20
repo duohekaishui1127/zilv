@@ -27,7 +27,8 @@ async function getGroupInviteCandidates({ user, event }) {
     db.collection(C.GROUP_MEMBERS).where({ groupId: group._id }).get()
   ])
   const memberIds = new Set(members.data.filter(item => ['ACTIVE','PENDING'].includes(item.status) ||
-    (item.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false)).map(item => item.userId))
+    (item.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false) ||
+    (item.status === 'KICKED' && item.rejoinBlocked !== false)).map(item => item.userId))
   const friends = await Promise.all(friendIds.filter(id => !memberIds.has(id)).map(async id => {
     const [friend, settings] = await Promise.all([getUserById(id), friendSettingsOf(user._id, id)])
     if (!friend || friend.status !== 'ACTIVE') return null
@@ -62,7 +63,8 @@ async function inviteUsersToGroup({ user, event }) {
     if (targetUserId === user._id || await isGroupMember(group._id, targetUserId)) return 'skipped'
     const membership = await db.collection(C.GROUP_MEMBERS).where({ groupId:group._id,userId:targetUserId }).limit(1).get()
     const prior = membership.data[0]
-    if (prior?.status === 'PENDING' || (prior?.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false)) return 'skipped'
+    if (prior?.status === 'PENDING' || (prior?.status === 'AUTO_REMOVED' && group.blockRejoinAfterAutoRemove !== false) ||
+      (prior?.status === 'KICKED' && prior.rejoinBlocked !== false)) return 'skipped'
     const target = await getUserById(targetUserId)
     if (!target || target.status !== 'ACTIVE') return 'skipped'
     return sendGroupInvitation(targetUserId, user, group)

@@ -2,12 +2,17 @@
   <view class="hero"><view class="h1">{{group.name}}</view><view class="sub">{{group.description || '一起执行，彼此监督。'}}</view></view>
 
   <view class="card partner-card">
-    <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view class="row-start"><image wx:if="{{item.avatar}}" class="member-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.initial}}</view><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><view class="member-arrow">›</view></view></view>
+    <view class="list-item row member-row {{item.completedAll ? 'member-complete' : ''}} {{item.progressState === 'NO_PLAN' ? 'member-no-plan' : ''}}" wx:for="{{members}}" wx:key="_id" data-id="{{item._id}}" bindtap="openMember"><view class="row-start"><image wx:if="{{item.avatar}}" class="member-avatar" src="{{item.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.initial}}</view><view><view class="value">{{item.nickname}}</view><view class="owner-label" wx:if="{{item.role === 'OWNER'}}">群主</view></view></view><view class="row-start"><view class="progress-text" wx:if="{{item.total}}">{{item.completed}} / {{item.total}}</view><view class="sub" wx:else>暂无绑定计划</view><button wx:if="{{isOwner && item.role !== 'OWNER'}}" class="kick-button" data-id="{{item._id}}" data-name="{{item.nickname}}" catchtap="kickMember">移出</button><view class="member-arrow">›</view></view></view>
   </view>
 
   <view class="card" wx:if="{{isOwner && pendingRequests.length}}">
     <view class="h2">入群申请</view>
     <view class="list-item row" wx:for="{{pendingRequests}}" wx:key="membershipId"><view class="row-start"><image wx:if="{{item.user.avatar}}" class="member-avatar" src="{{item.user.avatar}}" mode="aspectFill"/><view wx:else class="member-avatar fallback">{{item.user.initial}}</view><view class="value">{{item.user.nickname}}</view></view><view class="request-actions"><button class="btn btn-light btn-small" data-id="{{item.membershipId}}" data-approve="false" bindtap="reviewJoin">拒绝</button><button class="btn btn-small" data-id="{{item.membershipId}}" data-approve="true" bindtap="reviewJoin">同意</button></view></view>
+  </view>
+
+  <view class="card" wx:if="{{isOwner && pendingPlanChanges.length}}">
+    <view class="h2">计划变更申请</view>
+    <view class="list-item" wx:for="{{pendingPlanChanges}}" wx:key="_id"><view class="value">{{item.applicant.nickname}}：{{item.summary}}</view><view class="sub">{{item.detail}}</view><view class="request-actions plan-review-actions"><button class="btn btn-light btn-small" data-id="{{item._id}}" data-approve="false" bindtap="reviewPlanChange">拒绝</button><button class="btn btn-small" data-id="{{item._id}}" data-approve="true" bindtap="reviewPlanChange">同意</button></view></view>
   </view>
 
   <view class="card" wx:if="{{isOwner && permissions}}">

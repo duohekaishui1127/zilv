@@ -58,7 +58,7 @@ Page({
   },
   openDay(e) {
     const day=this.data.calendar?.cells?.[Number(e.currentTarget.dataset.index)]
-    if (!day || day.blank || !day.checkedIn || !this.data.calendarVisible) return
+    if (!day || day.blank || !day.inRange || !day.total || !this.data.calendarVisible) return
     this.setData({ selectedDay:{ ...day,title:dateTitle(day.date) } })
   },
   openSettings(){ this.setData({ settingsVisible:true }) },

@@ -35,3 +35,22 @@ test('群组日历只在入群日至当前日期之间显示打卡', () => {
   assert.deepEqual({ inRange:futureDay.inRange,checkedIn:futureDay.checkedIn,tasks:futureDay.tasks }, { inRange:false,checkedIn:false,tasks:[] })
   assert.equal(result.summary.checkedInDays, 1)
 })
+
+test('完成部分计划只显示进度，全部完成后才算整日打卡', () => {
+  const plans = ['plan-1','plan-2'].map((id,index) => ({
+    _id:id,name:`计划${index + 1}`,enabled:true,repeatType:'DAILY',startDate:'2026-09-01'
+  }))
+  const partial = buildCheckinCalendar('2026-09',plans,[
+    { planId:'plan-1',date:'2026-09-18',completed:true }
+  ])
+  const partialDay=partial.days.find(item => item.date === '2026-09-18')
+  assert.deepEqual({ completed:partialDay.completed,total:partialDay.total,checkedIn:partialDay.checkedIn },{
+    completed:1,total:2,checkedIn:false
+  })
+
+  const complete = buildCheckinCalendar('2026-09',plans,[
+    { planId:'plan-1',date:'2026-09-18',completed:true },
+    { planId:'plan-2',date:'2026-09-18',completed:true }
+  ])
+  assert.equal(complete.days.find(item => item.date === '2026-09-18').checkedIn,true)
+})
