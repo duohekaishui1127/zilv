@@ -5,6 +5,7 @@ const { getTodayPlans } = require('../services/plans')
 const { friendshipBetween } = require('../services/social')
 const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../services/friend-visibility')
 const { notifyFriendRequest, notifyFriendAccepted, resolveFriendRequestNotification } = require('../services/friend-notifications')
+const { normalizeFriendRequestMessage } = require('../domain/friend-request')
 
 function publicUser(user) {
   return { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode }
@@ -34,6 +35,7 @@ async function sendFriendRequest({ user, event }) {
   }
   const data = {
     userA: user._id, userB: target._id, status: 'PENDING', requestedBy: user._id,
+    requestMessage: normalizeFriendRequestMessage(event.requestMessage),
     requestVersion: Number(existing?.requestVersion || 0) + 1, requestedAt: now(), updatedAt: now()
   }
   let friendship

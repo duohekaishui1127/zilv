@@ -1,5 +1,11 @@
 <view class="container member-page" wx:if="{{member}}">
-  <view class="hero member-hero"><view class="h1">{{member.nickname}}</view><view class="sub" wx:if="{{member.role === 'OWNER'}}">群主</view><view class="sub" wx:else>仅展示该成员主动绑定到本群的任务进度</view></view>
+  <view class="hero member-hero row">
+    <view class="flex-1"><view class="h1">{{member.nickname}}</view><view class="sub" wx:if="{{member.role === 'OWNER'}}">群主</view><view class="sub" wx:else>仅展示该成员主动绑定到本群的任务进度</view></view>
+    <button wx:if="{{friendState === 'NONE'}}" class="friend-add-circle" bindtap="addFriend" aria-label="添加好友">＋</button>
+    <button wx:elif="{{friendState === 'PENDING_OUTGOING'}}" class="friend-state-circle" disabled>申请中</button>
+    <button wx:elif="{{friendState === 'PENDING_INCOMING'}}" class="friend-state-circle active" bindtap="openFriendRequests">待处理</button>
+    <button wx:elif="{{friendState === 'ACCEPTED'}}" class="friend-state-circle active" bindtap="openFriend">好友</button>
+  </view>
   <view class="card calendar-card">
     <view class="month-title">{{calendar.month}}</view>
     <view class="weekday-grid"><view class="weekday" wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view></view>

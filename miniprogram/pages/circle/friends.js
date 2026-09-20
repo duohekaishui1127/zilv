@@ -1,4 +1,5 @@
 const api = require('../../utils/api')
+const { promptFriendRequest } = require('../../utils/friend-request')
 Page({
   data: { shareCode:'', found:null, friends:[], requests:[], outgoing:[] },
   onShow() { this.load() },
@@ -17,7 +18,8 @@ Page({
   },
   async add() {
     if (!this.data.found) return
-    const result=await api.call('sendFriendRequest', { targetUserId: this.data.found._id })
+    const result=await promptFriendRequest(this.data.found._id,this.data.found.nickname)
+    if (!result) return
     const title=result.friendship?.status === 'ACCEPTED' ? '已经是好友' : (result.duplicate ? '申请已存在' : '已发送')
     wx.showToast({ title, icon:'success' })
     this.setData({ found:null, shareCode:'' })

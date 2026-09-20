@@ -1,5 +1,4 @@
 const api = require('../../utils/api')
-const { CATEGORY_LABELS } = require('../../utils/constants')
 
 const PRIVACY_FIELDS = [
   ['showPlanStatusToFriends','计划完成状态'],
@@ -15,40 +14,53 @@ const PRIVACY_FIELDS = [
   ['showCompletionRateToFriends','完成率']
 ]
 
-function displayTime(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const pad = number => String(number).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+function decorate(result,currentDate) {
+  const first=new Date(`${result.month}-01T12:00:00`)
+  const leading=(first.getDay() + 6) % 7
+  const blanks=Array.from({ length:leading },(_,index) => ({ key:`blank-${index}`,blank:true }))
+  const days=result.days.map(day => ({
+    ...day,key:day.date,today:day.date === currentDate,
+    statusClass:`status-${String(day.status || 'NONE').toLowerCase()}`
+  }))
+  return { ...result,cells:[...blanks,...days] }
+}
+
+function dateTitle(value) {
+  const [year,month,day]=String(value).split('-').map(Number)
+  return `${year}年${month}月${day}日`
 }
 
 Page({
   data:{
-    friendUserId:'', friend:null, records:[], recordsVisible:true, settings:null,
-    settingsVisible:false, privacyFields:[], notificationConfig:null, isLongTerm:false, saving:false
+    friendUserId:'',friend:null,calendarVisible:true,settings:null,
+    month:api.localDate().slice(0,7),currentDate:api.localDate(),
+    weekdayLabels:['一','二','三','四','五','六','日'],calendar:null,selectedDay:null,
+    settingsVisible:false,privacyFields:[],notificationConfig:null,isLongTerm:false,saving:false
   },
   onLoad(options){ this.setData({ friendUserId:options.id || '' }); this.load() },
   onShow(){ if (this.data.friendUserId && this.data.friend) this.load() },
   async load(){
     const [result, config] = await Promise.all([
-      api.call('getFriendDetail',{ friendUserId:this.data.friendUserId }),
+      api.call('getFriendDetail',{ friendUserId:this.data.friendUserId,month:this.data.month }),
       api.call('getSocialNotificationConfig',{}, { silent:true })
     ])
     const settings = result.settings
     this.setData({
       friend:{ ...result.friend,initial:(result.friend.displayName || '?').slice(0,1) },
-      records:(result.records || []).map(item => ({
-        ...item,
-        categoryLabel:CATEGORY_LABELS[item.category] || '计划',
-        displayTime:displayTime(item.completedAt)
-      })),
-      recordsVisible:result.recordsVisible,
+      calendarVisible:result.calendarVisible,
+      calendar:decorate(result.calendar,this.data.currentDate),
+      selectedDay:null,
       settings,
       privacyFields:PRIVACY_FIELDS.map(([key,label]) => ({ key,label,checked:Boolean(settings.privacy[key]) })),
       notificationConfig:config,
       isLongTerm:config?.subscriptionType === 'LONG_TERM'
     })
     wx.setNavigationBarTitle({ title:result.friend.displayName || '好友资料' })
+  },
+  openDay(e) {
+    const day=this.data.calendar?.cells?.[Number(e.currentTarget.dataset.index)]
+    if (!day || day.blank || !this.data.calendarVisible) return
+    this.setData({ selectedDay:{ ...day,title:dateTitle(day.date) } })
   },
   openSettings(){ this.setData({ settingsVisible:true }) },
   closeSettings(){ if (!this.data.saving) { this.setData({ settingsVisible:false }); this.load() } },

@@ -3,12 +3,25 @@
     <view class="row-start"><view class="friend-avatar">{{friend.initial}}</view><view><view class="h1">{{friend.displayName}}</view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
     <button class="more-button" bindtap="openSettings">•••</button>
   </view>
-  <view class="section-title">打卡记录</view>
-  <view class="card">
-    <view class="list-item" wx:for="{{records}}" wx:key="_id"><view class="row"><view class="flex-1"><view class="value">{{item.planName}}</view><view class="sub">{{item.categoryLabel}}{{item.durationMinutes ? ' · ' + item.durationMinutes + ' 分钟' : ''}}</view></view><view class="record-time">{{item.displayTime}}</view></view></view>
-    <view class="empty compact" wx:if="{{!recordsVisible}}">对方没有向你公开计划打卡记录</view>
-    <view class="empty compact" wx:elif="{{!records.length}}">暂时没有可见的打卡记录</view>
+  <view class="section-title">当月打卡</view>
+  <view class="card calendar-card" wx:if="{{calendarVisible}}">
+    <view class="month-title">{{calendar.month}}</view>
+    <view class="weekday-grid"><view class="weekday" wx:for="{{weekdayLabels}}" wx:key="*this">{{item}}</view></view>
+    <view class="calendar-grid">
+      <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.statusClass}} {{item.today ? 'calendar-today' : ''}}">
+        <block wx:if="{{!item.blank}}"><view class="day-number">{{item.day}}</view><view wx:if="{{item.total}}" class="day-progress">{{item.completed}}/{{item.total}}</view></block>
+      </view>
+    </view>
+    <view class="legend"><text class="legend-dot pending"></text>未完成 <text class="legend-dot partial"></text>部分完成 <text class="legend-dot complete"></text>全部完成</view>
+    <view class="calendar-summary">本月全部完成 {{calendar.summary.completedDays}} 天 · 完成 {{calendar.summary.completedTasks}} / {{calendar.summary.totalTasks}} 项</view>
   </view>
+  <view class="card" wx:else><view class="empty compact">对方没有向你公开计划打卡记录</view></view>
+  <view class="card day-card" wx:if="{{selectedDay}}">
+    <view class="row"><view><view class="h2">{{selectedDay.title}}</view><view class="sub">可见任务 {{selectedDay.completed}} / {{selectedDay.total}}</view></view></view>
+    <view class="list-item row task-row {{item.completed ? 'task-complete' : ''}}" wx:for="{{selectedDay.tasks}}" wx:key="planId"><view class="value">{{item.name}}</view><view class="task-status">{{item.completed ? '已完成' : '未完成'}}</view></view>
+    <view class="empty compact" wx:if="{{!selectedDay.tasks.length}}">当天没有向你公开的计划任务</view>
+  </view>
+  <view class="privacy-note">这里只展示对方允许好友查看的任务进度，不包含心情、备注、小记或其他个人记录。</view>
 </view>
 
 <view wx:if="{{settingsVisible}}" class="sheet-mask" bindtap="closeSettings">

@@ -58,7 +58,7 @@ audit_logs
 
 ## 好友资料与权限
 
-- `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重。
+- `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重；`requestMessage` 保存最多 60 字的选填申请备注。
 - `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`privacyMode` 与 `privacyOverrides`。
 - `privacy_settings`: 保存对所有好友生效的默认规则；`friend_settings` 只在 `CUSTOM` 模式覆盖指定好友。
 - 单好友例外只能决定“我向对方公开什么”，不能扩大对方授予我的权限；特别关心同样不能绕过被关注人的可见规则。
@@ -71,6 +71,7 @@ audit_logs
 - `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
 - 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
 - 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态，不读取 `daily_reviews`、`notes` 或任务备注字段。
+- 好友日历只组合经过好友隐私规则过滤后的 `plans` 与 `checkins`，不返回心情、小记、任务备注和计时详情。
 - `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
 - `daily_reviews.status`: `ACTIVE` / `REVOKED`；撤回时保留原心情与小记，重新完成全部任务后恢复。
 

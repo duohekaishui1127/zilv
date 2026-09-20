@@ -1,6 +1,7 @@
-const { db, C } = require('../lib/db')
+const { db, _, C } = require('../lib/db')
 const { DEFAULT_PRIVACY } = require('../lib/constants')
 const { now, fail } = require('../lib/utils')
+const { normalizedMonth, monthDates, buildCheckinCalendar } = require('../domain/checkin-calendar')
 const { getUserById } = require('../services/users')
 const { friendshipBetween } = require('../services/social')
 const {
@@ -24,45 +25,31 @@ function publicUser(user, settings) {
   }
 }
 
-function recordView(checkin, plan, privacy) {
-  const canShowDuration = plan.category === 'STUDY'
-    ? privacy.showStudyDetailsToFriends
-    : (plan.category === 'WORKOUT' && privacy.showWorkoutDetailsToFriends)
-  return {
-    _id: checkin._id,
-    date: checkin.date,
-    planName: plan.name || '已完成计划',
-    category: plan.category || 'CUSTOM',
-    completedAt: checkin.completedAt,
-    durationMinutes: canShowDuration ? checkin.durationMinutes : null,
-    timerEffectiveSeconds: canShowDuration ? Number(checkin.timerEffectiveSeconds || 0) : 0
-  }
-}
-
 async function getFriendDetail({ user, event }) {
   const friendUserId = String(event.friendUserId || '')
   await acceptedFriend(user._id, friendUserId)
-  const [friend, mySettings, inbound, outbound, care, checkins, plans] = await Promise.all([
+  const month = normalizedMonth(event.month)
+  const dates = monthDates(month)
+  const [friend, mySettings, inbound, outbound, care, monthCheckins, plans] = await Promise.all([
     getUserById(friendUserId),
     friendSettingsOf(user._id, friendUserId),
     visibilityFor(friendUserId, user._id),
     visibilityFor(user._id, friendUserId),
     db.collection(C.SPECIAL_CARES).where({ userId: user._id, targetUserId: friendUserId }).limit(1).get(),
-    db.collection(C.CHECKINS).where({ userId: friendUserId, completed: true }).orderBy('completedAt', 'desc').limit(100).get(),
+    db.collection(C.CHECKINS).where({
+      userId: friendUserId,
+      date: _.gte(dates[0]).and(_.lte(dates[dates.length - 1]))
+    }).get(),
     db.collection(C.PLANS).where({ userId: friendUserId }).limit(100).get()
   ])
   if (!friend) throw fail('NOT_FOUND', '好友不存在')
-  const planMap = new Map(plans.data.map(plan => [plan._id, plan]))
-  const records = checkins.data.map(checkin => ({ checkin, plan: planMap.get(checkin.planId) || {} }))
-    .filter(item => canSharePlanWithFriend(item.plan, inbound.effective))
-    .map(item => recordView(item.checkin, item.plan, inbound.effective))
-    .sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
-    .slice(0, 50)
+  const visiblePlans = plans.data.filter(plan => !plan.deletedAt && canSharePlanWithFriend(plan, inbound.effective))
+  const calendar = buildCheckinCalendar(month, visiblePlans, monthCheckins.data)
   const specialCare = care.data[0] || null
   return {
     friend: publicUser(friend, mySettings),
-    records,
-    recordsVisible: Boolean(inbound.effective.showPlanStatusToFriends),
+    calendarVisible: Boolean(inbound.effective.showPlanStatusToFriends),
+    calendar,
     settings: {
       remark: mySettings?.remark || '',
       privacyMode: outbound.privacyMode,

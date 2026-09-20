@@ -28,7 +28,9 @@ async function createFriendNotification(type, recipientId, friendship, actor, ti
 }
 
 async function notifyFriendRequest(recipientId, friendship, actor) {
-  return createFriendNotification('FRIEND_REQUEST', recipientId, friendship, actor, '新的好友申请', `${actor.nickname || '一位用户'}申请添加你为好友`)
+  const prefix = `${actor.nickname || '一位用户'}申请添加你为好友`
+  const content = friendship.requestMessage ? `${prefix}：${friendship.requestMessage}` : prefix
+  return createFriendNotification('FRIEND_REQUEST', recipientId, friendship, actor, '新的好友申请', content)
 }
 
 async function notifyFriendAccepted(recipientId, friendship, actor) {

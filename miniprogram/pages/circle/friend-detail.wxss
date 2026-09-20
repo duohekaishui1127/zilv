@@ -1,7 +1,29 @@
 .friend-avatar { width:84rpx; height:84rpx; border-radius:22rpx; display:flex; align-items:center; justify-content:center; background:#111827; color:#fff; font-size:36rpx; font-weight:700; }
 .more-button { width:72rpx; height:58rpx; margin:0; padding:0; border:0; border-radius:18rpx; background:#eef0f3; color:#4b5563; font-size:28rpx; line-height:50rpx; letter-spacing:2rpx; }
 .more-button::after { border:0; }
-.record-time { flex:0 0 auto; max-width:190rpx; color:#8a8f98; font-size:22rpx; text-align:right; }
+.calendar-card { padding:24rpx; }
+.month-title { margin-bottom:18rpx; text-align:center; font-size:34rpx; font-weight:800; }
+.weekday-grid,.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8rpx; }
+.weekday { padding:8rpx 0; color:#6b7280; font-size:21rpx; font-weight:700; text-align:center; }
+.calendar-day { position:relative; aspect-ratio:1; min-width:0; border:1rpx solid #e1e3e7; border-radius:10rpx; background:#fafafa; }
+.calendar-blank { border-color:transparent; background:transparent; }
+.day-number { position:absolute; top:5rpx; left:7rpx; color:#68707c; font-size:19rpx; font-weight:700; }
+.day-progress { position:absolute; left:50%; top:55%; transform:translate(-50%,-50%); font-size:21rpx; font-weight:800; }
+.status-pending { background:#fff; border-color:#7d8590; }
+.status-partial { background:#dfe2e6; }
+.status-complete { background:#353b44; color:#fff; }
+.status-complete .day-number { color:#e5e7eb; }
+.status-none { opacity:.48; }
+.calendar-today { outline:3rpx solid #111827; outline-offset:-2rpx; }
+.legend { display:flex; align-items:center; justify-content:center; gap:8rpx; margin-top:20rpx; color:#747b86; font-size:20rpx; }
+.legend-dot { width:14rpx; height:14rpx; margin-left:8rpx; border-radius:3rpx; background:#fff; border:1rpx solid #7d8590; }
+.legend-dot.partial { background:#dfe2e6; border-color:#dfe2e6; }
+.legend-dot.complete { background:#353b44; border-color:#353b44; }
+.calendar-summary { margin-top:16rpx; color:#4b5563; font-size:22rpx; text-align:center; }
+.task-row { min-height:82rpx; }
+.task-status { color:#111827; font-size:23rpx; }
+.task-complete { opacity:.42; }
+.privacy-note { padding:8rpx 22rpx 30rpx; color:#8a8f98; font-size:21rpx; line-height:1.6; text-align:center; }
 .sheet-mask { position:fixed; inset:0; z-index:100; display:flex; align-items:flex-end; background:rgba(17,24,39,.42); }
 .settings-sheet { width:100%; max-height:88vh; overflow-y:auto; box-sizing:border-box; padding:18rpx 30rpx calc(30rpx + env(safe-area-inset-bottom)); background:#fff; border-radius:30rpx 30rpx 0 0; }
 .sheet-handle { width:72rpx; height:8rpx; margin:0 auto 24rpx; border-radius:999rpx; background:#d6dae0; }

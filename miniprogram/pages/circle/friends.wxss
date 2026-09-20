@@ -1,5 +1,6 @@
 .request-count { display:inline-flex; min-width:34rpx; height:34rpx; padding:0 8rpx; box-sizing:border-box; align-items:center; justify-content:center; border-radius:999rpx; background:#e5484d; color:#fff; font-size:21rpx; vertical-align:3rpx; }
 .request-actions { display:flex; gap:12rpx; flex:0 0 auto; }
+.request-message { margin-top:10rpx; color:#606773; font-size:24rpx; line-height:1.5; overflow-wrap:anywhere; }
 .friend-row { padding:26rpx 0; }
 .friend-arrow { color:#9ca3af; font-size:34rpx; }
 .care-tag { padding:5rpx 10rpx; border-radius:999rpx; background:#111827; color:#fff; font-size:20rpx; }
