@@ -3,7 +3,7 @@
 ## 行为边界
 
 - 站内消息：开启计划提醒后持续生效，到点且未打卡时写入消息中心；每名用户只保留最近 20 条。
-- 微信提醒：默认使用一次性订阅消息；只有微信公众平台向当前类目授予长期订阅模板时，才能保持长期提醒开关。
+- 微信提醒：默认使用一次性订阅消息；只有微信公众平台向当前类目授予长期订阅模板，并在两个云函数中配置 `PLAN_REMINDER_SUBSCRIPTION_TYPE=LONG_TERM` 时，才能授权一次后按计划持续提醒。
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
 - 群组打卡和特别关心动态始终写入应用内和消息中心。长期模板发送后保持开关；一次性模板发送成功后自动关闭。
@@ -13,7 +13,7 @@
 ```text
 用户设置提醒时间
     ↓
-用户可主动订阅下一次微信提醒
+用户主动授权一次性或长期微信提醒
     ↓
 reminder-dispatch 每5分钟扫描
     ↓
@@ -44,6 +44,7 @@ reminder-dispatch 每5分钟扫描
 
 ```text
 PLAN_REMINDER_TEMPLATE_ID=模板ID
+PLAN_REMINDER_SUBSCRIPTION_TYPE=ONE_TIME
 SOCIAL_CHECKIN_TEMPLATE_ID=好友/群成员打卡模板ID
 SOCIAL_CHECKIN_SUBSCRIPTION_TYPE=ONE_TIME
 SOCIAL_TEMPLATE_MEMBER_KEY=thing1
@@ -56,6 +57,7 @@ SOCIAL_MINIPROGRAM_STATE=trial
 
 ```text
 PLAN_REMINDER_TEMPLATE_ID=与 api 相同的模板ID
+PLAN_REMINDER_SUBSCRIPTION_TYPE=ONE_TIME
 REMINDER_TEMPLATE_PLAN_KEY=thing1
 REMINDER_TEMPLATE_TIME_KEY=time2
 REMINDER_TEMPLATE_STATUS_KEY=thing3
@@ -65,7 +67,7 @@ REMINDER_MINIPROGRAM_STATE=trial
 
 体验环境使用 `trial`，正式环境改为 `formal`，开发环境可用 `developer`。
 
-`PLAN_REMINDER_TEMPLATE_ID` 不是密钥，但两个云函数必须保持一致。AppSecret 不应放入小程序前端或仓库。
+`PLAN_REMINDER_TEMPLATE_ID` 和 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 不是密钥，但两个云函数必须保持一致。普通模板保留 `ONE_TIME`；只有微信后台明确将该模板标记为长期订阅时才设置 `LONG_TERM`。错误地把一次性模板配置为长期模板并不能绕过微信限制，后续发送仍会被微信拒绝并自动关闭提醒。AppSecret 不应放入小程序前端或仓库。
 
 社交打卡模板默认依次使用成员、计划、完成时间三个字段。实际模板字段不同，只需调整 `SOCIAL_TEMPLATE_*_KEY`。`api/config.json` 已声明 `subscribeMessage.send` 权限，部署后仍需在云开发控制台确认权限生效。
 
@@ -79,7 +81,7 @@ REMINDER_MINIPROGRAM_STATE=trial
 0 */5 * * * * *
 ```
 
-同一配置文件也声明了 `subscribeMessage.send` OpenAPI 权限。部署后需要在云开发控制台确认权限和触发器都已经实际创建。提醒允许最多约 9 分钟的调度宽限，并通过幂等 ID 防止重复。
+同一配置文件也声明了 `subscribeMessage.send` OpenAPI 权限。部署后需要在云开发控制台确认权限和触发器都已经实际创建。提醒允许最多约 9 分钟的调度宽限，并通过幂等 ID 防止重复。扫描使用分页读取，不受单次查询 100 条上限影响。
 
 ## 数据结构
 
@@ -97,11 +99,12 @@ reminderPushEnabled
 ## 验收建议
 
 1. 在体验版创建一个 5 分钟后提醒的每日计划。
-2. 点击“订阅下一次微信提醒”并同意。
+2. 一次性模板点击“订阅下一次微信提醒”；长期模板点击“开启长期微信提醒”并同意。
 3. 不打卡，等待定时触发器运行。
 4. 确认消息中心只出现一条消息。
 5. 确认微信服务通知到达并可跳转到“今日”。
 6. 再次运行云函数，确认不会重复生成或发送。
-7. 完成计划后创建新的测试日期，确认不会产生提醒。
+7. 长期模板在下一应执行日继续保持微信提醒开关；一次性模板发送后关闭。
+8. 完成计划后创建新的测试日期，确认不会产生提醒。
 
 微信接口说明：[订阅消息](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/subscribe-message.html)、[`wx.requestSubscribeMessage`](https://developers.weixin.qq.com/miniprogram/dev/api/open-api/subscribe-message/wx.requestSubscribeMessage.html)、[服务端发送接口](https://developers.weixin.qq.com/miniprogram/dev/server/API/mp-message-management/subscribe-message/api_sendmessage.html)。

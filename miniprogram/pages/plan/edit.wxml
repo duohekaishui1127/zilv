@@ -27,10 +27,10 @@
       <view class="field"><view class="label">提醒时间</view><picker mode="time" value="{{reminderTime}}" bindchange="reminderTimeChange"><view class="input">{{reminderTime}}</view></picker></view>
       <view class="tip">
         <view>{{subscriptionLabel}}</view>
-        <view class="sub">消息中心提醒持续有效；微信订阅消息通常一次授权发送一次，发送后需再次订阅。</view>
+        <view class="sub">{{isLongTerm ? '当前使用长期订阅模板：授权一次后，每个应打卡日未完成时都可提醒。' : '当前使用一次性订阅模板：一次授权发送一次，发送后需再次订阅。'}}</view>
         <view class="sub">订阅成功后还需保存计划，提醒设置才会生效。</view>
       </view>
-      <button class="btn btn-light" loading="{{subscribing}}" disabled="{{!reminderConfigLoaded}}" bindtap="subscribeReminder">订阅下一次微信提醒</button>
+      <button class="btn btn-light" loading="{{subscribing}}" disabled="{{!reminderConfigLoaded}}" bindtap="subscribeReminder">{{isLongTerm ? '开启长期微信提醒' : '订阅下一次微信提醒'}}</button>
       <view style="height:24rpx"></view>
     </block>
     <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建计划'}}</button>

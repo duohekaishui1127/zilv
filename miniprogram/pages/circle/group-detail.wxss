@@ -25,3 +25,4 @@
 .kick-button { min-width:70rpx; height:48rpx; margin:0; padding:0 12rpx; border:0; border-radius:12rpx; background:#fff0ef; color:#b42318; font-size:21rpx; line-height:48rpx; }
 .kick-button::after { border:0; }
 .plan-review-actions { justify-content:flex-end; margin-top:16rpx; }
+.disband-button { margin-top:24rpx; }

@@ -8,7 +8,7 @@ const { sendGroupInvitation } = require('../services/group-invitations')
 async function groupForMember(groupId, userId) {
   if (!(await isGroupMember(groupId, userId))) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
   const group = await db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
-  if (!group) throw fail('NOT_FOUND', '群组不存在')
+  if (!group || group.status === 'DISBANDED') throw fail('NOT_FOUND', '群组不存在或已解散')
   return group
 }
 

@@ -56,6 +56,7 @@ async function getFriendDetail({ user, event, localDate }) {
     settings: {
       remark: mySettings?.remark || '',
       pinned: Boolean(mySettings?.pinned),
+      pinnedAt: mySettings?.pinnedAt || null,
       privacyMode: outbound.privacyMode,
       privacy: Object.fromEntries(Object.keys(DEFAULT_PRIVACY).map(key => [key, Boolean(outbound.effective[key])])),
       specialCare: Boolean(specialCare?.enabled),
@@ -69,12 +70,15 @@ async function updateFriendSettings({ user, event }) {
   await acceptedFriend(user._id, friendUserId)
   const existing = await friendSettingsOf(user._id, friendUserId)
   const privacyMode = event.privacyMode === 'CUSTOM' ? 'CUSTOM' : 'DEFAULT'
+  const pinned = event.pinned === undefined ? Boolean(existing?.pinned) : Boolean(event.pinned)
+  const timestamp = now()
   const data = {
     remark: String(event.remark || '').trim().slice(0, 30),
-    pinned: event.pinned === undefined ? Boolean(existing?.pinned) : Boolean(event.pinned),
+    pinned,
+    pinnedAt: pinned ? (existing?.pinned && existing?.pinnedAt ? existing.pinnedAt : timestamp) : null,
     privacyMode,
     privacyOverrides: privacyMode === 'CUSTOM' ? normalizedOverrides(event.privacy) : {},
-    updatedAt: now()
+    updatedAt: timestamp
   }
   if (existing) await db.collection(C.FRIEND_SETTINGS).doc(existing._id).update({ data })
   else await db.collection(C.FRIEND_SETTINGS).add({ data: {

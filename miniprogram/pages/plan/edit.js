@@ -18,7 +18,7 @@ Page({
     repeatTypes: REPEAT_TYPES.map(x => x.label), repeatValues: REPEAT_TYPES.map(x => x.value), repeatIndex: 0,
     isSpecificDays: false, isWeeklyCount: false,
     reminderEnabled: false, reminderTime: '21:00', reminderPushEnabled: false,
-    reminderTemplateId: '', reminderConfigLoaded: false, subscribing: false,
+    reminderTemplateId: '', reminderConfigLoaded: false, subscribing: false, isLongTerm: false,
     subscriptionLabel: '尚未订阅微信提醒',
     weekdays: [1,2,3,4,5,6,7].map((value, i) => ({ value, label: ['一','二','三','四','五','六','日'][i], selected: false }))
   },
@@ -33,7 +33,11 @@ Page({
   async loadReminderConfig() {
     try {
       const config = await api.call('getReminderConfig', {}, { silent: true })
-      this.setData({ reminderTemplateId: config.templateId || '', reminderConfigLoaded: true })
+      const isLongTerm=config.subscriptionType === 'LONG_TERM'
+      this.setData({
+        reminderTemplateId:config.templateId || '',reminderConfigLoaded:true,isLongTerm,
+        ...(this.data.reminderPushEnabled ? { subscriptionLabel:isLongTerm ? '已开启长期微信提醒' : '已订阅下一次微信提醒' } : {})
+      })
     } catch (error) {
       this.setData({ reminderTemplateId: '', reminderConfigLoaded: true })
     }
@@ -61,7 +65,9 @@ Page({
         reminderEnabled: !!plan.reminderEnabled,
         reminderTime: plan.reminderTime || '21:00',
         reminderPushEnabled: !!plan.reminderPushEnabled,
-        subscriptionLabel: plan.reminderPushEnabled ? '已订阅下一次微信提醒' : '尚未订阅微信提醒',
+        subscriptionLabel:plan.reminderPushEnabled
+          ? (this.data.isLongTerm ? '已开启长期微信提醒' : '已订阅下一次微信提醒')
+          : '尚未订阅微信提醒',
         weekdays: this.data.weekdays.map(x => ({ ...x, selected: selectedDays.has(x.value) }))
       })
     } finally { this.setData({ loading: false }) }
@@ -100,9 +106,11 @@ Page({
       const accepted = status === 'accept' || status === 'acceptWithAudio'
       this.setData({
         reminderPushEnabled: accepted,
-        subscriptionLabel: accepted ? '已订阅下一次微信提醒' : '未允许微信提醒，可继续使用消息中心'
+        subscriptionLabel:accepted
+          ? (this.data.isLongTerm ? '已开启长期微信提醒' : '已订阅下一次微信提醒')
+          : '未允许微信提醒，可继续使用消息中心'
       })
-      wx.showToast({ title: accepted ? '已订阅一次提醒' : '未开启微信提醒', icon: 'none' })
+      wx.showToast({ title:accepted ? (this.data.isLongTerm ? '已开启长期提醒' : '已订阅一次提醒') : '未开启微信提醒',icon:'none' })
     } catch (error) {
       this.setData({ reminderPushEnabled: false, subscriptionLabel: '订阅失败，可稍后重试' })
       wx.showToast({ title: '订阅失败，请稍后重试', icon: 'none' })

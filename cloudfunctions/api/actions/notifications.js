@@ -6,12 +6,17 @@ function reminderTemplateId() {
   return String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
 }
 
+function reminderSubscriptionType() {
+  return String(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE || '').trim().toUpperCase() === 'LONG_TERM'
+    ? 'LONG_TERM' : 'ONE_TIME'
+}
+
 async function getReminderConfig() {
   const templateId = reminderTemplateId()
   return {
     configured: !!templateId,
     templateId,
-    subscriptionType: 'ONE_TIME'
+    subscriptionType: reminderSubscriptionType()
   }
 }
 

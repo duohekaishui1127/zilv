@@ -2,34 +2,14 @@ const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { isGroupMember } = require('../services/social')
 const { normalizeGroupPermissions } = require('../domain/group-policy')
-const { assertNoActiveTimer } = require('../services/plans')
-const { publicCommitment } = require('../services/group-plan-changes')
-
-async function applyApprovedPlanChange(request, localDate) {
-  const plan = await db.collection(C.PLANS).doc(request.planId).get().then(x => x.data).catch(() => null)
-  if (!plan || plan.userId !== request.userId || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '待变更计划不存在')
-  if (['UPDATE','SET_ENABLED','DELETE'].includes(request.type)) await assertNoActiveTimer(plan.userId,plan._id,localDate)
-  const timestamp = now()
-  if (request.type === 'UPDATE') {
-    await db.collection(C.PLANS).doc(plan._id).update({ data:{ ...request.payload.plan,updatedAt:timestamp } })
-    const bindings = await db.collection(C.PLAN_GROUPS).where({ planId:plan._id,userId:plan.userId,enabled:true }).get()
-    const commitment = publicCommitment(request.payload.plan)
-    await Promise.all(bindings.data.map(item => db.collection(C.PLAN_GROUPS).doc(item._id).update({ data:{ commitment,updatedAt:timestamp } })))
-  } else if (request.type === 'SET_ENABLED') {
-    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled:Boolean(request.payload.enabled),updatedAt:timestamp } })
-  } else if (request.type === 'DELETE') {
-    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled:false,deletedAt:timestamp,updatedAt:timestamp } })
-    const bindings = await db.collection(C.PLAN_GROUPS).where({ planId:plan._id,userId:plan.userId,enabled:true }).get()
-    await Promise.all(bindings.data.map(item => db.collection(C.PLAN_GROUPS).doc(item._id).update({ data:{ enabled:false,updatedAt:timestamp } })))
-  } else if (request.type === 'UNBIND') {
-    const bindings = await db.collection(C.PLAN_GROUPS).where({ planId:plan._id,userId:plan.userId,groupId:request.groupIds[0],enabled:true }).get()
-    await Promise.all(bindings.data.map(item => db.collection(C.PLAN_GROUPS).doc(item._id).update({ data:{ enabled:false,updatedAt:timestamp } })))
-  }
-}
+const { getUserById } = require('../services/users')
+const { applyPlanChange } = require('../services/group-plan-changes')
+const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
+const { disbandGroupRecords } = require('../services/group-lifecycle')
 
 async function assertGroupOwner(groupId, userId) {
   const membership = await isGroupMember(groupId, userId)
-  if (!membership || membership.role !== 'OWNER') throw fail('GROUP_OWNER_REQUIRED', '仅群主可以修改群权限')
+  if (!membership || membership.role !== 'OWNER') throw fail('GROUP_OWNER_REQUIRED', '仅群主可以执行此操作')
   const group = await db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
   if (!group) throw fail('NOT_FOUND', '群组不存在')
   return group
@@ -40,6 +20,7 @@ async function joinGroup({ user, event, localDate }) {
   const result = await db.collection(C.GROUPS).where({ inviteCode:code }).limit(1).get()
   if (!result.data.length) throw fail('NOT_FOUND', '群组邀请码无效')
   const group = result.data[0]
+  if (group.status === 'DISBANDED') throw fail('GROUP_DISBANDED', '该群组已解散')
   const active = await isGroupMember(group._id, user._id)
   if (active) return { group,joinStatus:'ACTIVE' }
   const existingResult = await db.collection(C.GROUP_MEMBERS).where({ groupId:group._id,userId:user._id }).limit(1).get()
@@ -99,7 +80,11 @@ async function reviewGroupPlanChange({ user, event, localDate }) {
   }
   const approvedGroupIds=[...new Set([...(request.approvedGroupIds || []),groupId])]
   const fullyApproved=request.groupIds.every(id => approvedGroupIds.includes(id))
-  if (fullyApproved) await applyApprovedPlanChange(request,localDate)
+  if (fullyApproved) {
+    await applyPlanChange(request,localDate)
+    const actor=await getUserById(request.userId)
+    if (actor) await broadcastGroupPlanChange({ actor,change:request,sourceId:request._id })
+  }
   const status=fullyApproved ? 'APPROVED' : 'PENDING'
   await db.collection(C.GROUP_PLAN_CHANGES).doc(request._id).update({ data:{ approvedGroupIds,status,reviewedAt:timestamp,updatedAt:timestamp } })
   return { status,waiting:!fullyApproved }
@@ -127,4 +112,11 @@ async function removeGroupMember({ user, event }) {
   return { removed:true }
 }
 
-module.exports = { joinGroup, updateGroupSettings, reviewGroupJoinRequest, reviewGroupPlanChange, removeGroupMember }
+async function disbandGroup({ user, event }) {
+  const groupId=String(event.groupId || '')
+  const group=await assertGroupOwner(groupId,user._id)
+  await disbandGroupRecords(groupId,user._id,group.name)
+  return { disbanded:true,groupId,groupName:group.name }
+}
+
+module.exports = { joinGroup, updateGroupSettings, reviewGroupJoinRequest, reviewGroupPlanChange, removeGroupMember, disbandGroup }

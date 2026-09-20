@@ -1,4 +1,5 @@
 const api = require('../../utils/api')
+const { pinnedFirst } = require('../../utils/social-list')
 
 function inviteResultTitle(result) {
   if (result.sent) return `已邀请 ${result.sent} 人`
@@ -22,7 +23,7 @@ Page({
   personalInput(e) { this.setData({ personalId:e.detail.value.trim() }) },
   async load() {
     const result = await api.call('getGroups')
-    this.setData({ groups:result.groups,pendingGroups:result.pendingGroups || [] })
+    this.setData({ groups:pinnedFirst(result.groups),pendingGroups:result.pendingGroups || [] })
     await this.promptInvitation()
   },
   async promptInvitation() {

@@ -21,6 +21,10 @@ function reminderMinutes(value) {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null
 }
 
+function normalizeReminderSubscriptionType(value) {
+  return String(value || '').trim().toUpperCase() === 'LONG_TERM' ? 'LONG_TERM' : 'ONE_TIME'
+}
+
 function isPlanDue(plan, local) {
   if (plan.startDate && local.date < plan.startDate) return false
   if (plan.endDate && local.date > plan.endDate) return false
@@ -56,4 +60,4 @@ function weekRange(dateStr) {
   return { startDate: format(start), endDate: format(end) }
 }
 
-module.exports = { localParts, reminderMinutes, isPlanDue, reminderContext, weekRange }
+module.exports = { localParts, reminderMinutes, normalizeReminderSubscriptionType, isPlanDue, reminderContext, weekRange }

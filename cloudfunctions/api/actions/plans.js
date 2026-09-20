@@ -1,12 +1,13 @@
 const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
-const { isBasePlanDue, assertNoActiveTimer } = require('../services/plans')
+const { isBasePlanDue } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
 const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
 const { completedTimerFields } = require('../domain/plan-timer')
 const { normalizePlan } = require('../domain/plan-definition')
-const { requestGroupPlanChange } = require('../services/group-plan-changes')
+const { requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
+const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
   const add = await db.collection(C.PLANS).add({ data })
@@ -17,38 +18,35 @@ async function getPlan({ user, event }) {
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   return { plan }
 }
-async function updatePlan({ user, event, localDate }) {
+async function updatePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const normalized = normalizePlan(event.plan, localDate, plan)
-  const request = await requestGroupPlanChange({ userId:user._id,plan,type:'UPDATE',payload:{ plan:normalized } })
-  if (request) return { approvalRequired:true,request }
-  const data = { ...normalized, updatedAt: now() }
-  await db.collection(C.PLANS).doc(plan._id).update({ data })
-  return { plan: { ...plan, ...data } }
+  const decision = await requestGroupPlanChange({ userId:user._id,plan,type:'UPDATE',payload:{ plan:normalized } })
+  if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
+  const result=await applyPlanChange(decision.change,localDate)
+  await broadcastGroupPlanChange({ actor:user,change:decision.change,sourceId:requestId })
+  return result
 }
-async function setPlanEnabled({ user, event, localDate }) {
+async function setPlanEnabled({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const enabled = !!event.enabled
-  if (enabled !== Boolean(plan.enabled)) {
-    const request = await requestGroupPlanChange({ userId:user._id,plan,type:'SET_ENABLED',payload:{ enabled } })
-    if (request) return { approvalRequired:true,request }
-  }
-  if (!enabled) await assertNoActiveTimer(user._id, plan._id, localDate)
-  await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled, updatedAt: now() } })
-  return { enabled }
+  if (enabled === Boolean(plan.enabled)) return { enabled }
+  const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'SET_ENABLED',payload:{ enabled } })
+  if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
+  const result=await applyPlanChange(decision.change,localDate)
+  await broadcastGroupPlanChange({ actor:user,change:decision.change,sourceId:requestId })
+  return result
 }
-async function deletePlan({ user, event, localDate }) {
+async function deletePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
-  const request = await requestGroupPlanChange({ userId:user._id,plan,type:'DELETE' })
-  if (request) return { approvalRequired:true,request }
-  await assertNoActiveTimer(user._id, plan._id, localDate)
-  await db.collection(C.PLANS).doc(plan._id).update({ data: { enabled: false, deletedAt: now(), updatedAt: now() } })
-  const bindings = await db.collection(C.PLAN_GROUPS).where({ planId: plan._id, userId: user._id, enabled: true }).get()
-  await Promise.all(bindings.data.map(b => db.collection(C.PLAN_GROUPS).doc(b._id).update({ data: { enabled: false, updatedAt: now() } })))
-  return { deleted: true }
+  const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'DELETE' })
+  if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
+  const result=await applyPlanChange(decision.change,localDate)
+  await broadcastGroupPlanChange({ actor:user,change:decision.change,sourceId:requestId })
+  return result
 }
 async function getPlans({ user }) {
   const r = await db.collection(C.PLANS).where({ userId: user._id }).orderBy('createdAt', 'desc').get()

@@ -1,6 +1,6 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
-const { reminderContext, weekRange } = require('./reminder-rules')
+const { reminderContext, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -49,6 +49,15 @@ async function document(collection, id) {
   try { return (await db.collection(collection).doc(id).get()).data } catch (error) { return null }
 }
 
+async function allMatches(collection, where) {
+  const records = []
+  while (true) {
+    const result = await db.collection(collection).where(where).skip(records.length).limit(100).get()
+    records.push(...result.data)
+    if (result.data.length < 100) return records
+  }
+}
+
 async function alreadyCompleted(plan, date) {
   const today = await db.collection(COLLECTIONS.CHECKINS).where({
     userId: plan.userId, planId: plan._id, date, completed: true
@@ -95,6 +104,7 @@ async function trimNotificationHistory(userId) {
 
 async function sendWechatReminder(plan, context, notification) {
   const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
+  const subscriptionType = normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
   if (!plan.reminderPushEnabled) {
     await updateNotification(notification._id, { pushStatus: 'NOT_SUBSCRIBED' })
     return 'internal-only'
@@ -120,7 +130,9 @@ async function sendWechatReminder(plan, context, notification) {
     const resultCode = Number(result.errCode ?? result.errcode ?? 0)
     if (resultCode !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
     await updateNotification(notification._id, { pushStatus: 'SENT', pushedAt: new Date() })
-    await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { reminderPushEnabled: false, updatedAt: new Date() } })
+    if (subscriptionType === 'ONE_TIME') {
+      await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { reminderPushEnabled: false, updatedAt: new Date() } })
+    }
     return 'sent'
   } catch (error) {
     const code = Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
@@ -206,12 +218,12 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [result, groups] = await Promise.all([
-    db.collection(COLLECTIONS.PLANS).where({ enabled: true, reminderEnabled: true }).limit(100).get(),
-    db.collection(COLLECTIONS.GROUPS).where({ autoRemoveInactiveDays:_.gt(0) }).limit(100).get()
+  const [plans, groups] = await Promise.all([
+    allMatches(COLLECTIONS.PLANS,{ enabled:true,reminderEnabled:true }),
+    allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) })
   ])
-  const summary = { scanned: result.data.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
-  for (const plan of result.data) {
+  const summary = { scanned: plans.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
+  for (const plan of plans) {
     const status = await processPlan(plan, startedAt)
     if (status === 'sent') summary.sent++
     else if (status === 'internal-only' || status === 'not-configured') summary.internalOnly++
@@ -220,7 +232,7 @@ exports.main = async () => {
     else summary.skipped++
   }
   const localDate = dateOnly(startedAt)
-  for (const group of groups.data) summary.autoRemoved += await enforceInactiveGroup(group, localDate)
+  for (const group of groups) summary.autoRemoved += await enforceInactiveGroup(group, localDate)
   console.log('[reminder-dispatch]', JSON.stringify(summary))
   return { success: true, ...summary }
 }

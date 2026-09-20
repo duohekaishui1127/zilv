@@ -1,12 +1,13 @@
 const api = require('../../utils/api')
 const { promptFriendRequest } = require('../../utils/friend-request')
+const { pinnedFirst } = require('../../utils/social-list')
 Page({
   data: { shareCode:'', found:null, friends:[], requests:[], outgoing:[] },
   onShow() { this.load() },
   input(e) { this.setData({ shareCode: e.detail.value.toUpperCase(), found: null }) },
   async load() {
     const [f, r] = await Promise.all([api.call('getFriends'), api.call('getFriendRequests')])
-    this.setData({ friends: f.friends, requests: r.requests, outgoing:r.outgoing || [] })
+    this.setData({ friends:pinnedFirst(f.friends), requests: r.requests, outgoing:r.outgoing || [] })
     if (r.requests.length) wx.showTabBarRedDot({ index:3 })
     else wx.hideTabBarRedDot({ index:3 })
   },

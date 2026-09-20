@@ -7,7 +7,7 @@
 5. 调用 `admin-init` 一次，确认 `success: true`、`appVersion: 1.6.0`、`schemaVersion: 10`。
 6. 按 `DATABASE_SCHEMA.md` 创建推荐索引。
 7. 在微信公众平台选择打卡提醒模板，并按 `REMINDERS.md` 配置模板字段。
-8. 为 `api` 和 `reminder-dispatch` 同时配置 `PLAN_REMINDER_TEMPLATE_ID`；另为 `api` 配置 `SOCIAL_CHECKIN_TEMPLATE_ID` 及对应模板字段。
+8. 为 `api` 和 `reminder-dispatch` 同时配置 `PLAN_REMINDER_TEMPLATE_ID` 与 `PLAN_REMINDER_SUBSCRIPTION_TYPE`；普通模板填 `ONE_TIME`，微信后台明确标记为长期订阅的模板才填 `LONG_TERM`。另为 `api` 配置 `SOCIAL_CHECKIN_TEMPLATE_ID` 及对应模板字段。
 9. 在小程序“我的”复制作者账号的好友码，并为 `api` 配置 `FEEDBACK_ADMIN_SHARE_CODES`；多个管理员好友码用英文逗号分隔。
 10. 按需修改 `cloudfunctions/api/config/release-announcement.js` 的公告 id、版本和文案。
 11. 上传部署 `cloudfunctions/api` 和 `cloudfunctions/reminder-dispatch`（云端安装依赖）。

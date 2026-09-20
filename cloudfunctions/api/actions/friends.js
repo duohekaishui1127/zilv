@@ -128,6 +128,7 @@ async function getFriends({ user, localDate }) {
       remark: mySettings?.remark || '',
       displayName: mySettings?.remark || other.nickname,
       pinned: Boolean(mySettings?.pinned),
+      pinnedAt: mySettings?.pinnedAt || null,
       specialCare: Boolean(care?.enabled),
       specialCareWechat: Boolean(care?.enabled && care?.wechatEnabled),
       planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null,

@@ -4,10 +4,12 @@ const { uniqueCode } = require('../services/users')
 const { isGroupMember } = require('../services/social')
 const { normalizeGroupPermissions } = require('../domain/group-policy')
 const { pinnedFirst } = require('../domain/social-list')
-const { publicCommitment, requestGroupPlanChange } = require('../services/group-plan-changes')
+const { publicCommitment, requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
+const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
 
 async function groupById(groupId) {
-  return db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
+  const group = await db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
+  return group?.status === 'DISBANDED' ? null : group
 }
 
 async function createGroup({ user, event, localDate }) {
@@ -17,6 +19,7 @@ async function createGroup({ user, event, localDate }) {
   const group = {
     name: name.slice(0, 80), avatar: '', ownerUserId: user._id,
     description: String(event.description || '').slice(0, 300), inviteCode,
+    status: 'ACTIVE',
     ...normalizeGroupPermissions(event.permissions),
     createdAt: now(), updatedAt: now()
   }
@@ -53,7 +56,8 @@ async function getGroups({ user }) {
     const count = await db.collection(C.GROUP_MEMBERS).where({ groupId: group._id, status: 'ACTIVE' }).count()
     return {
       ...group, memberCount:count.total,role:member.role,
-      remark:member.remark || '',displayName:member.remark || group.name,pinned:Boolean(member.pinned)
+      remark:member.remark || '',displayName:member.remark || group.name,
+      pinned:Boolean(member.pinned),pinnedAt:member.pinnedAt || null
     }
   }))
   const pendingGroups = await Promise.all(pendingMemberships.data.map(async member => {
@@ -70,10 +74,13 @@ async function updateGroupMemberSettings({ user, event }) {
   const groupId = String(event.groupId || '')
   const membership = await isGroupMember(groupId,user._id)
   if (!membership) throw fail('GROUP_PERMISSION_DENIED','你不是该群成员')
+  const pinned = event.pinned === undefined ? Boolean(membership.pinned) : Boolean(event.pinned)
+  const timestamp = now()
   const data = {
     remark:String(event.remark || '').trim().slice(0,30),
-    pinned:event.pinned === undefined ? Boolean(membership.pinned) : Boolean(event.pinned),
-    updatedAt:now()
+    pinned,
+    pinnedAt:pinned ? (membership.pinned && membership.pinnedAt ? membership.pinnedAt : timestamp) : null,
+    updatedAt:timestamp
   }
   await db.collection(C.GROUP_MEMBERS).doc(membership._id).update({ data })
   return { settings:data }
@@ -94,15 +101,16 @@ async function bindPlanToGroup({ user, event }) {
   return { binding: { _id: add._id, ...data } }
 }
 
-async function unbindPlanFromGroup({ user, event }) {
+async function unbindPlanFromGroup({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const existing = await db.collection(C.PLAN_GROUPS).where({ planId: event.planId, groupId: event.groupId, userId: user._id }).limit(1).get()
   if (!existing.data.length) return { unbound: true }
-  const request = await requestGroupPlanChange({ userId:user._id,plan,type:'UNBIND',groupId:String(event.groupId || '') })
-  if (request) return { approvalRequired:true,request }
-  await db.collection(C.PLAN_GROUPS).doc(existing.data[0]._id).update({ data: { enabled: false, updatedAt: now() } })
-  return { unbound: true }
+  const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'UNBIND',groupId:String(event.groupId || '') })
+  if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
+  const result=await applyPlanChange(decision.change,localDate)
+  await broadcastGroupPlanChange({ actor:user,change:decision.change,sourceId:requestId })
+  return result
 }
 
 async function getPlanBindings({ user, event }) {

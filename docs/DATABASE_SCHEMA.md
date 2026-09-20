@@ -1,6 +1,6 @@
 # 云数据库集合设计（应用 1.6.0 / Schema 10）
 
-> Schema 10 新增群监督计划变更申请；绑定计划的修改、停用、删除和解绑需经相关群主审核。
+> Schema 10 新增群监督计划变更申请；本人担任群主的群自动批准，其余群组的计划修改、停用、删除和解绑仍需对应群主审核。
 
 ## 计划专注计时字段
 
@@ -60,7 +60,7 @@ audit_logs
 ## 好友资料与权限
 
 - `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重；`requestMessage` 保存最多 60 字的选填申请备注。
-- `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`pinned`、`privacyMode` 与 `privacyOverrides`；`pinned` 只影响本人好友列表排序。
+- `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`pinned`、`pinnedAt`、`privacyMode` 与 `privacyOverrides`；`pinned` 只影响本人好友列表排序，新置顶项按 `pinnedAt` 优先。
 - `privacy_settings`: 保存对所有好友生效的默认规则；`friend_settings` 只在 `CUSTOM` 模式覆盖指定好友。
 - 单好友例外只能决定“我向对方公开什么”，不能扩大对方授予我的权限；特别关心同样不能绕过被关注人的可见规则。
 
@@ -70,13 +70,15 @@ audit_logs
 - `group_event_likes`: `eventId`、`groupId`、`userId`、`createdAt`，每名群成员对每条有效完成动态最多一条。
 - `special_cares`: `userId`、`targetUserId`、`enabled`、`wechatEnabled`、授权时间；解除好友后自动停用。
 - `groups.joinApprovalRequired`、`autoRemoveInactiveDays`、`blockRejoinAfterAutoRemove`: 分别控制入群审批、连续未打卡自动移出天数和自动移出后的重新加入限制。
-- `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
+- `groups.status`: 新群为 `ACTIVE`；群主解散后为 `DISBANDED`，并记录 `disbandedAt` 与 `disbandedBy`。解散群会从所有成员列表消失，拒绝再次加入。
+- `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`、`DISBANDED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
 - `group_members.joinedDate`: 成员最近一次正式入群的本地日期；历史数据缺失时由 `joinedAt` 兼容推导。成员日历只显示该日期至当前日期的打卡。
-- `group_members.remark`、`pinned`: 当前成员私有的群聊备注和置顶状态，只影响本人看到的群名与群组列表顺序。
+- `group_members.remark`、`pinned`、`pinnedAt`: 当前成员私有的群聊备注和置顶状态，只影响本人看到的群名与群组列表顺序；新置顶项排在已有置顶项之前。
 - `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
 - 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
 - `plan_group_bindings.commitment` 保存绑定时可公开的计划承诺快照；不包含计划描述、备注、心情、小记和计时执行详情。
-- `group_plan_change_requests`: 保存绑定计划的 `UPDATE`、`SET_ENABLED`、`DELETE`、`UNBIND` 申请；所有受影响群组的群主均同意后才执行，任一群主拒绝则终止申请。群主接口只返回计划名称、目标与重复规则等监督字段，不返回计划内容。
+- `group_plan_change_requests`: 保存绑定计划的 `UPDATE`、`SET_ENABLED`、`DELETE`、`UNBIND` 申请；计划发布者本人担任群主的群自动写入 `approvedGroupIds`，其余受影响群组的群主同意后才执行，任一待审批群主拒绝则终止申请。群主接口只返回计划名称、目标与重复规则等监督字段，不返回计划内容。
+- 计划变更实际生效后，每个相关群写入一条 `PLAN_CHANGED` 群动态，并为除操作者外的当前成员写入去重的 `GROUP_PLAN_CHANGED` 站内消息；广播只包含计划名称、目标和变更类型等监督字段。
 - 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态；显示计划名称、逐项完成状态和 `完成数 / 总数`，当天所有群绑定计划完成后才显示绿色对号，不读取 `daily_reviews`、`notes` 或任务备注字段。
 - 好友日历只组合经过好友隐私规则过滤后的 `plans` 与 `checkins`；显示获准公开的计划名称、逐项完成状态和 `完成数 / 总数`，当天所有可见计划完成后才显示绿色对号，不返回心情、小记、任务描述、任务备注和计时详情。
 - `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
@@ -98,6 +100,8 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 ## 计划提醒字段
 
 `plans` 增加：`reminderEnabled`、`reminderTime`、`reminderTimezoneOffset`、`reminderPushEnabled`、`lastReminderNotificationDate`。
+
+计划提醒模板类型由 `api` 和 `reminder-dispatch` 的 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 共同配置；长期模板发送成功后保留 `reminderPushEnabled`，一次性模板发送成功或微信返回无授权时关闭。
 
 `notifications` 保存站内消息及推送结果：`userId`、`planId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。每名用户只保留按 `createdAt` 排序的最新 20 条。
 

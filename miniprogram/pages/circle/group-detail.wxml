@@ -32,5 +32,6 @@
     </view>
   </view>
   <view class="card notification-setting"><view class="row"><view class="flex-1"><view class="value">{{isLongTerm ? '长期微信打卡提醒' : '微信打卡提醒'}}</view><view class="sub">{{isLongTerm ? '开启后，每次有成员打卡都会尝试微信提醒；消息中心始终同步' : '当前为微信一次性订阅：授权后提醒下一次；消息中心始终同步'}}</view></view><switch checked="{{wechatEnabled}}" bindchange="toggleWechat" color="#222222"/></view></view>
+  <button wx:if="{{isOwner}}" class="btn btn-danger disband-button" loading="{{disbanding}}" disabled="{{disbanding}}" bindtap="disband">解散群聊</button>
   <button wx:if="{{!isOwner}}" class="btn btn-danger" bindtap="leave">退出群组</button>
 </view>

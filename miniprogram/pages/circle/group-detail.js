@@ -11,7 +11,7 @@ Page({
   data: {
     id:'', group:null, members:[], events:[], eventsExpanded:false, isOwner:false,
     wechatEnabled:false, notificationConfig:null, isLongTerm:false,
-    permissions:null,pendingRequests:[],pendingPlanChanges:[],savingPermissions:false
+    permissions:null,pendingRequests:[],pendingPlanChanges:[],savingPermissions:false,disbanding:false
   },
   onLoad(options) { this.setData({ id:options.id || '' }) },
   onShow() { if (this.data.id) this.load() },
@@ -127,5 +127,19 @@ Page({
     await api.call('leaveGroup',{ groupId:this.data.id })
     wx.showToast({ title:'已退出',icon:'success' })
     setTimeout(() => wx.navigateBack(),350)
+  },
+  async disband() {
+    if (this.data.disbanding) return
+    const confirmed=await api.confirm(
+      '解散后所有成员将退出，群组动态不再显示，相关计划会解除绑定。此操作无法撤销。',
+      '解散群聊'
+    )
+    if (!confirmed) return
+    this.setData({ disbanding:true })
+    try {
+      await api.call('disbandGroup',{ groupId:this.data.id })
+      wx.showToast({ title:'群聊已解散',icon:'success' })
+      setTimeout(() => wx.navigateBack(),350)
+    } finally { this.setData({ disbanding:false }) }
   }
 })

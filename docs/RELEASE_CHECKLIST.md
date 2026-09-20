@@ -47,6 +47,7 @@
 - [ ] 先部署 `admin-init` 并完成迁移
 - [ ] 再部署 `api`
 - [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_TEMPLATE_ID`
+- [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_SUBSCRIPTION_TYPE`；只有微信后台已授予长期计划提醒模板时才设为 `LONG_TERM`
 - [ ] 只有微信后台已授予长期模板时，才把 `SOCIAL_CHECKIN_SUBSCRIPTION_TYPE` 配为 `LONG_TERM`
 - [ ] 订阅消息模板字段名与 `REMINDER_TEMPLATE_*_KEY` 一致
 - [ ] 部署 `reminder-dispatch` 并确认每 5 分钟触发器生效

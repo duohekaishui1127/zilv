@@ -1,6 +1,12 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { localParts, reminderContext, weekRange } = require('../cloudfunctions/reminder-dispatch/reminder-rules')
+const { localParts, reminderContext, weekRange, normalizeReminderSubscriptionType } = require('../cloudfunctions/reminder-dispatch/reminder-rules')
+
+test('计划提醒默认一次性，只有显式配置才启用长期订阅', () => {
+  assert.equal(normalizeReminderSubscriptionType(), 'ONE_TIME')
+  assert.equal(normalizeReminderSubscriptionType('one_time'), 'ONE_TIME')
+  assert.equal(normalizeReminderSubscriptionType('LONG_TERM'), 'LONG_TERM')
+})
 
 test('提醒按计划保存的时区计算本地时间', () => {
   const parts = localParts(new Date('2026-09-16T13:03:00Z'), 480)
