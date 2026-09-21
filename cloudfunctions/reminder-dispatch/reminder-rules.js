@@ -38,13 +38,13 @@ function isPlanDue(plan, local) {
   }
 }
 
-function reminderContext(plan, at = new Date(), graceMinutes = 9) {
-  if (!plan?.enabled || plan.deletedAt || !plan.reminderEnabled) return null
-  const target = reminderMinutes(plan.reminderTime)
+function checkinReminderContext(user, at = new Date(), graceMinutes = 9) {
+  if (!user?.checkinReminderEnabled) return null
+  const target = reminderMinutes(user.checkinReminderTime)
   if (target == null) return null
-  const local = localParts(at, plan.reminderTimezoneOffset ?? 480)
+  const local = localParts(at, user.checkinReminderTimezoneOffset ?? 480)
   const delay = local.minutes - target
-  if (delay < 0 || delay > graceMinutes || !isPlanDue(plan, local)) return null
+  if (delay < 0 || delay > graceMinutes) return null
   return local
 }
 
@@ -60,4 +60,4 @@ function weekRange(dateStr) {
   return { startDate: format(start), endDate: format(end) }
 }
 
-module.exports = { localParts, reminderMinutes, normalizeReminderSubscriptionType, isPlanDue, reminderContext, weekRange }
+module.exports = { localParts, reminderMinutes, normalizeReminderSubscriptionType, isPlanDue, checkinReminderContext, weekRange }

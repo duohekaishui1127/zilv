@@ -1,6 +1,6 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
-const { reminderContext, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
+const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -41,8 +41,8 @@ function joinedDateOf(member, fallback) {
   return Number.isNaN(joinedAt.getTime()) ? fallback : dateOnly(joinedAt)
 }
 
-function notificationId(userId, planId, date) {
-  return crypto.createHash('sha256').update(`${userId}:${planId}:${date}`).digest('hex').slice(0, 32)
+function notificationId(userId, date) {
+  return crypto.createHash('sha256').update(`checkin-reminder:${userId}:${date}`).digest('hex').slice(0, 32)
 }
 
 async function document(collection, id) {
@@ -74,12 +74,12 @@ async function alreadyCompleted(plan, date) {
   return count.total >= Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1)
 }
 
-function templateData(plan) {
+function templateData(user) {
   const timeKey = process.env.REMINDER_TEMPLATE_TIME_KEY || 'time30'
   const contentKey = process.env.REMINDER_TEMPLATE_CONTENT_KEY || 'thing2'
   return {
-    [timeKey]: { value: plan.reminderTime },
-    [contentKey]: { value: text(`计划“${plan.name}”尚未打卡`, 20) }
+    [timeKey]: { value: user.checkinReminderTime },
+    [contentKey]: { value: '今日任务未全部完成' }
   }
 }
 
@@ -88,8 +88,8 @@ async function updateNotification(id, data) {
 }
 
 async function clearOneTimeReminderForUser(userId) {
-  await db.collection(COLLECTIONS.PLANS).where({ userId,reminderPushEnabled:true }).update({
-    data:{ reminderPushEnabled:false,updatedAt:new Date() }
+  await db.collection(COLLECTIONS.USERS).doc(userId).update({
+    data:{ checkinReminderPushEnabled:false,updatedAt:new Date() }
   })
 }
 
@@ -106,22 +106,17 @@ async function trimNotificationHistory(userId) {
   }
 }
 
-async function sendWechatReminder(plan, context, notification, allowWechat = true) {
+async function sendWechatReminder(user, notification) {
   const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
   const subscriptionType = normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
-  if (!plan.reminderPushEnabled) {
+  if (!user.checkinReminderPushEnabled) {
     await updateNotification(notification._id, { pushStatus: 'NOT_SUBSCRIBED' })
-    return 'internal-only'
-  }
-  if (!allowWechat) {
-    await updateNotification(notification._id, { pushStatus:'DAILY_LIMIT' })
     return 'internal-only'
   }
   if (!templateId) {
     await updateNotification(notification._id, { pushStatus: 'NOT_CONFIGURED' })
     return 'not-configured'
   }
-  const user = await document(COLLECTIONS.USERS, plan.userId)
   if (!user?.openid) {
     await updateNotification(notification._id, { pushStatus: 'FAILED', pushErrorCode: 'USER_NOT_FOUND' })
     return 'failed'
@@ -133,13 +128,13 @@ async function sendWechatReminder(plan, context, notification, allowWechat = tru
       page: process.env.REMINDER_MESSAGE_PAGE || 'pages/today/index',
       miniprogramState: process.env.REMINDER_MINIPROGRAM_STATE || 'formal',
       lang: 'zh_CN',
-      data: templateData(plan)
+      data: templateData(user)
     })
     const resultCode = Number(result.errCode ?? result.errcode ?? 0)
     if (resultCode !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
     await updateNotification(notification._id, { pushStatus: 'SENT', pushedAt: new Date() })
     if (subscriptionType === 'ONE_TIME') {
-      await clearOneTimeReminderForUser(plan.userId)
+      await clearOneTimeReminderForUser(user._id)
     }
     return 'sent'
   } catch (error) {
@@ -150,31 +145,36 @@ async function sendWechatReminder(plan, context, notification, allowWechat = tru
       pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120)
     })
     if (code === 43101) {
-      await clearOneTimeReminderForUser(plan.userId)
+      await clearOneTimeReminderForUser(user._id)
     }
     return 'failed'
   }
 }
 
-async function processPlan(plan, at, allowWechat = true) {
-  const context = reminderContext(plan, at)
-  if (!context || await alreadyCompleted(plan, context.date)) return 'skipped'
-  if (plan.lastReminderNotificationDate === context.date) return 'duplicate'
-  const id = notificationId(plan.userId, plan._id, context.date)
+async function processUser(user, at) {
+  const context = checkinReminderContext(user, at)
+  if (!context) return 'skipped'
+  const plans=(await allMatches(COLLECTIONS.PLANS,{ userId:user._id,enabled:true }))
+    .filter(plan => !plan.deletedAt && isPlanDue(plan,context))
+  if (!plans.length) return 'skipped'
+  const completed=await Promise.all(plans.map(plan => alreadyCompleted(plan,context.date)))
+  if (completed.every(Boolean)) return 'skipped'
+  if (user.lastCheckinReminderNotificationDate === context.date) return 'duplicate'
+  const id = notificationId(user._id, context.date)
   if (await document(COLLECTIONS.NOTIFICATIONS, id)) {
-    await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { lastReminderNotificationDate: context.date, updatedAt: new Date() } })
+    await db.collection(COLLECTIONS.USERS).doc(user._id).update({ data: { lastCheckinReminderNotificationDate: context.date, updatedAt: new Date() } })
     return 'duplicate'
   }
   const timestamp = new Date()
   const notification = {
     _id: id,
-    userId: plan.userId,
-    type: 'PLAN_REMINDER',
-    title: '待打卡提醒',
-    content: `“${text(plan.name, 60)}”今天还没有打卡`,
-    planId: plan._id,
+    userId: user._id,
+    type: 'CHECKIN_REMINDER',
+    title: '今日打卡提醒',
+    content: `今日任务完成 ${completed.filter(Boolean).length}/${plans.length}，尚未自动打卡`,
+    page: '/pages/today/index',
     recordDate: context.date,
-    reminderTime: plan.reminderTime,
+    reminderTime: user.checkinReminderTime,
     status: 'UNREAD',
     pushStatus: 'PENDING',
     createdAt: timestamp,
@@ -182,9 +182,9 @@ async function processPlan(plan, at, allowWechat = true) {
   }
   const { _id, ...notificationData } = notification
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
-  await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { lastReminderNotificationDate: context.date, updatedAt: timestamp } })
-  await trimNotificationHistory(plan.userId)
-  return sendWechatReminder(plan, context, notification, allowWechat)
+  await db.collection(COLLECTIONS.USERS).doc(user._id).update({ data: { lastCheckinReminderNotificationDate: context.date, updatedAt: timestamp } })
+  await trimNotificationHistory(user._id)
+  return sendWechatReminder(user, notification)
 }
 
 async function enforceInactiveGroup(group, localDate) {
@@ -226,18 +226,13 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [plans, groups] = await Promise.all([
-    allMatches(COLLECTIONS.PLANS,{ enabled:true,reminderEnabled:true }),
+  const [users, groups] = await Promise.all([
+    allMatches(COLLECTIONS.USERS,{ checkinReminderEnabled:true }),
     allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) })
   ])
-  const summary = { scanned: plans.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
-  const pushHandledUsers = new Set()
-  for (const plan of plans) {
-    const canAttemptPush = !pushHandledUsers.has(plan.userId)
-    const status = await processPlan(plan, startedAt, canAttemptPush)
-    if (canAttemptPush && plan.reminderPushEnabled && ['sent','failed','not-configured'].includes(status)) {
-      pushHandledUsers.add(plan.userId)
-    }
+  const summary = { scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
+  for (const user of users) {
+    const status = await processUser(user, startedAt)
     if (status === 'sent') summary.sent++
     else if (status === 'internal-only' || status === 'not-configured') summary.internalOnly++
     else if (status === 'failed') summary.failed++

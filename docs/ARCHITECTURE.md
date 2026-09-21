@@ -54,12 +54,12 @@ System                版本和诊断
 Notification          站内提醒、已读状态、微信推送结果
 ```
 
-计划提醒由独立的 `reminder-dispatch` 定时云函数执行，不依赖用户打开小程序：
+整日打卡提醒由独立的 `reminder-dispatch` 定时云函数执行，不依赖用户打开小程序：
 
 ```text
 Timer（每5分钟）
       ↓
-计划周期 / 时区 / 打卡状态检查
+用户提醒时间 / 今日全部任务 / 打卡状态检查
       ↓
 notifications 幂等写入
       ↓

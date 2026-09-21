@@ -17,11 +17,10 @@
 
   <view class="card" wx:if="{{isOwner && permissions}}">
     <view class="h2">群权限</view>
-    <view class="setting-row row"><view><view class="value">进群需要审批</view><view class="sub">成员输入群 ID 后由群主确认</view></view><switch checked="{{permissions.joinApprovalRequired}}" data-key="joinApprovalRequired" bindchange="permissionSwitch" color="#222222"/></view>
-    <view class="setting-row row"><view><view class="value">连续未打卡自动移出</view><view class="sub">群主不会被自动移出</view></view><switch checked="{{permissions.autoRemoveInactiveDays > 0}}" bindchange="autoRemoveSwitch" color="#222222"/></view>
-    <view class="field inactive-days" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view class="label">连续未打卡天数（1-365）</view><input class="input" type="number" value="{{permissions.autoRemoveInactiveDays}}" bindinput="autoRemoveDaysInput"/></view>
-    <view class="setting-row row" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view><view class="value">被自动移出后禁止再次加入</view><view class="sub">关闭后仍可重新申请或加入</view></view><switch checked="{{permissions.blockRejoinAfterAutoRemove}}" data-key="blockRejoinAfterAutoRemove" bindchange="permissionSwitch" color="#222222"/></view>
-    <button class="btn settings-save" loading="{{savingPermissions}}" bindtap="savePermissions">保存群权限</button>
+    <view class="setting-row row"><view><view class="value">进群需要审批</view><view class="sub">成员输入群 ID 后由群主确认</view></view><switch checked="{{permissions.joinApprovalRequired}}" disabled="{{savingPermissions}}" data-key="joinApprovalRequired" bindchange="permissionSwitch" color="#222222"/></view>
+    <view class="setting-row row"><view><view class="value">连续未打卡自动移出</view><view class="sub">群主不会被自动移出</view></view><switch checked="{{permissions.autoRemoveInactiveDays > 0}}" disabled="{{savingPermissions}}" bindchange="autoRemoveSwitch" color="#222222"/></view>
+    <view class="field inactive-days" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view class="label">连续未打卡天数（1-365）</view><input class="input" type="number" value="{{permissions.autoRemoveInactiveDays}}" bindinput="autoRemoveDaysInput" bindblur="autoRemoveDaysChange"/></view>
+    <view class="setting-row row" wx:if="{{permissions.autoRemoveInactiveDays > 0}}"><view><view class="value">被自动移出后禁止再次加入</view><view class="sub">关闭后仍可重新申请或加入</view></view><switch checked="{{permissions.blockRejoinAfterAutoRemove}}" disabled="{{savingPermissions}}" data-key="blockRejoinAfterAutoRemove" bindchange="permissionSwitch" color="#222222"/></view>
   </view>
 
   <view class="card event-card">
@@ -31,7 +30,6 @@
       <view class="empty compact" wx:if="{{!events.length}}">完成绑定计划后，记录会显示在这里</view>
     </view>
   </view>
-  <view class="card notification-setting"><view class="row"><view class="flex-1"><view class="value">{{isLongTerm ? '长期微信打卡提醒' : '微信打卡提醒'}}</view><view class="sub">{{isLongTerm ? '开启后，每次有成员打卡都会尝试微信提醒；消息中心始终同步' : '当前为微信一次性订阅：授权后提醒下一次；消息中心始终同步'}}</view></view><switch checked="{{wechatEnabled}}" bindchange="toggleWechat" color="#222222"/></view></view>
   <button wx:if="{{isOwner}}" class="btn btn-danger disband-button" loading="{{disbanding}}" disabled="{{disbanding}}" bindtap="disband">解散群聊</button>
   <button wx:if="{{!isOwner}}" class="btn btn-danger" bindtap="leave">退出群组</button>
 </view>

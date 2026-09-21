@@ -38,16 +38,14 @@ function notificationId(recipientId, checkin) {
 }
 
 function socialTemplateData(actor, plan, checkin) {
-  const memberKey = process.env.SOCIAL_TEMPLATE_MEMBER_KEY || 'thing1'
-  const planKey = process.env.SOCIAL_TEMPLATE_PLAN_KEY || 'thing2'
-  const timeKey = process.env.SOCIAL_TEMPLATE_TIME_KEY || 'time3'
+  const timeKey = process.env.SOCIAL_TEMPLATE_TIME_KEY || 'time30'
+  const contentKey = process.env.SOCIAL_TEMPLATE_CONTENT_KEY || 'thing2'
   const completedAt = checkin.completedAt instanceof Date ? checkin.completedAt : new Date(checkin.completedAt || Date.now())
   const hh = String(completedAt.getHours()).padStart(2, '0')
   const mm = String(completedAt.getMinutes()).padStart(2, '0')
   return {
-    [memberKey]: { value: text(actor.nickname || '好友', 20) },
-    [planKey]: { value: text(plan.name, 20) },
-    [timeKey]: { value: `${checkin.date} ${hh}:${mm}` }
+    [timeKey]: { value: `${hh}:${mm}` },
+    [contentKey]: { value: text(`${actor.nickname || '成员'}完成“${plan.name}”打卡`, 20) }
   }
 }
 
@@ -109,7 +107,6 @@ async function addGroupEventsAndRecipients(actor, plan, checkin, recipients) {
     members.data.filter(member => member.userId !== actor._id).forEach(member => {
       const entry = recipientEntry(recipients, member.userId)
       if (!entry.groupIds.includes(binding.groupId)) entry.groupIds.push(binding.groupId)
-      if (member.wechatCheckinEnabled) entry.sources.push({ collection: C.GROUP_MEMBERS, id: member._id, field: 'wechatCheckinEnabled' })
     })
   }))
 }

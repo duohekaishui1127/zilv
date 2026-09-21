@@ -27,7 +27,7 @@
       </view>
       <view wx:elif="{{dashboard.completion.total}}" class="sub auto-checkin-hint">完成全部计划后自动打卡</view>
       <view wx:if="{{reminderRenewalAvailable}}" class="reminder-renew-row row">
-        <view><view class="value">续订下一次未打卡提醒</view><view class="sub">一次性订阅需由你点击确认，不能后台静默续订</view></view>
+        <view><view class="value">补充下一次打卡提醒</view><view class="sub">已完成今日全部任务，可补充下一次提醒机会</view></view>
         <button class="btn btn-small btn-light" loading="{{renewingReminder}}" bindtap="renewReminderFromButton">续订</button>
       </view>
 

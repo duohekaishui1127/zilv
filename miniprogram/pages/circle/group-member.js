@@ -30,10 +30,11 @@ Page({
       const result=await api.call('getGroupMemberCalendar',{
         groupId:this.data.groupId,memberUserId:this.data.memberUserId,month:this.data.month
       })
+      const avatar=await api.resolveCloudFileUrl(result.member.avatar)
       const calendar=decorate(result,this.data.currentDate)
       const today=calendar.cells.find(item => item.date === this.data.currentDate)
       this.setData({
-        member:result.member,
+        member:{ ...result.member,avatar },
         friendState:result.friendState || 'NONE',
         calendar,
         selectedDay:today && today.inRange && today.total ? { ...today,title:dateTitle(today.date) } : null

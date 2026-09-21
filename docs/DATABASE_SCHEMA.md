@@ -74,7 +74,7 @@ audit_logs
 - `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`、`DISBANDED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
 - `group_members.joinedDate`: 成员最近一次正式入群的本地日期；历史数据缺失时由 `joinedAt` 兼容推导。成员日历只显示该日期至当前日期的打卡。
 - `group_members.remark`、`pinned`、`pinnedAt`: 当前成员私有的群聊备注和置顶状态，只影响本人看到的群名与群组列表顺序；新置顶项排在已有置顶项之前。
-- `group_members.wechatCheckinEnabled`: 当前群组微信打卡提醒偏好；长期模板发送后保留，一次性模板发送或确认无授权后关闭。
+- `group_members.wechatCheckinEnabled`: 历史兼容字段，新版不再提供群组微信提醒开关，也不再读取该字段。
 - 群组邀请复用 `notifications`，类型为 `GROUP_INVITATION`，包含 `groupId`、`inviteCode` 与确认加入页面；无需新增集合。
 - `plan_group_bindings.commitment` 保存绑定时可公开的计划承诺快照；不包含计划描述、备注、心情、小记和计时执行详情。
 - `group_plan_change_requests`: 保存绑定计划的 `UPDATE`、`SET_ENABLED`、`DELETE`、`UNBIND` 申请；计划发布者本人担任群主的群自动写入 `approvedGroupIds`，其余受影响群组的群主同意后才执行，任一待审批群主拒绝则终止申请。群主接口只返回计划名称、目标与重复规则等监督字段，不返回计划内容。
@@ -97,15 +97,15 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 反馈管理员由 api 云函数环境变量 FEEDBACK_ADMIN_SHARE_CODES 指定。版本公告文案位于 cloudfunctions/api/config/release-announcement.js，同一个公告 id 对每名用户只投递一次。
 
-## 计划提醒字段
+## 整日打卡提醒字段
 
-`plans` 增加：`reminderEnabled`、`reminderTime`、`reminderTimezoneOffset`、`reminderPushEnabled`、`lastReminderNotificationDate`。
+`users` 增加：`checkinReminderEnabled`、`checkinReminderTime`、`checkinReminderTimezoneOffset`、`checkinReminderPushEnabled`、`lastCheckinReminderNotificationDate`。
 
-计划提醒模板类型由 `api` 和 `reminder-dispatch` 的 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 共同配置；长期模板发送成功后保留 `reminderPushEnabled`，一次性模板发送成功或微信返回无授权时关闭。
+打卡提醒模板类型由 `api` 和 `reminder-dispatch` 的 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 共同配置；一次性模板发送成功或微信返回无授权时关闭 `checkinReminderPushEnabled`。
 
-`notifications` 保存站内消息及推送结果：`userId`、`planId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。每名用户只保留按 `createdAt` 排序的最新 20 条。
+`notifications` 保存站内消息及推送结果：`userId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。每名用户只保留按 `createdAt` 排序的最新 20 条。
 
-`users.lastReleaseAnnouncementId` 和 `plans.lastReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日计划提醒不会重复创建。
+`users.lastReleaseAnnouncementId` 和 `users.lastCheckinReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日打卡提醒不会重复创建。
 
 `users.lastReminderRenewalDate` 是一次性微信提醒的客户端续订日期凭证；它不代表微信授权本身，只用于避免同一业务日期重复触发续订体验。
 

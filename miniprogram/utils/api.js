@@ -56,6 +56,30 @@ async function uploadImage(tempFilePath, folder = 'notes') {
   return result.fileID
 }
 
+const tempFileUrlCache = new Map()
+
+async function resolveCloudFileUrls(fileIds = []) {
+  const values = fileIds.map(value => String(value || '').trim())
+  const pending = [...new Set(values.filter(value => value.startsWith('cloud://') && !tempFileUrlCache.has(value)))]
+  for (let offset = 0; offset < pending.length; offset += 50) {
+    const batch = pending.slice(offset, offset + 50)
+    try {
+      const result = await wx.cloud.getTempFileURL({ fileList: batch })
+      for (const item of result.fileList || []) {
+        if (item.status === 0 && item.tempFileURL) tempFileUrlCache.set(item.fileID, item.tempFileURL)
+      }
+    } catch (error) {
+      console.warn('[zilu-file-url]', error?.errMsg || error?.message || error)
+    }
+  }
+  return values.map(value => value.startsWith('cloud://') ? (tempFileUrlCache.get(value) || '') : value)
+}
+
+async function resolveCloudFileUrl(fileId) {
+  const [url] = await resolveCloudFileUrls([fileId])
+  return url || ''
+}
+
 async function deleteFiles(fileIds = []) {
   const list = fileIds.filter(Boolean)
   if (!list.length) return
@@ -67,4 +91,7 @@ async function confirm(content, title = '确认') {
   return result.confirm
 }
 
-module.exports = { call, localDate, messageOf, diagnosticOf, uploadImage, deleteFiles, confirm }
+module.exports = {
+  call, localDate, messageOf, diagnosticOf,
+  uploadImage, resolveCloudFileUrl, resolveCloudFileUrls, deleteFiles, confirm
+}

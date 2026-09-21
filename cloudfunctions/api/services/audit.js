@@ -7,8 +7,8 @@ const MUTATING_ACTIONS = new Set([
   'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','rejectFriendRequest','cancelFriendRequest','removeFriend','updateFriendSettings','createGroup','joinGroup','leaveGroup','updateGroupMemberSettings','updateGroupSettings','reviewGroupJoinRequest','reviewGroupPlanChange','removeGroupMember','disbandGroup',
   'inviteUsersToGroup','bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
-  'markNotificationRead','markAllNotificationsRead','renewPlanReminderSubscription','submitFeedback','updateFeedbackStatus',
-  'setGroupWechatNotification','toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
+  'markNotificationRead','markAllNotificationsRead','updateCheckinReminderSettings','renewCheckinReminderSubscription','submitFeedback','updateFeedbackStatus',
+  'toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
 ])
 
 function inferEntityId(event = {}, data = {}) {

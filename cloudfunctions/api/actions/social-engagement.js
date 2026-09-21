@@ -4,18 +4,6 @@ const { getUserById } = require('../services/users')
 const { friendshipBetween, isGroupMember, socialNotificationConfig } = require('../services/social')
 const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../services/friend-visibility')
 
-async function setGroupWechatNotification({ user, event }) {
-  const member = await isGroupMember(event.groupId, user._id)
-  if (!member) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
-  const enabled = Boolean(event.enabled && event.grantAccepted)
-  await db.collection(C.GROUP_MEMBERS).doc(member._id).update({ data: {
-    wechatCheckinEnabled: enabled,
-    wechatAuthorizedAt: enabled ? now() : (member.wechatAuthorizedAt || null),
-    updatedAt: now()
-  } })
-  return { enabled }
-}
-
 async function toggleGroupEventLike({ user, event }) {
   const groupEvent = await db.collection(C.GROUP_EVENTS).doc(event.eventId).get().then(x => x.data).catch(() => null)
   if (!groupEvent || !(await isGroupMember(groupEvent.groupId, user._id))) throw fail('GROUP_PERMISSION_DENIED', '无权操作该动态')
@@ -107,6 +95,6 @@ async function getSpecialCareFeed({ user }) {
 }
 
 module.exports = {
-  setGroupWechatNotification, toggleGroupEventLike, setSpecialCare,
+  toggleGroupEventLike, setSpecialCare,
   setSpecialCareWechat, getSocialNotificationConfig, getSpecialCareFeed
 }

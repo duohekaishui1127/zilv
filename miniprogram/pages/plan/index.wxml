@@ -3,7 +3,7 @@
   <view class="card">
     <view class="list-item" wx:for="{{plans}}" wx:key="_id">
       <view class="row">
-        <view class="flex-1"><view class="value {{item.enabled ? '' : 'muted'}}">{{item.name}}</view><view class="sub" wx:if="{{item.description}}">{{item.description}}</view><view class="sub">{{item.categoryLabel}} · {{item.repeatLabel}} · {{item.targetValue}}{{item.unit}}</view><view class="sub" wx:if="{{item.timerMode && item.timerMode !== 'NONE'}}">{{item.timerLabel}}{{item.timerMode === 'COUNT_DOWN' ? ' · ' + item.timerDurationMinutes + '分钟' : ''}}</view><view class="sub" wx:if="{{item.reminderEnabled}}">提醒 {{item.reminderTime}} · {{item.reminderPushEnabled ? '微信提醒已开启' : '消息中心'}}</view></view>
+        <view class="flex-1"><view class="value {{item.enabled ? '' : 'muted'}}">{{item.name}}</view><view class="sub" wx:if="{{item.description}}">{{item.description}}</view><view class="sub">{{item.categoryLabel}} · {{item.repeatLabel}} · {{item.targetValue}}{{item.unit}}</view><view class="sub" wx:if="{{item.timerMode && item.timerMode !== 'NONE'}}">{{item.timerLabel}}{{item.timerMode === 'COUNT_DOWN' ? ' · ' + item.timerDurationMinutes + '分钟' : ''}}</view></view>
         <view class="tag">{{item.enabled ? '启用' : '停用'}}</view>
       </view>
       <view class="action-row">

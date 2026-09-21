@@ -8,3 +8,4 @@
 .profile-avatar { width:92rpx; height:92rpx; border-radius:24rpx; background:#eef0f3; }
 .avatar-placeholder { display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:42rpx; }
 .avatar-hint { margin-top:5rpx; color:#9ca3af; font-size:20rpx; }
+.reminder-setting picker { display:block; min-width:0; }

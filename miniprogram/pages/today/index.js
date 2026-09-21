@@ -107,7 +107,7 @@ Page({
   async loadReminderConfig() {
     if (this.data.reminderConfig) return
     try {
-      const reminderConfig = await api.call('getReminderConfig',{}, { silent:true })
+      const reminderConfig = await api.call('getCheckinReminderSettings',{}, { silent:true })
       this.setData({ reminderConfig },() => this.updateReminderRenewalState())
     } catch (error) {
       this.setData({ reminderConfig:{ configured:false,templateId:'',subscriptionType:'ONE_TIME' } })
@@ -116,11 +116,10 @@ Page({
   updateReminderRenewalState() {
     const dashboard=this.data.dashboard
     const config=this.data.reminderConfig
-    const plans=dashboard?.plans || []
     const allComplete=Boolean(dashboard?.completion?.total) && dashboard.completion.completed === dashboard.completion.total
     this.setData({
       reminderRenewalAvailable:Boolean(config?.configured && config.subscriptionType === 'ONE_TIME' && allComplete &&
-        !dashboard?.user?.reminderRenewedToday && plans.some(plan => plan.reminderEnabled))
+        dashboard?.user?.checkinReminderEnabled && !dashboard?.user?.reminderRenewedToday)
     })
   },
   async load() {
@@ -209,8 +208,7 @@ Page({
     const config=this.data.reminderConfig
     if (!plan || plan.completed || !config?.configured || config.subscriptionType !== 'ONE_TIME') return false
     if (dashboard?.user?.reminderRenewedToday || this._renewalPromptDate === api.localDate()) return false
-    const plans=dashboard?.plans || []
-    return plans.some(item => item.reminderEnabled) && dashboard.completion?.total > 0 &&
+    return dashboard?.user?.checkinReminderEnabled && dashboard.completion?.total > 0 &&
       dashboard.completion.completed === dashboard.completion.total - 1
   },
   async requestNextReminder(plan, force = false) {
@@ -229,10 +227,10 @@ Page({
   async saveReminderRenewal(authorized) {
     if (!authorized) return false
     try {
-      const result=await api.call('renewPlanReminderSubscription',{ authorized:true },{ silent:true })
+      const result=await api.call('renewCheckinReminderSubscription',{ authorized:true },{ silent:true })
       return Boolean(result.renewed || result.alreadyRenewed)
     } catch (error) {
-      console.warn('[reminder-renew-save]',api.diagnosticOf(error,'renewPlanReminderSubscription'))
+      console.warn('[reminder-renew-save]',api.diagnosticOf(error,'renewCheckinReminderSubscription'))
       return false
     }
   },

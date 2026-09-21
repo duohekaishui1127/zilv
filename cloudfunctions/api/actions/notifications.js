@@ -20,20 +20,44 @@ async function getReminderConfig() {
   }
 }
 
-async function renewPlanReminderSubscription({ user, event, localDate }) {
+function checkinReminderSettings(user) {
+  return {
+    enabled:Boolean(user.checkinReminderEnabled),
+    time:user.checkinReminderTime || '21:00',
+    timezoneOffset:Number.isFinite(Number(user.checkinReminderTimezoneOffset)) ? Number(user.checkinReminderTimezoneOffset) : 480,
+    pushEnabled:Boolean(user.checkinReminderPushEnabled)
+  }
+}
+
+async function getCheckinReminderSettings({ user }) {
+  return { ...checkinReminderSettings(user),...(await getReminderConfig()) }
+}
+
+async function updateCheckinReminderSettings({ user,event }) {
+  const enabled=Boolean(event.enabled)
+  const time=String(event.time || user.checkinReminderTime || '21:00')
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw fail('INVALID_PARAMETER','提醒时间不合法')
+  const timezoneOffset=Number(event.timezoneOffset ?? user.checkinReminderTimezoneOffset ?? 480)
+  if (!Number.isFinite(timezoneOffset) || timezoneOffset < -720 || timezoneOffset > 840) throw fail('INVALID_PARAMETER','提醒时区不合法')
+  const pushEnabled=enabled && (event.grantAccepted === true || Boolean(user.checkinReminderPushEnabled))
+  const data={
+    checkinReminderEnabled:enabled,checkinReminderTime:time,
+    checkinReminderTimezoneOffset:Math.round(timezoneOffset),checkinReminderPushEnabled:pushEnabled,
+    updatedAt:now()
+  }
+  await db.collection(C.USERS).doc(user._id).update({ data })
+  return { ...checkinReminderSettings({ ...user,...data }),...(await getReminderConfig()) }
+}
+
+async function renewCheckinReminderSubscription({ user, event, localDate }) {
   if (event.authorized !== true) throw fail('REMINDER_AUTH_REQUIRED', '请先允许微信订阅提醒')
+  if (!user.checkinReminderEnabled) return { renewed:false,alreadyRenewed:false }
   if (user.lastReminderRenewalDate === localDate) return { renewed:false,alreadyRenewed:true,count:0 }
-  const result = await db.collection(C.PLANS).where({
-    userId:user._id,enabled:true,reminderEnabled:true
-  }).get()
-  const plans = result.data.filter(plan => !plan.deletedAt)
-  if (!plans.length) return { renewed:false,alreadyRenewed:false,count:0 }
   const timestamp = now()
-  await Promise.all(plans.map(plan => db.collection(C.PLANS).doc(plan._id).update({
-    data:{ reminderPushEnabled:true,updatedAt:timestamp }
-  })))
-  await db.collection(C.USERS).doc(user._id).update({ data:{ lastReminderRenewalDate:localDate,updatedAt:timestamp } })
-  return { renewed:true,alreadyRenewed:false,count:plans.length }
+  await db.collection(C.USERS).doc(user._id).update({
+    data:{ checkinReminderPushEnabled:true,lastReminderRenewalDate:localDate,updatedAt:timestamp }
+  })
+  return { renewed:true,alreadyRenewed:false }
 }
 
 async function getNotifications({ user }) {
@@ -61,6 +85,6 @@ async function markAllNotificationsRead({ user }) {
 }
 
 module.exports = {
-  getReminderConfig, renewPlanReminderSubscription,
+  getReminderConfig,getCheckinReminderSettings,updateCheckinReminderSettings,renewCheckinReminderSubscription,
   getNotifications, markNotificationRead, markAllNotificationsRead
 }

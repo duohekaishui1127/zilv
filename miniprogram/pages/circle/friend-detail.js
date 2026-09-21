@@ -43,9 +43,10 @@ Page({
       api.call('getFriendDetail',{ friendUserId:this.data.friendUserId,month:this.data.month }),
       api.call('getSocialNotificationConfig',{}, { silent:true })
     ])
+    const avatar=await api.resolveCloudFileUrl(result.friend.avatar)
     const settings = result.settings
     this.setData({
-      friend:{ ...result.friend,initial:(result.friend.displayName || '?').slice(0,1) },
+      friend:{ ...result.friend,avatar,initial:(result.friend.displayName || '?').slice(0,1) },
       calendarVisible:result.calendarVisible,
       calendar:decorate(result.calendar,this.data.currentDate),
       selectedDay:null,

@@ -69,8 +69,7 @@ async function getGroupDetail({ user, event, localDate }) {
     group:{ ...group,remark:membership.remark || '',displayName:membership.remark || group.name,pinned:Boolean(membership.pinned) },
     events: eventViews, members: sortGroupMemberProgress(memberViews.filter(Boolean)),
     currentRole: currentMember?.role || 'MEMBER', pendingRequests:pendingRequests.filter(Boolean),
-    pendingPlanChanges:pendingPlanChanges.filter(Boolean), permissions:normalizeGroupPermissions(group),
-    wechatCheckinEnabled: Boolean(membership.wechatCheckinEnabled)
+    pendingPlanChanges:pendingPlanChanges.filter(Boolean), permissions:normalizeGroupPermissions(group)
   }
 }
 
