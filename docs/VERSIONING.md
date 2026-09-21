@@ -38,21 +38,34 @@ test: cover weekly plan schedule
 chore: bump schema version
 ```
 
-## 发布时必须同步检查
+## 发布时修改版本和更新内容
 
-1. 根目录 `VERSION`；
-2. 根目录 `package.json` 与 `package-lock.json`；
-3. `miniprogram/config/version.js`；
-4. `cloudfunctions/api/package.json`；
-5. `cloudfunctions/admin-init/package.json`；
-6. `cloudfunctions/reminder-dispatch/package.json`；
-7. `cloudfunctions/api/lib/version.js`；
-8. `cloudfunctions/admin-init/index.js` 中应用/Schema 版本；
-9. `CHANGELOG.md`；
-10. 如果持久化结构变化，提高 `SCHEMA_VERSION` 并新增 migration；
-11. 执行 `npm run verify`，通过后再打 tag。
+根目录 `VERSION` 是版本号与消息中心更新公告的唯一配置源。每次发布只需要修改：
 
-`tools/static-check.js` 会自动检查上述主要版本值是否一致，并禁止云函数依赖使用 `latest`/`*`。
+```json
+{
+  "version": "1.7.0",
+  "title": "本次更新标题",
+  "content": [
+    "第一项更新内容",
+    "第二项更新内容"
+  ],
+  "enabled": true
+}
+```
+
+仓库当前 `VERSION` 中的 `legacyAnnouncementIds` 仅用于兼容旧公告，日常发布不需要修改或删除；只编辑 `version`、`title`、`content` 和按需调整 `enabled`。
+
+修改后依次运行：
+
+```bash
+npm run release:sync
+npm run verify
+```
+
+`release:sync` 会同步根目录和三个云函数的 package 版本、客户端与服务端 `APP_VERSION`、`admin-init` 版本，并生成 `cloudfunctions/api/config/release-announcement.js`。不要直接修改生成文件。
+
+`static-check` 会验证所有生成结果与 `VERSION` 完全一致。持久化结构变化时仍需单独提高 `SCHEMA_VERSION` 并新增 migration；普通功能发布不要修改 Schema 版本。最后按需更新 `CHANGELOG.md`，再提交和打 tag。
 
 ## Migration 原则
 
@@ -66,5 +79,5 @@ chore: bump schema version
 
 ```text
 APP_VERSION    1.6.0
-SCHEMA_VERSION 7
+SCHEMA_VERSION 10
 ```

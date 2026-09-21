@@ -98,7 +98,7 @@ audit_logs
 
 feedbacks 保存用户建议：userId、category、content、images、contact、status、deviceInfo、clientMutationId、adminReply、repliedAt、repliedBy、replyVersion、createdAt、updatedAt。
 
-反馈管理员由 api 云函数环境变量 FEEDBACK_ADMIN_SHARE_CODES 指定。普通用户只能提交和读取自己的反馈；管理员只读取其他用户的反馈，可以使用快捷或自定义回复。回复保存后通过消息中心通知反馈提交者。版本公告文案位于 cloudfunctions/api/config/release-announcement.js，同一个公告 id 对每名用户只投递一次。
+反馈管理员由 api 云函数环境变量 FEEDBACK_ADMIN_SHARE_CODES 指定。普通用户只能提交和读取自己的反馈；管理员只读取其他用户的反馈，可以使用快捷或自定义回复。回复保存后通过消息中心通知反馈提交者。版本公告以根目录 `VERSION` 为唯一配置源，同一个版本对每名用户只投递一次。
 
 ## 整日打卡提醒字段
 

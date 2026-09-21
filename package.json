@@ -3,6 +3,7 @@
   "version": "1.6.0",
   "private": true,
   "scripts": {
+    "release:sync": "node tools/sync-release.js",
     "test": "node --test tests/*.test.js",
     "check": "node tools/static-check.js",
     "verify": "npm run check && npm test"

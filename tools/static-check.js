@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const child = require('child_process')
+const { readReleaseManifest } = require('./release-manifest')
 
 const root = path.resolve(__dirname, '..')
 const ignored = new Set(['node_modules', 'miniprogram_npm'])
@@ -30,7 +31,12 @@ function walk(dir) {
 }
 
 function checkVersions() {
-  const expected = read('VERSION').trim()
+  let manifest
+  try { manifest = readReleaseManifest(root) } catch (error) {
+    fail(error.message)
+    return
+  }
+  const expected = manifest.version
   const versions = {
     'package.json': json('package.json').version,
     'package-lock.json': json('package-lock.json').version,
@@ -43,6 +49,18 @@ function checkVersions() {
     'admin-init': (read('cloudfunctions/admin-init/index.js').match(/APP_VERSION\s*=\s*['"]([^'"]+)/) || [])[1]
   }
   for (const [name, version] of Object.entries(versions)) if (version !== expected) fail(`版本不一致: ${name}=${version || 'missing'}, expected=${expected}`)
+
+  const announcement = require(path.join(root, 'cloudfunctions/api/config/release-announcement'))
+  const expectedAnnouncement = {
+    id: `release-${expected}`,
+    version: expected,
+    title: manifest.title,
+    content: manifest.content.join('\n')
+  }
+  for (const [field, value] of Object.entries(expectedAnnouncement)) {
+    if (announcement[field] !== value) fail(`版本公告未同步: ${field}`)
+  }
+  if (announcement.enabled !== manifest.enabled) fail('版本公告未同步: enabled')
 
   const schemaClient = Number((read('miniprogram/config/version.js').match(/SCHEMA_VERSION:\s*(\d+)/) || [])[1])
   const schemaServer = Number((read('cloudfunctions/api/lib/version.js').match(/SCHEMA_VERSION:\s*(\d+)/) || [])[1])

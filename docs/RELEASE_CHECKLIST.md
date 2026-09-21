@@ -2,6 +2,7 @@
 
 ## 代码质量
 
+- [ ] 已修改根目录 `VERSION` 并执行 `npm run release:sync`
 - [ ] `npm run verify` 全部通过
 - [ ] 没有 `latest` / `*` 云函数依赖
 - [ ] APP_VERSION 与各 package/version 文件一致
@@ -14,7 +15,7 @@
 - [ ] 在开发环境先运行 `admin-init`
 - [ ] 确认 `system_meta.schemaVersion = 10`
 - [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
-- [ ] 修改并核对 `cloudfunctions/api/config/release-announcement.js`
+- [ ] 确认 `release:sync` 生成的版本公告与 `VERSION` 一致
 - [ ] 确认 `004_plan_reminders` migration 已记录
 - [ ] 确认 `notes`、`note_attachments`、`body_metric_preferences`、`notifications`、`friend_settings` 已创建
 - [ ] 按 `DATABASE_SCHEMA.md` 建议建立索引

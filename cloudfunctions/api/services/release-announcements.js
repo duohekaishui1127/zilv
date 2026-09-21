@@ -17,8 +17,14 @@ async function ensureReleaseAnnouncement(user) {
   const version = String(announcement.version || '').trim()
   const title = String(announcement.title || '').trim()
   const content = String(announcement.content || '').trim()
+  const seenIds = new Set([id, ...(announcement.legacyIds || []).map(value => String(value || '').trim())])
   if (!announcement.enabled || !id || !title || !content) return { created: false, enabled: false }
-  if (user.lastReleaseAnnouncementId === id) return { created: false, enabled: true }
+  if (seenIds.has(user.lastReleaseAnnouncementId)) {
+    if (user.lastReleaseAnnouncementId !== id) {
+      await db.collection(C.USERS).doc(user._id).update({ data: { lastReleaseAnnouncementId: id, updatedAt: now() } })
+    }
+    return { created: false, enabled: true }
+  }
 
   const notificationIdValue = notificationId(user._id, id)
   if (await document(notificationIdValue)) {
