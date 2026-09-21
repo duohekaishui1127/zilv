@@ -8,4 +8,9 @@
 .profile-avatar { width:92rpx; height:92rpx; border-radius:24rpx; background:#eef0f3; }
 .avatar-placeholder { display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:42rpx; }
 .avatar-hint { margin-top:5rpx; color:#9ca3af; font-size:20rpx; }
+.profile-identity { min-width:0; flex:1; }
+.profile-name-wrap { min-width:0; flex:1; }
+.profile-nickname { width:100%; height:48rpx; color:#15171a; font-size:34rpx; font-weight:700; line-height:48rpx; }
+.profile-nickname-placeholder { color:#9ca3af; font-weight:500; }
+.profile-completion-hint { margin-top:20rpx; padding-top:18rpx; border-top:1rpx solid #eef0f2; color:#6b7280; font-size:23rpx; }
 .reminder-setting picker { display:block; min-width:0; }
