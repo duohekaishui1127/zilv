@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { expiredCountdownFields } = require('../cloudfunctions/reminder-dispatch/timer-rules')
+const { expiredCountdownFields, countUpRestReminderDue } = require('../cloudfunctions/reminder-dispatch/timer-rules')
 
 test('运行中的倒计时到点后只结束计时，不自动完成任务', () => {
   const fields = expiredCountdownFields({
@@ -44,4 +44,28 @@ test('暂停后继续的倒计时会保留总用时与暂停时长', () => {
   assert.equal(fields.timerTotalSeconds, 1800)
   assert.equal(fields.timerPausedSeconds, 300)
   assert.equal(fields.timerEndedAt.toISOString(), '2026-09-21T02:30:00.000Z')
+})
+
+test('正计时累计有效时间达到两个半小时后触发一次休息提醒', () => {
+  const checkin = {
+    timerMode: 'COUNT_UP', timerStatus: 'RUNNING',
+    timerStartedAt: new Date('2026-09-21T02:00:00Z'),
+    timerResumedAt: new Date('2026-09-21T02:30:00Z'),
+    timerAccumulatedMs: 30 * 60 * 1000
+  }
+  assert.equal(countUpRestReminderDue(checkin, new Date('2026-09-21T04:29:59Z')), false)
+  assert.equal(countUpRestReminderDue(checkin, new Date('2026-09-21T04:30:00Z')), true)
+})
+
+test('正计时休息提醒不在暂停、结束或已经提醒后重复触发', () => {
+  const checkin = {
+    timerMode: 'COUNT_UP', timerStatus: 'RUNNING',
+    timerStartedAt: new Date('2026-09-21T02:00:00Z'),
+    timerResumedAt: new Date('2026-09-21T02:00:00Z'),
+    timerAccumulatedMs: 0
+  }
+  const at = new Date('2026-09-21T05:00:00Z')
+  assert.equal(countUpRestReminderDue({ ...checkin, timerStatus: 'PAUSED' }, at), false)
+  assert.equal(countUpRestReminderDue({ ...checkin, timerStatus: 'FINISHED' }, at), false)
+  assert.equal(countUpRestReminderDue({ ...checkin, timerRestReminderAt: new Date('2026-09-21T04:30:00Z') }, at), false)
 })

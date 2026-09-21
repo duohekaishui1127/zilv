@@ -4,7 +4,7 @@ const { now } = require('../lib/utils')
 const MUTATING_ACTIONS = new Set([
   'updateProfile','addBodyRecord','createCustomFood','addMealItem','addMealEntry','deleteMealItem','deleteMealEntry','addWorkout',
   'createPlan','updatePlan','setPlanEnabled','deletePlan','completePlan','revokePlanCompletion','startPlanTimer','pausePlanTimer',
-  'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','saveDailyReview','addStudySession','updatePrivacy',
+  'resumePlanTimer','finishPlanTimer','finishAndCompletePlanTimer','acknowledgeCountUpRestReminder','saveDailyReview','addStudySession','updatePrivacy',
   'sendFriendRequest','acceptFriendRequest','rejectFriendRequest','cancelFriendRequest','removeFriend','updateFriendSettings','createGroup','joinGroup','leaveGroup','updateGroupMemberSettings','updateGroupSettings','reviewGroupJoinRequest','reviewGroupPlanChange','removeGroupMember','disbandGroup',
   'inviteUsersToGroup','bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','updateCheckinReminderSettings','renewCheckinReminderSubscription','submitFeedback','updateFeedbackStatus',

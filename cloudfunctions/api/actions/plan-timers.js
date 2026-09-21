@@ -38,11 +38,14 @@ async function startPlanTimer({ user, event, localDate }) {
 
   const timestamp = now()
   const timerTargetSeconds = plan.timerMode === 'COUNT_DOWN' ? Math.round(Number(plan.timerDurationMinutes) * 60) : null
+  const usesReservedCountUpReminder = plan.timerMode === 'COUNT_UP' && Boolean(user.countUpReminderPushEnabled)
   const data = {
     timerMode: plan.timerMode,
     timerStatus: 'RUNNING',
     timerTargetSeconds,
-    timerReminderPushEnabled: plan.timerMode === 'COUNT_DOWN' && event.timerReminderAuthorized === true,
+    timerReminderPushEnabled: ['COUNT_UP', 'COUNT_DOWN'].includes(plan.timerMode)
+      && (event.timerReminderAuthorized === true || usesReservedCountUpReminder),
+    timerRestReminderAt: null,
     timerStartedAt: timestamp,
     timerResumedAt: timestamp,
     timerPausedAt: null,
@@ -61,6 +64,9 @@ async function startPlanTimer({ user, event, localDate }) {
     const base = { userId: user._id, planId: plan._id, date: localDate, completed: false, actualValue: 0, createdAt: timestamp, ...data }
     const added = await db.collection(C.CHECKINS).add({ data: base })
     saved = { _id: added._id, ...base }
+  }
+  if (usesReservedCountUpReminder) {
+    await db.collection(C.USERS).doc(user._id).update({ data: { countUpReminderPushEnabled: false, updatedAt: timestamp } })
   }
   return timerResult(saved, plan, timestamp)
 }
@@ -105,7 +111,12 @@ async function resumePlanTimer({ user, event, localDate }) {
 async function finishPlanTimer({ user, event, localDate }) {
   const { plan, checkin } = await contextOf(user, event, localDate)
   if (!checkin) throw fail('TIMER_NOT_STARTED', '计时尚未开始')
-  if (checkin.completed || checkin.timerStatus === 'FINISHED') return timerResult(checkin, plan)
+  if (checkin.completed || checkin.timerStatus === 'FINISHED') {
+    if (plan.timerMode === 'COUNT_UP' && event.timerReminderAuthorized === true) {
+      await db.collection(C.USERS).doc(user._id).update({ data: { countUpReminderPushEnabled: true, updatedAt: now() } })
+    }
+    return timerResult(checkin, plan)
+  }
   if (!['RUNNING', 'PAUSED'].includes(checkin.timerStatus)) throw fail('TIMER_NOT_STARTED', '计时尚未开始')
 
   const timestamp = now()
@@ -123,7 +134,14 @@ async function finishPlanTimer({ user, event, localDate }) {
     durationMinutes: round1(effectiveSeconds / 60),
     updatedAt: timestamp
   }
-  await db.collection(C.CHECKINS).doc(checkin._id).update({ data })
+  const preserveCountUpReminder = plan.timerMode === 'COUNT_UP'
+    && (checkin.timerReminderPushEnabled || event.timerReminderAuthorized === true)
+  await Promise.all([
+    db.collection(C.CHECKINS).doc(checkin._id).update({ data }),
+    preserveCountUpReminder
+      ? db.collection(C.USERS).doc(user._id).update({ data: { countUpReminderPushEnabled: true, updatedAt: timestamp } })
+      : Promise.resolve()
+  ])
   return timerResult({ ...checkin, ...data }, plan, timestamp)
 }
 

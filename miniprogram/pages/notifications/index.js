@@ -47,7 +47,7 @@ Page({
       })
       await api.call('markNotificationRead', { notificationId: id }, { silent: true }).catch(() => {})
     }
-    if (['PLAN_REMINDER','CHECKIN_REMINDER','TIMER_REMINDER'].includes(item?.type)) return wx.switchTab({ url: '/pages/today/index' })
+    if (['PLAN_REMINDER','CHECKIN_REMINDER','TIMER_REMINDER','TIMER_REST_REMINDER'].includes(item?.type)) return wx.switchTab({ url: '/pages/today/index' })
     if (item?.page) return wx.navigateTo({ url: item.page })
     await this.load()
   },

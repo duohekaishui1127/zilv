@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
 const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
-const { expiredCountdownFields } = require('./timer-rules')
+const { expiredCountdownFields, countUpRestReminderDue } = require('./timer-rules')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -48,6 +48,10 @@ function notificationId(userId, date) {
 
 function timerNotificationId(checkinId) {
   return crypto.createHash('sha256').update(`timer-reminder:${checkinId}`).digest('hex').slice(0, 32)
+}
+
+function timerRestNotificationId(checkinId) {
+  return crypto.createHash('sha256').update(`timer-rest-reminder:${checkinId}`).digest('hex').slice(0, 32)
 }
 
 function localTime(date = new Date()) {
@@ -188,7 +192,7 @@ async function sendTimerWechatReminder(user, checkin, plan, notification) {
       lang: 'zh_CN',
       data: {
         [timeKey]: { value: localTime(notification.timerEndedAt) },
-        [contentKey]: { value: text(`${plan.name || '任务'}倒计时已结束`) }
+        [contentKey]: { value: text(notification.templateContent || `${plan.name || '任务'}计时提醒`) }
       }
     })
     const resultCode = Number(result.errCode ?? result.errcode ?? 0)
@@ -230,6 +234,45 @@ async function processExpiredCountdown(checkin, at) {
     planId: latest.planId,
     checkinId: latest._id,
     timerEndedAt: fields.timerEndedAt,
+    templateContent: `${plan.name || '任务'}倒计时已结束`,
+    status: 'UNREAD',
+    pushStatus: 'PENDING',
+    createdAt: at,
+    updatedAt: at
+  }
+  const { _id, ...notificationData } = notification
+  await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
+  await trimNotificationHistory(latest.userId)
+  return sendTimerWechatReminder(user, latest, plan, notification)
+}
+
+async function processCountUpRestReminder(checkin, at) {
+  const latest = await document(COLLECTIONS.CHECKINS, checkin._id)
+  if (!countUpRestReminderDue(latest, at)) return 'skipped'
+  const [plan, user] = await Promise.all([
+    document(COLLECTIONS.PLANS, latest.planId),
+    document(COLLECTIONS.USERS, latest.userId)
+  ])
+  await db.collection(COLLECTIONS.CHECKINS).doc(latest._id).update({ data: {
+    timerRestReminderAt: at,
+    timerReminderPushEnabled: false,
+    updatedAt: at
+  } })
+  if (!plan || !user) return 'skipped'
+
+  const id = timerRestNotificationId(latest._id)
+  if (await document(COLLECTIONS.NOTIFICATIONS, id)) return 'duplicate'
+  const notification = {
+    _id: id,
+    userId: latest.userId,
+    type: 'TIMER_REST_REMINDER',
+    title: '休息提醒',
+    content: `“${text(plan.name, 30)}”已专注一段时间，休息一下再继续吧`,
+    templateContent: '专注了一段时间，休息一下吧',
+    page: '/pages/today/index',
+    planId: latest.planId,
+    checkinId: latest._id,
+    timerEndedAt: at,
     status: 'UNREAD',
     pushStatus: 'PENDING',
     createdAt: at,
@@ -322,9 +365,11 @@ exports.main = async () => {
     allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' })
   ])
   const countdowns = runningTimers.filter(item => item.timerMode === 'COUNT_DOWN')
+  const countUps = runningTimers.filter(item => item.timerMode === 'COUNT_UP')
   const summary = {
     scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0, autoRemoved: 0,
-    timersScanned: countdowns.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0
+    timersScanned: runningTimers.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0,
+    restReminders: 0
   }
   for (const user of users) {
     const status = await processUser(user, startedAt)
@@ -337,6 +382,13 @@ exports.main = async () => {
   for (const checkin of countdowns) {
     const status = await processExpiredCountdown(checkin, startedAt)
     if (status !== 'skipped') summary.timerFinished++
+    if (status === 'sent') summary.timerSent++
+    else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
+    else if (status === 'failed') summary.timerFailed++
+  }
+  for (const checkin of countUps) {
+    const status = await processCountUpRestReminder(checkin, startedAt)
+    if (status !== 'skipped') summary.restReminders++
     if (status === 'sent') summary.timerSent++
     else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
     else if (status === 'failed') summary.timerFailed++

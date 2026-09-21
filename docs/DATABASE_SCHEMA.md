@@ -10,6 +10,9 @@
 - `checkins.timerStartedAt`、`timerResumedAt`、`timerPausedAt`、`timerEndedAt`: 服务端计时时间点。
 - `checkins.timerAccumulatedMs`: 已累计的有效毫秒数，用于暂停后继续。
 - `checkins.timerEffectiveSeconds`、`timerTotalSeconds`、`timerPausedSeconds`: 结束后的统计快照。
+- `checkins.timerReminderPushEnabled`: 本次计时是否持有一次微信提醒额度。
+- `checkins.timerRestReminderAt`: 正计时累计 2.5 小时休息提醒的触发时间，用于防止重复提醒。
+- `users.countUpReminderPushEnabled`: 上一次完成正计时任务时保留或补充的下一次提醒额度。
 - 学习/运动分类记录保存三个统计秒数字段，便于在“记录”中展示同一份完成结果。
 
 ## 核心业务

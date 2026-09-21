@@ -8,6 +8,7 @@ module.exports = {
   ...require('./plans'),
   ...require('./plan-completion-revocation'),
   ...require('./plan-timers'),
+  ...require('./plan-timer-reminders'),
   ...require('./daily-reviews'),
   ...require('./privacy'),
   ...require('./friends'),

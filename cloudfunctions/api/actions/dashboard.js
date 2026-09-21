@@ -39,7 +39,8 @@ async function dashboard({ user, localDate }) {
       _id:user._id,nickname:user.nickname,avatar:user.avatar,shareCode:user.shareCode,
       reminderRenewedToday:user.lastReminderRenewalDate === localDate,
       checkinReminderEnabled:Boolean(user.checkinReminderEnabled),
-      checkinReminderPushEnabled:Boolean(user.checkinReminderPushEnabled)
+      checkinReminderPushEnabled:Boolean(user.checkinReminderPushEnabled),
+      countUpReminderPushEnabled:Boolean(user.countUpReminderPushEnabled)
     },
     homePreferences: homePreferencesOf(user),
     nutritionTarget: target,

@@ -3,6 +3,8 @@ const fmt = require('../../utils/format')
 const reminderRenewal = require('../../utils/reminder-renewal')
 const { CATEGORY_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS } = require('../../utils/constants')
 
+const COUNT_UP_REST_SECONDS = 2.5 * 60 * 60
+
 function emptyEditor() {
   return {
     visible: false, planId: '', planName: '', note: '', timed: false,
@@ -66,7 +68,9 @@ function timerView(plan, nowMs) {
     timerEffectiveDisplay: formatTimer(effectiveSeconds),
     timerTotalDisplay: formatTimer(Math.floor(totalMs / 1000)),
     timerPausedDisplay: formatTimer(Math.floor(pausedMs / 1000)),
-    timerExpired: status === 'RUNNING' && reachedTarget
+    timerExpired: status === 'RUNNING' && reachedTarget,
+    timerRestDue: timerMode === 'COUNT_UP' && status === 'RUNNING'
+      && effectiveSeconds >= COUNT_UP_REST_SECONDS && !checkin.timerRestReminderAt
   }
 }
 
@@ -146,6 +150,7 @@ Page({
       this.startTicker()
       this.maybePromptDailyReview(d)
       this.finishExpiredCountdown()
+      this.notifyCountUpRest()
     } catch (error) {
       this.setData({ error: api.messageOf(error) })
     } finally {
@@ -168,6 +173,7 @@ Page({
     const plans = this.data.dashboard.plans.map(plan => decoratePlan(plan, this.serverNow()))
     this.setData({ 'dashboard.plans': plans })
     this.finishExpiredCountdown()
+    this.notifyCountUpRest()
   },
   async finishExpiredCountdown() {
     const plan = this.data.dashboard?.plans?.find(item => item.timerExpired)
@@ -184,6 +190,23 @@ Page({
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
       this._autoFinishingTimer = ''
+    }
+  },
+  async notifyCountUpRest() {
+    const plan = this.data.dashboard?.plans?.find(item => item.timerRestDue)
+    if (!plan || this._restReminderNotifying) return
+    this._restReminderNotifying = plan._id
+    try {
+      await api.call('acknowledgeCountUpRestReminder', { planId: plan._id }, { silent: true })
+      await this.load()
+      if (this._visible && typeof wx.vibrateLong === 'function') {
+        wx.vibrateLong({ fail: () => {} })
+      }
+      wx.showToast({ title: '专注很久了，休息一下吧', icon: 'none', duration: 2500 })
+    } catch (error) {
+      wx.showToast({ title: api.messageOf(error), icon: 'none' })
+    } finally {
+      this._restReminderNotifying = ''
     }
   },
   retry() { this.load() },
@@ -313,15 +336,29 @@ Page({
       this.setData({ timerBusyPlanId: '' })
     }
   },
-  async requestCountdownReminder() {
+  async requestTimerReminder() {
     const config = this.data.reminderConfig
     if (!config?.configured || !config.templateId) return false
     try {
       const result = await wx.requestSubscribeMessage({ tmplIds: [config.templateId] })
       return ['accept', 'acceptWithAudio'].includes(result[config.templateId])
     } catch (error) {
-      console.warn('[countdown-reminder-request]', error?.errMsg || error?.message || error)
+      console.warn('[timer-reminder-request]', error?.errMsg || error?.message || error)
       return false
+    }
+  },
+  shouldRenewCountUpReminder(plan) {
+    return plan?.timerMode === 'COUNT_UP'
+      && !plan.checkin?.timerReminderPushEnabled
+      && !this.data.dashboard?.user?.countUpReminderPushEnabled
+  },
+  async completionReminderAuthorizations(plan) {
+    if (this.shouldRenewCountUpReminder(plan)) {
+      return { timerReminderAuthorized: await this.requestTimerReminder(), checkinReminderAuthorized: false }
+    }
+    return {
+      timerReminderAuthorized: false,
+      checkinReminderAuthorized: await this.requestNextReminder(plan)
     }
   },
   async startTimer(e) {
@@ -329,9 +366,9 @@ Page({
     if (!plan || this.data.timerBusyPlanId) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
-      const timerReminderAuthorized = plan.timerMode === 'COUNT_DOWN'
-        ? await this.requestCountdownReminder()
-        : false
+      const needsTimerReminder = plan.timerMode === 'COUNT_DOWN'
+        || (plan.timerMode === 'COUNT_UP' && !this.data.dashboard?.user?.countUpReminderPushEnabled)
+      const timerReminderAuthorized = needsTimerReminder ? await this.requestTimerReminder() : false
       await api.call('startPlanTimer', { planId: plan._id, timerReminderAuthorized })
       await this.load()
     } finally {
@@ -345,9 +382,12 @@ Page({
     this.setData({ timerBusyPlanId: plan._id })
     try {
       const completesToday=this.completesAllTasks(plan)
-      const reminderAccepted=await this.requestNextReminder(plan)
-      await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      await this.saveReminderRenewal(reminderAccepted)
+      const authorizations=await this.completionReminderAuthorizations(plan)
+      await api.call('finishAndCompletePlanTimer', {
+        planId: plan._id,
+        timerReminderAuthorized: authorizations.timerReminderAuthorized
+      })
+      await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
       wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
       await this.load()
     } finally {
@@ -361,9 +401,12 @@ Page({
     this.setData({ timerBusyPlanId: plan._id })
     try {
       const completesToday=this.completesAllTasks(plan)
-      const reminderAccepted=await this.requestNextReminder(plan)
-      await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      await this.saveReminderRenewal(reminderAccepted)
+      const authorizations=await this.completionReminderAuthorizations(plan)
+      await api.call('finishAndCompletePlanTimer', {
+        planId: plan._id,
+        timerReminderAuthorized: authorizations.timerReminderAuthorized
+      })
+      await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
       wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
       await this.load()
     } finally {

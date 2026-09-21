@@ -7,6 +7,8 @@
 - 微信提醒：默认使用一次性订阅消息，一次用户授权只对应一次发送机会。未发送的机会跨天保留，不会每天重复申请；只有上一条微信提醒已经实际发送、当前机会为空时，才借由用户点击完成当天最后一项计划申请下一次。
 - 服务端不能在无用户操作时静默增加一次性订阅次数；倒计时在用户点击“开始”时申请本次到点提醒授权。
 - 倒计时在前台归零时只振动并结束计时；在后台归零时写入消息中心，并在本次已授权时发送微信订阅消息。两种情况都不会自动完成任务或触发整日打卡，用户仍需点击任务右侧圆圈。
+- 正计时首次开始时准备一次提醒额度；累计有效计时达到 2.5 小时仍在运行时，前台振动并提示休息，后台写入消息中心并发送已授权的微信提醒，计时不会自动停止。
+- 正计时任务由用户手动结束并完成。若 2.5 小时提醒已消耗额度，完成点击会申请下一次正计时提醒；未消耗的额度直接保留，不重复弹窗。
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
 - 单项任务完成后仍照常广播到关联群组；群组详情不再提供微信打卡提醒开关。特别关心逻辑保持独立。
@@ -95,7 +97,10 @@ checkinReminderTime
 checkinReminderTimezoneOffset
 checkinReminderPushEnabled
 lastCheckinReminderNotificationDate
+countUpReminderPushEnabled
 ```
+
+计时记录使用 `timerReminderPushEnabled` 保存本次计时的提醒额度，`timerRestReminderAt` 记录正计时的 2.5 小时休息提醒已经触发，避免重复振动或发送消息。
 
 `users.lastReminderRenewalDate` 记录最近一次通过“完成最后任务/手动续订”登记授权的业务日期，防止同一天重复弹出续订请求。旧用户缺失该字段时按尚未续订处理。
 
@@ -112,6 +117,7 @@ lastCheckinReminderNotificationDate
 7. 一次性提醒发送后完成当天最后一项任务，确认微信订阅授权由该次点击触发；任务完成提示只显示“今日打卡完成”。
 8. 提醒尚未发送、机会仍可用时，跨天完成任务也不重复申请。
 9. 启动一个短倒计时并同意订阅：前台到点只振动且任务保持未完成；再次启动后退到后台，到点后收到订阅消息，回到“今日”点击右侧圆圈才完成任务。
-10. 创建新的测试日期且不打卡，确认整天只收到一条微信提醒和一条站内提醒。
+10. 启动正计时并同意订阅，构造累计有效时间达到 2.5 小时：前台确认只振动且继续计时；后台确认收到措辞为休息建议的订阅消息。手动结束任务时确认已消耗额度会续订、未消耗额度不会重复申请。
+11. 创建新的测试日期且不打卡，确认整天只收到一条微信提醒和一条站内提醒。
 
 微信接口说明：[订阅消息](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/subscribe-message.html)、[`wx.requestSubscribeMessage`](https://developers.weixin.qq.com/miniprogram/dev/api/open-api/subscribe-message/wx.requestSubscribeMessage.html)、[服务端发送接口](https://developers.weixin.qq.com/miniprogram/dev/server/API/mp-message-management/subscribe-message/api_sendmessage.html)。

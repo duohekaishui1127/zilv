@@ -33,4 +33,14 @@ function expiredCountdownFields(checkin = {}, at = new Date()) {
   }
 }
 
-module.exports = { expiredCountdownFields }
+function countUpRestReminderDue(checkin = {}, at = new Date(), thresholdSeconds = 2.5 * 60 * 60) {
+  if (checkin.timerMode !== 'COUNT_UP' || checkin.timerStatus !== 'RUNNING' || checkin.timerRestReminderAt) return false
+  const resumedAtMs = dateMs(checkin.timerResumedAt)
+  const atMs = dateMs(at)
+  if (resumedAtMs == null || atMs == null) return false
+  const accumulatedMs = Math.max(0, Number(checkin.timerAccumulatedMs || 0))
+  const effectiveMs = accumulatedMs + Math.max(0, atMs - resumedAtMs)
+  return effectiveMs >= Number(thresholdSeconds) * 1000
+}
+
+module.exports = { expiredCountdownFields, countUpRestReminderDue }
