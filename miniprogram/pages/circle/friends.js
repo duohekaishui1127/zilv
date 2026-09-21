@@ -7,7 +7,27 @@ Page({
   input(e) { this.setData({ shareCode: e.detail.value.toUpperCase(), found: null }) },
   async load() {
     const [f, r] = await Promise.all([api.call('getFriends'), api.call('getFriendRequests')])
-    this.setData({ friends:pinnedFirst(f.friends), requests: r.requests, outgoing:r.outgoing || [] })
+    const friends=pinnedFirst(f.friends)
+    const requests=r.requests || []
+    const outgoing=r.outgoing || []
+    const avatarUrls=await api.resolveCloudFileUrls([
+      ...friends.map(item => item.avatar),
+      ...requests.map(item => item.user.avatar),
+      ...outgoing.map(item => item.user.avatar)
+    ])
+    const requestOffset=friends.length
+    const outgoingOffset=requestOffset + requests.length
+    this.setData({
+      friends:friends.map((item,index) => ({
+        ...item,avatar:avatarUrls[index],initial:(item.displayName || item.nickname || '?').slice(0,1)
+      })),
+      requests:requests.map((item,index) => ({
+        ...item,user:{ ...item.user,avatar:avatarUrls[requestOffset + index],initial:(item.user.nickname || '?').slice(0,1) }
+      })),
+      outgoing:outgoing.map((item,index) => ({
+        ...item,user:{ ...item.user,avatar:avatarUrls[outgoingOffset + index],initial:(item.user.nickname || '?').slice(0,1) }
+      }))
+    })
     if (r.requests.length) wx.showTabBarRedDot({ index:3 })
     else wx.hideTabBarRedDot({ index:3 })
   },
@@ -15,7 +35,8 @@ Page({
     const code = this.data.shareCode.trim()
     if (!code) return wx.showToast({ title:'请输入好友码', icon:'none' })
     const d = await api.call('findUserByShareCode', { shareCode: code })
-    this.setData({ found: d.user })
+    const avatar=await api.resolveCloudFileUrl(d.user.avatar)
+    this.setData({ found:{ ...d.user,avatar,initial:(d.user.nickname || '?').slice(0,1) } })
   },
   async add() {
     if (!this.data.found) return

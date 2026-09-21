@@ -3,6 +3,7 @@ const assert = require('node:assert/strict')
 const {
   configuredDefaultAdminShareCode,
   isDefaultAdminFriendship,
+  isDefaultAdministrator,
   defaultAdminFriendshipData
 } = require('../cloudfunctions/api/domain/default-admin-friend')
 
@@ -22,6 +23,8 @@ test('默认管理员好友关系为已接受且受保护', () => {
   assert.equal(data.defaultAdmin, true)
   assert.equal(data.protected, true)
   assert.equal(isDefaultAdminFriendship(data), true)
+  assert.equal(isDefaultAdministrator(data, 'admin'), true)
+  assert.equal(isDefaultAdministrator(data, 'member'), false)
   assert.equal(isDefaultAdminFriendship({ status: 'ACCEPTED' }), false)
 })
 

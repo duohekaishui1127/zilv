@@ -7,7 +7,7 @@ const { friendshipBetween } = require('../services/social')
 const {
   friendSettingsOf, normalizedOverrides, visibilityFor, canSharePlanWithFriend
 } = require('../services/friend-visibility')
-const { isDefaultAdminFriendship } = require('../domain/default-admin-friend')
+const { isDefaultAdminFriendship, isDefaultAdministrator } = require('../domain/default-admin-friend')
 
 async function acceptedFriend(userId, friendUserId) {
   const friendship = await friendshipBetween(userId, friendUserId)
@@ -51,7 +51,11 @@ async function getFriendDetail({ user, event, localDate }) {
   const calendar = buildCheckinCalendar(month, visiblePlans, monthCheckins.data, { endDate: localDate })
   const specialCare = care.data[0] || null
   return {
-    friend: { ...publicUser(friend, mySettings), defaultAdminFriendship: isDefaultAdminFriendship(friendship) },
+    friend: {
+      ...publicUser(friend, mySettings),
+      defaultAdminFriendship: isDefaultAdminFriendship(friendship),
+      isAdministrator: isDefaultAdministrator(friendship, friend._id)
+    },
     calendarVisible,
     calendar,
     settings: {

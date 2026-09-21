@@ -21,6 +21,10 @@ function isDefaultAdminFriendship(friendship) {
   ))
 }
 
+function isDefaultAdministrator(friendship, userId) {
+  return isDefaultAdminFriendship(friendship) && String(friendship.userA || '') === String(userId || '')
+}
+
 function defaultAdminFriendshipData(adminUserId, userId, timestamp, existing = null) {
   return {
     userA: adminUserId,
@@ -40,5 +44,6 @@ module.exports = {
   DEFAULT_ADMIN_FRIEND_SOURCE,
   configuredDefaultAdminShareCode,
   isDefaultAdminFriendship,
+  isDefaultAdministrator,
   defaultAdminFriendshipData
 }

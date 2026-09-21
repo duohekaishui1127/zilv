@@ -7,7 +7,7 @@ const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../
 const { notifyFriendRequest, notifyFriendAccepted, resolveFriendRequestNotification } = require('../services/friend-notifications')
 const { normalizeFriendRequestMessage } = require('../domain/friend-request')
 const { pinnedFirst } = require('../domain/social-list')
-const { isDefaultAdminFriendship } = require('../domain/default-admin-friend')
+const { isDefaultAdminFriendship, isDefaultAdministrator } = require('../domain/default-admin-friend')
 
 function publicUser(user) {
   return { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode }
@@ -122,8 +122,6 @@ async function getFriends({ user, localDate }) {
     const privacy = visibility.effective
     const allPlans = privacy.showPlanStatusToFriends ? await getTodayPlans(other._id, localDate) : []
     const plans = allPlans.filter(plan => canSharePlanWithFriend(plan, privacy))
-    const studyPlans = plans.filter(x => x.category === 'STUDY')
-    const workoutPlans = plans.filter(x => x.category === 'WORKOUT')
     const care = careMap.get(other._id)
     return {
       ...publicUser(other),
@@ -134,13 +132,8 @@ async function getFriends({ user, localDate }) {
       specialCare: Boolean(care?.enabled),
       specialCareWechat: Boolean(care?.enabled && care?.wechatEnabled),
       defaultAdminFriendship: isDefaultAdminFriendship(friendship),
-      planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null,
-      studyStatus: privacy.showStudyStatusToFriends && privacy.showPlanStatusToFriends
-        ? { total: studyPlans.length, completed: studyPlans.filter(x => x.completed).length, done: studyPlans.length > 0 && studyPlans.every(x => x.completed) }
-        : null,
-      workoutStatus: privacy.showWorkoutStatusToFriends && privacy.showPlanStatusToFriends
-        ? { total: workoutPlans.length, completed: workoutPlans.filter(x => x.completed).length, done: workoutPlans.length > 0 && workoutPlans.every(x => x.completed) }
-        : null
+      isAdministrator: isDefaultAdministrator(friendship, other._id),
+      planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null
     }
   }))
   return { friends:pinnedFirst(friends.filter(Boolean)) }

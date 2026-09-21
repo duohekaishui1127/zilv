@@ -1,6 +1,6 @@
 <view class="container" wx:if="{{friend}}">
   <view class="hero row">
-    <view class="row-start"><image wx:if="{{friend.avatar}}" class="friend-avatar" src="{{friend.avatar}}" mode="aspectFill"/><view wx:else class="friend-avatar">{{friend.initial}}</view><view><view class="row-start"><view class="h1">{{friend.displayName}}</view><view wx:if="{{friend.defaultAdminFriendship}}" class="tag">管理员</view></view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
+    <view class="row-start"><image wx:if="{{friend.avatar}}" class="friend-avatar" src="{{friend.avatar}}" mode="aspectFill"/><view wx:else class="friend-avatar">{{friend.initial}}</view><view><view class="row-start"><view class="h1">{{friend.displayName}}</view><view wx:if="{{friend.isAdministrator}}" class="tag">管理员</view></view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
     <button class="more-button" bindtap="openSettings">•••</button>
   </view>
   <view class="section-title">当月打卡</view>
