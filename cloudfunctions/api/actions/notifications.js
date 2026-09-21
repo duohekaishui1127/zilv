@@ -52,6 +52,7 @@ async function updateCheckinReminderSettings({ user,event }) {
 async function renewCheckinReminderSubscription({ user, event, localDate }) {
   if (event.authorized !== true) throw fail('REMINDER_AUTH_REQUIRED', '请先允许微信订阅提醒')
   if (!user.checkinReminderEnabled) return { renewed:false,alreadyRenewed:false }
+  if (user.checkinReminderPushEnabled) return { renewed:false,alreadyRenewed:false,alreadyAvailable:true }
   if (user.lastReminderRenewalDate === localDate) return { renewed:false,alreadyRenewed:true,count:0 }
   const timestamp = now()
   await db.collection(C.USERS).doc(user._id).update({

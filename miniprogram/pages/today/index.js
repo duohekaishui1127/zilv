@@ -1,5 +1,6 @@
 const api = require('../../utils/api')
 const fmt = require('../../utils/format')
+const reminderRenewal = require('../../utils/reminder-renewal')
 const { CATEGORY_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS } = require('../../utils/constants')
 
 function emptyEditor() {
@@ -116,10 +117,8 @@ Page({
   updateReminderRenewalState() {
     const dashboard=this.data.dashboard
     const config=this.data.reminderConfig
-    const allComplete=Boolean(dashboard?.completion?.total) && dashboard.completion.completed === dashboard.completion.total
     this.setData({
-      reminderRenewalAvailable:Boolean(config?.configured && config.subscriptionType === 'ONE_TIME' && allComplete &&
-        dashboard?.user?.checkinReminderEnabled && !dashboard?.user?.reminderRenewedToday)
+      reminderRenewalAvailable:reminderRenewal.shouldOfferManualRenewal({ dashboard,config })
     })
   },
   async load() {
@@ -203,16 +202,16 @@ Page({
   goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
+  completesAllTasks(plan) { return reminderRenewal.completesAllTasks(this.data.dashboard,plan) },
   shouldRenewAfter(plan) {
-    const dashboard=this.data.dashboard
-    const config=this.data.reminderConfig
-    if (!plan || plan.completed || !config?.configured || config.subscriptionType !== 'ONE_TIME') return false
-    if (dashboard?.user?.reminderRenewedToday || this._renewalPromptDate === api.localDate()) return false
-    return dashboard?.user?.checkinReminderEnabled && dashboard.completion?.total > 0 &&
-      dashboard.completion.completed === dashboard.completion.total - 1
+    return reminderRenewal.shouldRequestReminderRenewal({
+      dashboard:this.data.dashboard,plan,config:this.data.reminderConfig,
+      promptedToday:this._renewalPromptDate === api.localDate()
+    })
   },
   async requestNextReminder(plan, force = false) {
     if (!force && !this.shouldRenewAfter(plan)) return false
+    if (this.data.dashboard?.user?.checkinReminderPushEnabled) return false
     const config=this.data.reminderConfig
     if (!config?.configured || !config.templateId || config.subscriptionType !== 'ONE_TIME') return false
     this._renewalPromptDate=api.localDate()
@@ -228,7 +227,7 @@ Page({
     if (!authorized) return false
     try {
       const result=await api.call('renewCheckinReminderSubscription',{ authorized:true },{ silent:true })
-      return Boolean(result.renewed || result.alreadyRenewed)
+      return Boolean(result.renewed || result.alreadyRenewed || result.alreadyAvailable)
     } catch (error) {
       console.warn('[reminder-renew-save]',api.diagnosticOf(error,'renewCheckinReminderSubscription'))
       return false
@@ -288,11 +287,12 @@ Page({
     }
     this._quickCompleting = true
     try {
+      const completesToday=this.completesAllTasks(plan)
       const reminderAccepted=await this.requestNextReminder(plan)
       const payload = { planId: plan._id, actualValue: Number(plan.targetValue) }
       await api.call('completePlan', payload)
-      const renewed=await this.saveReminderRenewal(reminderAccepted)
-      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成', icon:'success' })
+      await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成', icon:'success' })
       await this.load()
     } finally {
       this._quickCompleting = false
@@ -316,10 +316,11 @@ Page({
     if (!plan || this.data.timerBusyPlanId) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
+      const completesToday=this.completesAllTasks(plan)
       const reminderAccepted=await this.requestNextReminder(plan)
       await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      const renewed=await this.saveReminderRenewal(reminderAccepted)
-      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成',icon:'success' })
+      await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -331,10 +332,11 @@ Page({
     if (!await api.confirm('结束后将停止计时，并直接完成这项计划。', '结束计时')) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
+      const completesToday=this.completesAllTasks(plan)
       const reminderAccepted=await this.requestNextReminder(plan)
       await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      const renewed=await this.saveReminderRenewal(reminderAccepted)
-      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成',icon:'success' })
+      await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
