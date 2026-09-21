@@ -36,6 +36,10 @@
       <image wx:for="{{feedback.images}}" wx:for-item="photo" wx:key="*this" class="history-image" src="{{photo}}" mode="aspectFill" data-feedback-index="{{feedbackIndex}}" data-photo="{{photo}}" bindtap="previewHistory"/>
     </view>
     <view class="sub">{{feedback.displayTime}}</view>
+    <view wx:if="{{feedback.adminReply}}" class="feedback-reply">
+      <view class="row"><view class="value">开发者回复</view><view class="sub">{{feedback.replyDisplayTime}}</view></view>
+      <view class="feedback-reply-content">{{feedback.adminReply}}</view>
+    </view>
   </view>
   <view class="empty compact" wx:if="{{loading && !feedbacks.length}}">正在加载反馈…</view>
   <view class="empty compact" wx:if="{{!loading && !feedbacks.length}}">还没有提交过反馈</view>

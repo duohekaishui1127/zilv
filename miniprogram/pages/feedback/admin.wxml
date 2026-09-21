@@ -1,5 +1,5 @@
 <view class="container">
-  <view class="hero"><view class="h1">反馈管理</view><view class="sub">共读取 {{feedbacks.length}} 条最近反馈</view></view>
+  <view class="hero"><view class="h1">用户反馈</view><view class="sub">共 {{feedbacks.length}} 条其他用户的最近反馈</view></view>
   <view class="empty" wx:if="{{loading && !feedbacks.length}}">正在加载反馈…</view>
   <view class="card" wx:for="{{feedbacks}}" wx:for-item="feedback" wx:for-index="feedbackIndex" wx:key="_id">
     <view class="row"><view class="tag">{{feedback.categoryLabel}}</view><view class="tag {{feedback.status === 'COMPLETED' ? 'tag-active' : ''}}">{{feedback.statusLabel}}</view></view>
@@ -12,6 +12,18 @@
     <view class="admin-meta">{{feedback.displayTime}} · App {{feedback.deviceInfo.appVersion || '-'}} · {{feedback.deviceInfo.model || '未知设备'}}</view>
     <view class="status-row">
       <button wx:for="{{statuses}}" wx:for-item="statusItem" wx:key="value" class="btn btn-light status-button" data-id="{{feedback._id}}" data-status="{{statusItem.value}}" disabled="{{feedback.status === statusItem.value}}" bindtap="setStatus">{{statusItem.label}}</button>
+    </view>
+    <view class="reply-section">
+      <view class="label">回复用户</view>
+      <view wx:if="{{feedback.adminReply}}" class="previous-reply">
+        <view class="sub">最近回复 · {{feedback.replyDisplayTime}}</view>
+        <view>{{feedback.adminReply}}</view>
+      </view>
+      <view class="quick-reply-row">
+        <button wx:for="{{quickReplies}}" wx:for-item="quickReply" wx:key="*this" class="quick-reply-button" data-feedback-index="{{feedbackIndex}}" data-reply="{{quickReply}}" bindtap="chooseQuickReply">{{quickReply}}</button>
+      </view>
+      <textarea class="input reply-textarea" maxlength="500" value="{{feedback.replyDraft}}" data-feedback-index="{{feedbackIndex}}" bindinput="replyInput" placeholder="选择快捷回复或输入自定义回复"/>
+      <view class="row reply-footer"><view class="sub">{{feedback.replyDraft.length}} / 500</view><button class="btn btn-small" data-feedback-index="{{feedbackIndex}}" loading="{{replyingId === feedback._id}}" disabled="{{!feedback.replyDraft || replyingId}}" bindtap="sendReply">发送回复</button></view>
     </view>
   </view>
   <view class="empty" wx:if="{{!loading && !feedbacks.length}}">暂时没有用户反馈</view>

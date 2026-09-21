@@ -71,10 +71,30 @@ async function notifyFeedbackStatus(feedback, statusLabel) {
   await trimNotificationHistory(feedback.userId)
 }
 
+async function notifyFeedbackReply(feedback) {
+  const version = Math.max(1, Number(feedback.replyVersion || 1))
+  const id = notificationId(`feedback-reply-${version}`, feedback.userId, feedback._id)
+  const timestamp = now()
+  await db.collection(C.NOTIFICATIONS).doc(id).set({ data: {
+    userId: feedback.userId,
+    type: 'FEEDBACK_REPLY',
+    feedbackId: feedback._id,
+    title: '你的反馈收到回复',
+    content: String(feedback.adminReply || '').slice(0, 120),
+    page: '/pages/feedback/index',
+    status: 'UNREAD',
+    pushStatus: 'INTERNAL_ONLY',
+    createdAt: timestamp,
+    updatedAt: timestamp
+  } })
+  await trimNotificationHistory(feedback.userId)
+}
+
 module.exports = {
   configuredAdminCodes,
   isFeedbackAdmin,
   assertFeedbackAdmin,
   notifyFeedbackAdmins,
-  notifyFeedbackStatus
+  notifyFeedbackStatus,
+  notifyFeedbackReply
 }

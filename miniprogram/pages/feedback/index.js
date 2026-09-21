@@ -74,7 +74,8 @@ Page({
           categoryLabel: item.categoryLabel || CATEGORIES.find(category => category.value === item.category)?.label || '反馈',
           statusLabel: STATUS_LABELS[item.status] || '处理中',
           statusClass: item.status === 'COMPLETED' ? 'tag-active' : '',
-          displayTime: displayTime(item.createdAt)
+          displayTime: displayTime(item.createdAt),
+          replyDisplayTime: displayTime(item.repliedAt)
         }))
       })
     } catch (error) {

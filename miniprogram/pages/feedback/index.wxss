@@ -7,3 +7,5 @@
 .history-images { display: flex; gap: 12rpx; margin-top: 16rpx; }
 .history-image { width: 128rpx; height: 128rpx; border-radius: 14rpx; background: #eef0f3; }
 .submit-button { margin-top: 10rpx; }
+.feedback-reply { margin-top: 18rpx; padding: 18rpx; border-radius: 16rpx; background: #f1f7f3; }
+.feedback-reply-content { margin-top: 10rpx; color: #31483a; line-height: 1.6; white-space: pre-wrap; }

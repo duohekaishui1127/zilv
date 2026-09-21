@@ -18,8 +18,8 @@
       <view class="list-item row" data-url="/pages/profile/home-settings" bindtap="go"><view><view class="value">今日页设置</view><view class="sub">选择“今日”中显示的自律数据</view></view><view>›</view></view>
       <view class="list-item row" data-url="/pages/profile/privacy" bindtap="go"><view><view class="value">隐私设置</view><view class="sub">控制好友可见范围</view></view><view>›</view></view>
       <view class="list-item row" data-url="/pages/profile/food-custom" bindtap="go"><view><view class="value">自定义食物</view><view class="sub">添加包装食品或自己的食物数据</view></view><view>›</view></view>
-      <view class="list-item row" data-url="/pages/feedback/index" bindtap="go"><view><view class="value">意见与建议</view><view class="sub">告诉我们哪里可以做得更好</view></view><view>›</view></view>
-      <view wx:if="{{profile.isFeedbackAdmin}}" class="list-item row" data-url="/pages/feedback/admin" bindtap="go"><view><view class="value">反馈管理</view><view class="sub">查看并处理用户提交的建议</view></view><view>›</view></view>
+      <view wx:if="{{!profile.isFeedbackAdmin}}" class="list-item row" data-url="/pages/feedback/index" bindtap="go"><view><view class="value">用户反馈</view><view class="sub">提交反馈并查看开发者回复</view></view><view>›</view></view>
+      <view wx:else class="list-item row" data-url="/pages/feedback/admin" bindtap="go"><view><view class="value">用户反馈</view><view class="sub">查看并回复用户提交的反馈</view></view><view>›</view></view>
       <view class="list-item row" data-url="/pages/profile/about" bindtap="go"><view><view class="value">关于与诊断</view><view class="sub">版本、环境与问题定位信息</view></view><view>›</view></view>
       <view class="data-note">BMR、日常消耗和运动热量均为估算，用于自我记录，不代替医学或营养诊疗。</view>
     </view>

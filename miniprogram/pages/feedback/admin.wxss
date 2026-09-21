@@ -4,3 +4,10 @@
 .admin-image { width: 150rpx; height: 150rpx; border-radius: 14rpx; background: #eef0f3; }
 .status-row { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 20rpx; }
 .status-button { padding: 12rpx 16rpx; font-size: 22rpx; }
+.reply-section { margin-top: 22rpx; padding-top: 22rpx; border-top: 1rpx solid #edf0f3; }
+.previous-reply { margin-top: 12rpx; padding: 16rpx; border-radius: 14rpx; background: #f4f8f5; color: #31483a; line-height: 1.55; }
+.quick-reply-row { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 16rpx; }
+.quick-reply-button { width: auto; margin: 0; padding: 10rpx 14rpx; border: 1rpx solid #dfe5e1; border-radius: 999rpx; background: #fff; color: #4b5563; font-size: 21rpx; line-height: 1.35; }
+.quick-reply-button::after { border: 0; }
+.reply-textarea { min-height: 150rpx; margin-top: 16rpx; }
+.reply-footer { margin-top: 12rpx; }

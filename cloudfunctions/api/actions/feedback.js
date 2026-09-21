@@ -1,10 +1,13 @@
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const validate = require('../lib/validators')
+const { feedbackInboxForAdmin, feedbackReplyData } = require('../domain/feedback')
 const {
   assertFeedbackAdmin,
+  isFeedbackAdmin,
   notifyFeedbackAdmins,
-  notifyFeedbackStatus
+  notifyFeedbackStatus,
+  notifyFeedbackReply
 } = require('../services/feedback-admin')
 
 const CATEGORY_LABELS = Object.freeze({
@@ -34,6 +37,7 @@ function deviceInfoOf(value) {
 }
 
 async function submitFeedback({ user, event, requestId }) {
+  if (isFeedbackAdmin(user)) throw fail('FORBIDDEN', '管理员请使用反馈管理')
   const category = validate.enumValue(event.category, Object.keys(CATEGORY_LABELS), { name: '反馈类型' })
   const content = validate.string(event.content, { name: '反馈内容', required: true, max: 2000 })
   const contact = validate.string(event.contact, { name: '联系方式', max: 100 })
@@ -98,6 +102,7 @@ async function submitFeedback({ user, event, requestId }) {
 }
 
 async function getMyFeedbacks({ user, event }) {
+  if (isFeedbackAdmin(user)) throw fail('FORBIDDEN', '管理员请使用反馈管理')
   const limit = Math.min(Math.max(Number(event.limit || 30), 1), 50)
   const result = await db.collection(C.FEEDBACKS).where({ userId: user._id }).orderBy('createdAt', 'desc').limit(limit).get()
   return { feedbacks: result.data }
@@ -106,8 +111,8 @@ async function getMyFeedbacks({ user, event }) {
 async function getFeedbackInbox({ user, event }) {
   assertFeedbackAdmin(user)
   const limit = Math.min(Math.max(Number(event.limit || 50), 1), 100)
-  const result = await db.collection(C.FEEDBACKS).orderBy('createdAt', 'desc').limit(limit).get()
-  return { feedbacks: result.data }
+  const result = await db.collection(C.FEEDBACKS).orderBy('createdAt', 'desc').limit(100).get()
+  return { feedbacks: feedbackInboxForAdmin(result.data, user._id, limit) }
 }
 
 async function updateFeedbackStatus({ user, event }) {
@@ -126,4 +131,21 @@ async function updateFeedbackStatus({ user, event }) {
   return { feedback: updated }
 }
 
-module.exports = { submitFeedback, getMyFeedbacks, getFeedbackInbox, updateFeedbackStatus }
+async function replyFeedback({ user, event }) {
+  assertFeedbackAdmin(user)
+  const feedbackId = validate.string(event.feedbackId, { name: '反馈标识', required: true, max: 100 })
+  const reply = validate.string(event.reply, { name: '回复内容', required: true, max: 500 })
+  const feedback = await db.collection(C.FEEDBACKS).doc(feedbackId).get().then(result => result.data).catch(() => null)
+  if (!feedback) throw fail('NOT_FOUND', '反馈不存在')
+  if (feedback.userId === user._id) throw fail('FORBIDDEN', '不能回复自己提交的反馈')
+  const timestamp = now()
+  const data = feedbackReplyData(feedback, user._id, reply, timestamp)
+  await db.collection(C.FEEDBACKS).doc(feedback._id).update({ data })
+  const updated = { ...feedback, ...data }
+  try { await notifyFeedbackReply(updated) } catch (error) {
+    console.warn('[feedback-reply-notify]', error?.message || error)
+  }
+  return { feedback: updated }
+}
+
+module.exports = { submitFeedback, getMyFeedbacks, getFeedbackInbox, updateFeedbackStatus, replyFeedback }
