@@ -74,19 +74,23 @@ async function alreadyCompleted(plan, date) {
   return count.total >= Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1)
 }
 
-function templateData(plan, context) {
-  const planKey = process.env.REMINDER_TEMPLATE_PLAN_KEY || 'thing1'
-  const timeKey = process.env.REMINDER_TEMPLATE_TIME_KEY || 'time2'
-  const statusKey = process.env.REMINDER_TEMPLATE_STATUS_KEY || 'thing3'
+function templateData(plan) {
+  const timeKey = process.env.REMINDER_TEMPLATE_TIME_KEY || 'time30'
+  const contentKey = process.env.REMINDER_TEMPLATE_CONTENT_KEY || 'thing2'
   return {
-    [planKey]: { value: text(plan.name, 20) },
-    [timeKey]: { value: `${context.date} ${plan.reminderTime}` },
-    [statusKey]: { value: '今日尚未打卡' }
+    [timeKey]: { value: plan.reminderTime },
+    [contentKey]: { value: text(`计划“${plan.name}”尚未打卡`, 20) }
   }
 }
 
 async function updateNotification(id, data) {
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).update({ data: { ...data, updatedAt: new Date() } })
+}
+
+async function clearOneTimeReminderForUser(userId) {
+  await db.collection(COLLECTIONS.PLANS).where({ userId,reminderPushEnabled:true }).update({
+    data:{ reminderPushEnabled:false,updatedAt:new Date() }
+  })
 }
 
 async function trimNotificationHistory(userId) {
@@ -102,11 +106,15 @@ async function trimNotificationHistory(userId) {
   }
 }
 
-async function sendWechatReminder(plan, context, notification) {
+async function sendWechatReminder(plan, context, notification, allowWechat = true) {
   const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
   const subscriptionType = normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
   if (!plan.reminderPushEnabled) {
     await updateNotification(notification._id, { pushStatus: 'NOT_SUBSCRIBED' })
+    return 'internal-only'
+  }
+  if (!allowWechat) {
+    await updateNotification(notification._id, { pushStatus:'DAILY_LIMIT' })
     return 'internal-only'
   }
   if (!templateId) {
@@ -125,13 +133,13 @@ async function sendWechatReminder(plan, context, notification) {
       page: process.env.REMINDER_MESSAGE_PAGE || 'pages/today/index',
       miniprogramState: process.env.REMINDER_MINIPROGRAM_STATE || 'formal',
       lang: 'zh_CN',
-      data: templateData(plan, context)
+      data: templateData(plan)
     })
     const resultCode = Number(result.errCode ?? result.errcode ?? 0)
     if (resultCode !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
     await updateNotification(notification._id, { pushStatus: 'SENT', pushedAt: new Date() })
     if (subscriptionType === 'ONE_TIME') {
-      await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { reminderPushEnabled: false, updatedAt: new Date() } })
+      await clearOneTimeReminderForUser(plan.userId)
     }
     return 'sent'
   } catch (error) {
@@ -142,13 +150,13 @@ async function sendWechatReminder(plan, context, notification) {
       pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120)
     })
     if (code === 43101) {
-      await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { reminderPushEnabled: false, updatedAt: new Date() } })
+      await clearOneTimeReminderForUser(plan.userId)
     }
     return 'failed'
   }
 }
 
-async function processPlan(plan, at) {
+async function processPlan(plan, at, allowWechat = true) {
   const context = reminderContext(plan, at)
   if (!context || await alreadyCompleted(plan, context.date)) return 'skipped'
   if (plan.lastReminderNotificationDate === context.date) return 'duplicate'
@@ -176,7 +184,7 @@ async function processPlan(plan, at) {
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
   await db.collection(COLLECTIONS.PLANS).doc(plan._id).update({ data: { lastReminderNotificationDate: context.date, updatedAt: timestamp } })
   await trimNotificationHistory(plan.userId)
-  return sendWechatReminder(plan, context, notification)
+  return sendWechatReminder(plan, context, notification, allowWechat)
 }
 
 async function enforceInactiveGroup(group, localDate) {
@@ -223,8 +231,13 @@ exports.main = async () => {
     allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) })
   ])
   const summary = { scanned: plans.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
+  const pushHandledUsers = new Set()
   for (const plan of plans) {
-    const status = await processPlan(plan, startedAt)
+    const canAttemptPush = !pushHandledUsers.has(plan.userId)
+    const status = await processPlan(plan, startedAt, canAttemptPush)
+    if (canAttemptPush && plan.reminderPushEnabled && ['sent','failed','not-configured'].includes(status)) {
+      pushHandledUsers.add(plan.userId)
+    }
     if (status === 'sent') summary.sent++
     else if (status === 'internal-only' || status === 'not-configured') summary.internalOnly++
     else if (status === 'failed') summary.failed++

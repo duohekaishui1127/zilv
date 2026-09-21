@@ -28,6 +28,8 @@
 .streak-row { display:flex; justify-content:space-between; gap:16rpx; margin-top:16rpx; color:#303846; font-size:23rpx; font-weight:600; }
 .streak-action { flex:0 0 auto; color:#697386; font-weight:400; }
 .auto-checkin-hint { margin-top:14rpx; text-align:right; }
+.reminder-renew-row { margin-top:18rpx; padding:18rpx; border-radius:16rpx; background:#f5f7fa; }
+.reminder-renew-row .btn { flex:0 0 auto; }
 .energy-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 22rpx; }
 .energy-metric { min-width: 0; background: #f8f9fb; border-radius: 18rpx; padding: 20rpx 10rpx; text-align: center; }
 .energy-value { margin: 5rpx 0; font-size: 34rpx; font-weight: 700; overflow-wrap: anywhere; }

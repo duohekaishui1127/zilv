@@ -1,8 +1,8 @@
-// 建议分别创建开发与真实数据环境。留空时使用开发者工具当前选择的云环境。
+// 当前开发版、体验版和正式版统一使用已初始化的云环境；后续拆分环境时分别替换。
 const CLOUD_ENVS = Object.freeze({
-  develop: '',
-  trial: '',
-  release: ''
+  develop: 'cloud1-d5gqve1w118b45d47',
+  trial: 'cloud1-d5gqve1w118b45d47',
+  release: 'cloud1-d5gqve1w118b45d47'
 })
 
 function getEnvVersion() {

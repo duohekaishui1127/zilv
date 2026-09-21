@@ -20,6 +20,22 @@ async function getReminderConfig() {
   }
 }
 
+async function renewPlanReminderSubscription({ user, event, localDate }) {
+  if (event.authorized !== true) throw fail('REMINDER_AUTH_REQUIRED', '请先允许微信订阅提醒')
+  if (user.lastReminderRenewalDate === localDate) return { renewed:false,alreadyRenewed:true,count:0 }
+  const result = await db.collection(C.PLANS).where({
+    userId:user._id,enabled:true,reminderEnabled:true
+  }).get()
+  const plans = result.data.filter(plan => !plan.deletedAt)
+  if (!plans.length) return { renewed:false,alreadyRenewed:false,count:0 }
+  const timestamp = now()
+  await Promise.all(plans.map(plan => db.collection(C.PLANS).doc(plan._id).update({
+    data:{ reminderPushEnabled:true,updatedAt:timestamp }
+  })))
+  await db.collection(C.USERS).doc(user._id).update({ data:{ lastReminderRenewalDate:localDate,updatedAt:timestamp } })
+  return { renewed:true,alreadyRenewed:false,count:plans.length }
+}
+
 async function getNotifications({ user }) {
   return notificationWindow(user._id)
 }
@@ -44,4 +60,7 @@ async function markAllNotificationsRead({ user }) {
   return { updated: result.stats?.updated || 0 }
 }
 
-module.exports = { getReminderConfig, getNotifications, markNotificationRead, markAllNotificationsRead }
+module.exports = {
+  getReminderConfig, renewPlanReminderSubscription,
+  getNotifications, markNotificationRead, markAllNotificationsRead
+}

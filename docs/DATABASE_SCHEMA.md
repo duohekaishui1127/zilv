@@ -107,6 +107,8 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 `users.lastReleaseAnnouncementId` 和 `plans.lastReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日计划提醒不会重复创建。
 
+`users.lastReminderRenewalDate` 是一次性微信提醒的客户端续订日期凭证；它不代表微信授权本身，只用于避免同一业务日期重复触发续订体验。
+
 ## 推荐索引
 
 - `users`: `openid`；`shareCode`

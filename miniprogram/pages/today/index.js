@@ -94,13 +94,35 @@ Page({
     completionEditor: emptyEditor(),
     dailyReviewEditor: emptyDailyReviewEditor(),
     completionSaving: false,
-    timerBusyPlanId: ''
+    timerBusyPlanId: '',
+    reminderConfig:null,
+    reminderRenewalAvailable:false,
+    renewingReminder:false
   },
-  onShow() { this._visible = true; this.load() },
+  onShow() { this._visible = true; this.loadReminderConfig(); this.load() },
   onHide() { this._visible = false; this.stopTicker() },
   onUnload() { this._visible = false; this.stopTicker() },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
   serverNow() { return Date.now() + Number(this._clockOffset || 0) },
+  async loadReminderConfig() {
+    if (this.data.reminderConfig) return
+    try {
+      const reminderConfig = await api.call('getReminderConfig',{}, { silent:true })
+      this.setData({ reminderConfig },() => this.updateReminderRenewalState())
+    } catch (error) {
+      this.setData({ reminderConfig:{ configured:false,templateId:'',subscriptionType:'ONE_TIME' } })
+    }
+  },
+  updateReminderRenewalState() {
+    const dashboard=this.data.dashboard
+    const config=this.data.reminderConfig
+    const plans=dashboard?.plans || []
+    const allComplete=Boolean(dashboard?.completion?.total) && dashboard.completion.completed === dashboard.completion.total
+    this.setData({
+      reminderRenewalAvailable:Boolean(config?.configured && config.subscriptionType === 'ONE_TIME' && allComplete &&
+        !dashboard?.user?.reminderRenewedToday && plans.some(plan => plan.reminderEnabled))
+    })
+  },
   async load() {
     this.setData({ loading: true, error: '' })
     try {
@@ -122,7 +144,7 @@ Page({
         carbPct: fmt.pct(d.nutrition.carbIntake, target.carbGram),
         fatPct: fmt.pct(d.nutrition.fatIntake, target.fatGram),
         energyState: fmt.energyState(d.energy.estimatedCalorieBalance)
-      })
+      },() => this.updateReminderRenewalState())
       this.startTicker()
       this.maybePromptDailyReview(d)
       this.finishExpiredCountdown()
@@ -182,6 +204,48 @@ Page({
   goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
+  shouldRenewAfter(plan) {
+    const dashboard=this.data.dashboard
+    const config=this.data.reminderConfig
+    if (!plan || plan.completed || !config?.configured || config.subscriptionType !== 'ONE_TIME') return false
+    if (dashboard?.user?.reminderRenewedToday || this._renewalPromptDate === api.localDate()) return false
+    const plans=dashboard?.plans || []
+    return plans.some(item => item.reminderEnabled) && dashboard.completion?.total > 0 &&
+      dashboard.completion.completed === dashboard.completion.total - 1
+  },
+  async requestNextReminder(plan, force = false) {
+    if (!force && !this.shouldRenewAfter(plan)) return false
+    const config=this.data.reminderConfig
+    if (!config?.configured || !config.templateId || config.subscriptionType !== 'ONE_TIME') return false
+    this._renewalPromptDate=api.localDate()
+    try {
+      const result=await wx.requestSubscribeMessage({ tmplIds:[config.templateId] })
+      return ['accept','acceptWithAudio'].includes(result[config.templateId])
+    } catch (error) {
+      console.warn('[reminder-renew-request]',error?.errMsg || error?.message || error)
+      return false
+    }
+  },
+  async saveReminderRenewal(authorized) {
+    if (!authorized) return false
+    try {
+      const result=await api.call('renewPlanReminderSubscription',{ authorized:true },{ silent:true })
+      return Boolean(result.renewed || result.alreadyRenewed)
+    } catch (error) {
+      console.warn('[reminder-renew-save]',api.diagnosticOf(error,'renewPlanReminderSubscription'))
+      return false
+    }
+  },
+  async renewReminderFromButton() {
+    if (this.data.renewingReminder) return
+    this.setData({ renewingReminder:true })
+    try {
+      const accepted=await this.requestNextReminder(null,true)
+      const renewed=await this.saveReminderRenewal(accepted)
+      wx.showToast({ title:renewed ? '已续订下次提醒' : '未续订微信提醒',icon:'none' })
+      if (renewed) await this.load()
+    } finally { this.setData({ renewingReminder:false }) }
+  },
   openCompletion(e) {
     const plan = this.planFromEvent(e)
     if (!plan) return
@@ -226,9 +290,11 @@ Page({
     }
     this._quickCompleting = true
     try {
+      const reminderAccepted=await this.requestNextReminder(plan)
       const payload = { planId: plan._id, actualValue: Number(plan.targetValue) }
       await api.call('completePlan', payload)
-      wx.showToast({ title: '计划已完成', icon: 'success' })
+      const renewed=await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成', icon:'success' })
       await this.load()
     } finally {
       this._quickCompleting = false
@@ -252,8 +318,10 @@ Page({
     if (!plan || this.data.timerBusyPlanId) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
+      const reminderAccepted=await this.requestNextReminder(plan)
       await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      wx.showToast({ title: '计划已完成', icon: 'success' })
+      const renewed=await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成',icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -265,8 +333,10 @@ Page({
     if (!await api.confirm('结束后将停止计时，并直接完成这项计划。', '结束计时')) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
+      const reminderAccepted=await this.requestNextReminder(plan)
       await api.call('finishAndCompletePlanTimer', { planId: plan._id })
-      wx.showToast({ title: '计划已完成', icon: 'success' })
+      const renewed=await this.saveReminderRenewal(reminderAccepted)
+      wx.showToast({ title:renewed ? '已完成并续订提醒' : '计划已完成',icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })

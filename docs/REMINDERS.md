@@ -3,7 +3,8 @@
 ## 行为边界
 
 - 站内消息：开启计划提醒后持续生效，到点且未打卡时写入消息中心；每名用户只保留最近 20 条。
-- 微信提醒：默认使用一次性订阅消息；只有微信公众平台向当前类目授予长期订阅模板，并在两个云函数中配置 `PLAN_REMINDER_SUBSCRIPTION_TYPE=LONG_TERM` 时，才能授权一次后按计划持续提醒。
+- 微信提醒：默认使用一次性订阅消息，一次用户授权只对应一次发送机会。用户点击完成当天最后一项计划时，小程序会借由该次点击调用微信订阅接口；全部完成成功后，把获准的一次机会登记为下一次未打卡提醒。
+- 服务端不能在无用户操作时静默增加一次性订阅次数；自动倒计时或其他非点击完成场景会在今日页提供“续订”按钮作为合规补充入口。
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
 - 群组打卡和特别关心动态始终写入应用内和消息中心。长期模板发送后保持开关；一次性模板发送成功后自动关闭。
@@ -13,7 +14,7 @@
 ```text
 用户设置提醒时间
     ↓
-用户主动授权一次性或长期微信提醒
+用户主动授权一次性微信提醒
     ↓
 reminder-dispatch 每5分钟扫描
     ↓
@@ -22,19 +23,20 @@ reminder-dispatch 每5分钟扫描
 幂等写入 notifications
     ↓
 存在一次性订阅时发送微信服务通知
+    ↓
+用户完成下一天全部任务时，借由完成点击续订下一次
 ```
 
-同一用户、计划、日期使用确定性通知 ID。即使定时触发器重复执行，也不会重复建立站内消息。
+同一用户、计划、日期使用确定性通知 ID。即使定时触发器重复执行，也不会重复建立站内消息。同一轮扫描中每名用户最多尝试发送一条微信提醒，避免多个未完成计划同时消耗多次授权。
 
 ## 微信公众平台配置
 
-在微信公众平台的“订阅消息”中选择或申请打卡提醒模板。默认代码期望模板包含：
+当前使用微信公众平台模板 `日程提醒`（模板编号 571），字段映射为：
 
 | 用途 | 默认字段 |
 |---|---|
-| 计划名称 | `thing1` |
-| 提醒时间 | `time2` |
-| 完成状态 | `thing3` |
+| 提醒时间 | `time30` |
+| 提醒内容 | `thing2` |
 
 如果实际模板字段不同，通过下方环境变量覆盖，不要直接修改业务代码。
 
@@ -43,7 +45,7 @@ reminder-dispatch 每5分钟扫描
 `api`：
 
 ```text
-PLAN_REMINDER_TEMPLATE_ID=模板ID
+PLAN_REMINDER_TEMPLATE_ID=NvYH1zhsy9zwqhbgh6gZIXpXk0ndSDY0leulECtekUI
 PLAN_REMINDER_SUBSCRIPTION_TYPE=ONE_TIME
 SOCIAL_CHECKIN_TEMPLATE_ID=好友/群成员打卡模板ID
 SOCIAL_CHECKIN_SUBSCRIPTION_TYPE=ONE_TIME
@@ -56,11 +58,10 @@ SOCIAL_MINIPROGRAM_STATE=trial
 `reminder-dispatch`：
 
 ```text
-PLAN_REMINDER_TEMPLATE_ID=与 api 相同的模板ID
+PLAN_REMINDER_TEMPLATE_ID=NvYH1zhsy9zwqhbgh6gZIXpXk0ndSDY0leulECtekUI
 PLAN_REMINDER_SUBSCRIPTION_TYPE=ONE_TIME
-REMINDER_TEMPLATE_PLAN_KEY=thing1
-REMINDER_TEMPLATE_TIME_KEY=time2
-REMINDER_TEMPLATE_STATUS_KEY=thing3
+REMINDER_TEMPLATE_TIME_KEY=time30
+REMINDER_TEMPLATE_CONTENT_KEY=thing2
 REMINDER_MESSAGE_PAGE=pages/today/index
 REMINDER_MINIPROGRAM_STATE=trial
 ```
@@ -94,6 +95,8 @@ reminderTimezoneOffset
 reminderPushEnabled
 ```
 
+`users.lastReminderRenewalDate` 记录最近一次通过“完成最后任务/手动续订”登记授权的业务日期，防止同一天重复弹出续订请求。旧用户缺失该字段时按尚未续订处理。
+
 `notifications` 保存：用户、计划、业务日期、未读状态、微信推送状态和错误码。消息中心只允许当前用户读取和修改自己的消息；新增第 21 条时自动清理最旧记录，计划上的日期凭证继续负责防止同日重复提醒。
 
 ## 验收建议
@@ -104,7 +107,8 @@ reminderPushEnabled
 4. 确认消息中心只出现一条消息。
 5. 确认微信服务通知到达并可跳转到“今日”。
 6. 再次运行云函数，确认不会重复生成或发送。
-7. 长期模板在下一应执行日继续保持微信提醒开关；一次性模板发送后关闭。
-8. 完成计划后创建新的测试日期，确认不会产生提醒。
+7. 一次性提醒发送后完成当天最后一项任务，确认微信订阅授权由该次点击触发，授权成功后显示“已完成并续订提醒”。
+8. 当天重复进入或重复编辑已完成任务时不自动重复申请；自动倒计时完成时可通过今日页“续订”按钮补充下一次机会。
+9. 创建新的测试日期且不打卡，确认只收到一条微信提醒；站内消息仍可按各计划生成。
 
 微信接口说明：[订阅消息](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/subscribe-message.html)、[`wx.requestSubscribeMessage`](https://developers.weixin.qq.com/miniprogram/dev/api/open-api/subscribe-message/wx.requestSubscribeMessage.html)、[服务端发送接口](https://developers.weixin.qq.com/miniprogram/dev/server/API/mp-message-management/subscribe-message/api_sendmessage.html)。
