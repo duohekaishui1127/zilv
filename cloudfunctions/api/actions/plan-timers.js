@@ -42,6 +42,7 @@ async function startPlanTimer({ user, event, localDate }) {
     timerMode: plan.timerMode,
     timerStatus: 'RUNNING',
     timerTargetSeconds,
+    timerReminderPushEnabled: plan.timerMode === 'COUNT_DOWN' && event.timerReminderAuthorized === true,
     timerStartedAt: timestamp,
     timerResumedAt: timestamp,
     timerPausedAt: null,
@@ -118,6 +119,7 @@ async function finishPlanTimer({ user, event, localDate }) {
     timerPausedSeconds: secondsOf(snapshot.pausedMs),
     timerEndedAt: new Date(snapshot.endedAtMs || timestamp),
     timerPausedAt: null,
+    timerReminderPushEnabled: false,
     durationMinutes: round1(effectiveSeconds / 60),
     updatedAt: timestamp
   }

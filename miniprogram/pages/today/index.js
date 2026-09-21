@@ -174,9 +174,12 @@ Page({
     if (!plan || this._autoFinishingTimer) return
     this._autoFinishingTimer = plan._id
     try {
-      await api.call('finishAndCompletePlanTimer', { planId: plan._id }, { silent: true })
+      await api.call('finishPlanTimer', { planId: plan._id }, { silent: true })
       await this.load()
-      wx.showToast({ title: '倒计时完成', icon: 'success' })
+      if (this._visible && typeof wx.vibrateLong === 'function') {
+        wx.vibrateLong({ fail: () => {} })
+      }
+      wx.showToast({ title: '时间到，完成后请打卡', icon: 'none' })
     } catch (error) {
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
@@ -247,6 +250,7 @@ Page({
     const plan = this.planFromEvent(e)
     if (!plan) return
     if (plan.completed) return this.showCompletion(plan)
+    if (plan.timerStatus === 'FINISHED') return wx.showToast({ title: '点击右侧圆圈完成', icon: 'none' })
     wx.showToast({ title: plan.timerEnabled ? '请使用计时按钮完成' : '点击右侧圆圈即可完成', icon: 'none' })
   },
   async revokeCompletion(plan) {
@@ -309,7 +313,31 @@ Page({
       this.setData({ timerBusyPlanId: '' })
     }
   },
-  startTimer(e) { return this.timerAction('startPlanTimer', e) },
+  async requestCountdownReminder() {
+    const config = this.data.reminderConfig
+    if (!config?.configured || !config.templateId) return false
+    try {
+      const result = await wx.requestSubscribeMessage({ tmplIds: [config.templateId] })
+      return ['accept', 'acceptWithAudio'].includes(result[config.templateId])
+    } catch (error) {
+      console.warn('[countdown-reminder-request]', error?.errMsg || error?.message || error)
+      return false
+    }
+  },
+  async startTimer(e) {
+    const plan = this.planFromEvent(e)
+    if (!plan || this.data.timerBusyPlanId) return
+    this.setData({ timerBusyPlanId: plan._id })
+    try {
+      const timerReminderAuthorized = plan.timerMode === 'COUNT_DOWN'
+        ? await this.requestCountdownReminder()
+        : false
+      await api.call('startPlanTimer', { planId: plan._id, timerReminderAuthorized })
+      await this.load()
+    } finally {
+      this.setData({ timerBusyPlanId: '' })
+    }
+  },
   pauseTimer(e) { return this.timerAction('pausePlanTimer', e) },
   resumeTimer(e) { return this.timerAction('resumePlanTimer', e) },
   async completeFinishedTimer(plan) {

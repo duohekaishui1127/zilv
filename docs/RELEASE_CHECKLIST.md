@@ -50,7 +50,7 @@
 - [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_SUBSCRIPTION_TYPE`；普通工具类打卡提醒保持 `ONE_TIME`
 - [ ] 只有微信后台已授予长期模板时，才把 `SOCIAL_CHECKIN_SUBSCRIPTION_TYPE` 配为 `LONG_TERM`
 - [ ] 订阅消息模板字段名与 `REMINDER_TEMPLATE_*_KEY` 一致
-- [ ] 部署 `reminder-dispatch` 并确认每 5 分钟触发器生效
+- [ ] 部署 `reminder-dispatch` 并确认每分钟触发器生效
 - [ ] 体验版使用 `REMINDER_MINIPROGRAM_STATE=trial`，正式版使用 `formal`
 - [ ] 编译小程序并完成核心回归测试
 - [ ] `CHANGELOG.md` 已更新

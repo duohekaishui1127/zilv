@@ -11,7 +11,7 @@
 9. 在小程序“我的”复制作者账号的好友码，并为 `api` 配置 `FEEDBACK_ADMIN_SHARE_CODES`；多个管理员好友码用英文逗号分隔。
 10. 按需修改 `cloudfunctions/api/config/release-announcement.js` 的公告 id、版本和文案。
 11. 上传部署 `cloudfunctions/api` 和 `cloudfunctions/reminder-dispatch`（云端安装依赖）。
-12. 确认 `reminder-dispatch/config.json` 的每 5 分钟定时触发器已经创建。
+12. 确认 `reminder-dispatch/config.json` 的每分钟定时触发器已经创建。
 13. 根目录执行 `npm run verify`。
 14. 编译运行并在“我的 → 关于与诊断”确认客户端/服务端版本均为 1.6.0、Schema 均为 10。
 15. 真机测试反馈提交、作者消息提醒、反馈状态通知、版本公告、订阅授权和消息中心。

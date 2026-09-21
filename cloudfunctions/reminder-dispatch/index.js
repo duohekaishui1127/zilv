@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
 const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
+const { expiredCountdownFields } = require('./timer-rules')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -43,6 +44,17 @@ function joinedDateOf(member, fallback) {
 
 function notificationId(userId, date) {
   return crypto.createHash('sha256').update(`checkin-reminder:${userId}:${date}`).digest('hex').slice(0, 32)
+}
+
+function timerNotificationId(checkinId) {
+  return crypto.createHash('sha256').update(`timer-reminder:${checkinId}`).digest('hex').slice(0, 32)
+}
+
+function localTime(date = new Date()) {
+  const rawOffset = Number(process.env.GROUP_TIMEZONE_OFFSET_MINUTES ?? 480)
+  const offset = Number.isFinite(rawOffset) ? Math.min(840, Math.max(-720, rawOffset)) : 480
+  const shifted = new Date(date.getTime() + offset * 60000)
+  return `${String(shifted.getUTCHours()).padStart(2, '0')}:${String(shifted.getUTCMinutes()).padStart(2, '0')}`
 }
 
 async function document(collection, id) {
@@ -151,6 +163,84 @@ async function sendWechatReminder(user, notification) {
   }
 }
 
+async function sendTimerWechatReminder(user, checkin, plan, notification) {
+  const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
+  if (!checkin.timerReminderPushEnabled) {
+    await updateNotification(notification._id, { pushStatus: 'NOT_SUBSCRIBED' })
+    return 'internal-only'
+  }
+  if (!templateId) {
+    await updateNotification(notification._id, { pushStatus: 'NOT_CONFIGURED' })
+    return 'not-configured'
+  }
+  if (!user?.openid) {
+    await updateNotification(notification._id, { pushStatus: 'FAILED', pushErrorCode: 'USER_NOT_FOUND' })
+    return 'failed'
+  }
+  const timeKey = process.env.REMINDER_TEMPLATE_TIME_KEY || 'time30'
+  const contentKey = process.env.REMINDER_TEMPLATE_CONTENT_KEY || 'thing2'
+  try {
+    const result = await cloud.openapi.subscribeMessage.send({
+      touser: user.openid,
+      templateId,
+      page: process.env.REMINDER_MESSAGE_PAGE || 'pages/today/index',
+      miniprogramState: process.env.REMINDER_MINIPROGRAM_STATE || 'formal',
+      lang: 'zh_CN',
+      data: {
+        [timeKey]: { value: localTime(notification.timerEndedAt) },
+        [contentKey]: { value: text(`${plan.name || '任务'}倒计时已结束`) }
+      }
+    })
+    const resultCode = Number(result.errCode ?? result.errcode ?? 0)
+    if (resultCode !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
+    await updateNotification(notification._id, { pushStatus: 'SENT', pushedAt: new Date() })
+    return 'sent'
+  } catch (error) {
+    const code = Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
+    await updateNotification(notification._id, {
+      pushStatus: code === 43101 ? 'NOT_SUBSCRIBED' : 'FAILED',
+      pushErrorCode: code,
+      pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120)
+    })
+    return 'failed'
+  }
+}
+
+async function processExpiredCountdown(checkin, at) {
+  const latest = await document(COLLECTIONS.CHECKINS, checkin._id)
+  const fields = expiredCountdownFields(latest, at)
+  if (!fields) return 'skipped'
+
+  const [plan, user] = await Promise.all([
+    document(COLLECTIONS.PLANS, latest.planId),
+    document(COLLECTIONS.USERS, latest.userId)
+  ])
+  await db.collection(COLLECTIONS.CHECKINS).doc(latest._id).update({ data: { ...fields, updatedAt: at } })
+  if (!plan || !user) return 'skipped'
+
+  const id = timerNotificationId(latest._id)
+  if (await document(COLLECTIONS.NOTIFICATIONS, id)) return 'duplicate'
+  const notification = {
+    _id: id,
+    userId: latest.userId,
+    type: 'TIMER_REMINDER',
+    title: '倒计时结束',
+    content: `“${text(plan.name, 30)}”时间到了，完成后记得打卡`,
+    page: '/pages/today/index',
+    planId: latest.planId,
+    checkinId: latest._id,
+    timerEndedAt: fields.timerEndedAt,
+    status: 'UNREAD',
+    pushStatus: 'PENDING',
+    createdAt: at,
+    updatedAt: at
+  }
+  const { _id, ...notificationData } = notification
+  await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
+  await trimNotificationHistory(latest.userId)
+  return sendTimerWechatReminder(user, latest, plan, notification)
+}
+
 async function processUser(user, at) {
   const context = checkinReminderContext(user, at)
   if (!context) return 'skipped'
@@ -226,11 +316,16 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [users, groups] = await Promise.all([
+  const [users, groups, runningTimers] = await Promise.all([
     allMatches(COLLECTIONS.USERS,{ checkinReminderEnabled:true }),
-    allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) })
+    allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) }),
+    allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' })
   ])
-  const summary = { scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0,autoRemoved:0 }
+  const countdowns = runningTimers.filter(item => item.timerMode === 'COUNT_DOWN')
+  const summary = {
+    scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0, autoRemoved: 0,
+    timersScanned: countdowns.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0
+  }
   for (const user of users) {
     const status = await processUser(user, startedAt)
     if (status === 'sent') summary.sent++
@@ -238,6 +333,13 @@ exports.main = async () => {
     else if (status === 'failed') summary.failed++
     else if (status === 'duplicate') summary.duplicate++
     else summary.skipped++
+  }
+  for (const checkin of countdowns) {
+    const status = await processExpiredCountdown(checkin, startedAt)
+    if (status !== 'skipped') summary.timerFinished++
+    if (status === 'sent') summary.timerSent++
+    else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
+    else if (status === 'failed') summary.timerFailed++
   }
   const localDate = dateOnly(startedAt)
   for (const group of groups) summary.autoRemoved += await enforceInactiveGroup(group, localDate)

@@ -47,7 +47,6 @@
                   <button wx:elif="{{item.timerStatus === 'RUNNING'}}" class="btn btn-small btn-light" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="pauseTimer">暂停</button>
                   <button wx:elif="{{item.timerStatus === 'PAUSED'}}" class="btn btn-small timer-primary" data-index="{{index}}" loading="{{timerBusyPlanId === item._id}}" catchtap="resumeTimer">继续</button>
                   <button wx:if="{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED'}}" class="btn btn-small btn-danger" data-index="{{index}}" catchtap="finishTimer">结束</button>
-                  <button wx:if="{{item.timerStatus === 'FINISHED'}}" class="btn btn-small timer-primary" data-index="{{index}}" catchtap="quickComplete">完成</button>
                 </view>
               </view>
               <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.note || item.checkin.timerStatus)}}">
