@@ -1,6 +1,6 @@
 <view class="container" wx:if="{{friend}}">
   <view class="hero row">
-    <view class="row-start"><image wx:if="{{friend.avatar}}" class="friend-avatar" src="{{friend.avatar}}" mode="aspectFill"/><view wx:else class="friend-avatar">{{friend.initial}}</view><view><view class="h1">{{friend.displayName}}</view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
+    <view class="row-start"><image wx:if="{{friend.avatar}}" class="friend-avatar" src="{{friend.avatar}}" mode="aspectFill"/><view wx:else class="friend-avatar">{{friend.initial}}</view><view><view class="row-start"><view class="h1">{{friend.displayName}}</view><view wx:if="{{friend.defaultAdminFriendship}}" class="tag">管理员</view></view><view class="sub" wx:if="{{friend.remark}}">昵称：{{friend.nickname}}</view><view class="sub">好友码 {{friend.shareCode}}</view></view></view>
     <button class="more-button" bindtap="openSettings">•••</button>
   </view>
   <view class="section-title">当月打卡</view>
@@ -32,6 +32,6 @@
     <view class="setting-block"><view class="row"><view><view class="value">特别关心</view><view class="sub">在圈子查看对方允许公开的打卡</view></view><switch checked="{{settings.specialCare}}" bindchange="specialChange" color="#222222"/></view><view wx:if="{{settings.specialCare}}" class="row nested-setting"><view><view class="value">{{isLongTerm ? '长期微信提醒' : '微信提醒'}}</view><view class="sub">{{isLongTerm ? '对方每次公开打卡时尝试提醒' : '订阅对方下一次打卡提醒'}}</view></view><switch checked="{{settings.specialCareWechat}}" bindchange="specialWechatChange" color="#222222"/></view></view>
     <view class="setting-block"><view class="row"><view><view class="value">单独设置向 TA 公开的内容</view><view class="sub">关闭时跟随“我的”中的统一隐私设置</view></view><switch checked="{{settings.privacyMode === 'CUSTOM'}}" bindchange="privacyModeChange" color="#222222"/></view><view wx:if="{{settings.privacyMode === 'CUSTOM'}}" class="privacy-list"><view class="row privacy-row" wx:for="{{privacyFields}}" wx:key="key"><view>{{item.label}}</view><switch checked="{{item.checked}}" data-key="{{item.key}}" bindchange="privacyChange" color="#222222"/></view></view></view>
     <button class="btn" loading="{{saving}}" bindtap="saveSettings">保存好友设置</button>
-    <button class="btn btn-danger remove-button" bindtap="removeFriend">删除好友</button>
+    <button wx:if="{{!friend.defaultAdminFriendship}}" class="btn btn-danger remove-button" bindtap="removeFriend">删除好友</button>
   </view>
 </view>

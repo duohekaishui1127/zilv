@@ -1,6 +1,7 @@
 const { db, C } = require('../lib/db')
 const { DEFAULT_PRIVACY } = require('../lib/constants')
 const { now, randomCode } = require('../lib/utils')
+const { ensureDefaultAdminFriendship } = require('./default-admin-friend')
 
 async function uniqueCode(collection, field, len = 6) {
   for (let i = 0; i < 8; i++) {
@@ -13,7 +14,11 @@ async function uniqueCode(collection, field, len = 6) {
 
 async function ensureUser(openid) {
   const r = await db.collection(C.USERS).where({ openid }).limit(1).get()
-  if (r.data.length) return r.data[0]
+  if (r.data.length) {
+    const user = r.data[0]
+    if (!user.defaultAdminFriendshipInitialized) return initializeDefaultAdminFriendship(user)
+    return user
+  }
 
   const shareCode = await uniqueCode(C.USERS, 'shareCode')
   const data = {
@@ -42,7 +47,25 @@ async function ensureUser(openid) {
     } })
   ])
 
-  return user
+  return initializeDefaultAdminFriendship(user)
+}
+
+async function initializeDefaultAdminFriendship(user) {
+  try {
+    const result = await ensureDefaultAdminFriendship(user)
+    if (!result.configured || !result.adminFound) return user
+    const data = {
+      defaultAdminFriendshipInitialized: true,
+      defaultAdminUserId: result.adminUserId,
+      defaultAdminFriendshipInitializedAt: now(),
+      updatedAt: now()
+    }
+    await db.collection(C.USERS).doc(user._id).update({ data })
+    return { ...user, ...data }
+  } catch (error) {
+    console.warn('[default-admin-friend]', error?.message || error)
+    return user
+  }
 }
 
 async function getUserById(id) {

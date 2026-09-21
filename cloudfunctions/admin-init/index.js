@@ -5,7 +5,8 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const APP_VERSION = '1.6.0'
-const SCHEMA_VERSION = 10
+const SCHEMA_VERSION = 11
+const DEFAULT_ADMIN_FRIEND_SOURCE = 'DEFAULT_ADMIN'
 
 const collections = [
   'users','body_records','nutrition_profiles','nutrition_targets','foods','meals','meal_items',
@@ -25,8 +26,86 @@ const migrations = [
   { migrationId: '007_daily_review_and_meal_timeline', schemaVersion: 7, description: '整日心情打卡、进食时间流与照片记录' },
   { migrationId: '008_social_encouragement', schemaVersion: 8, description: '群组点赞、微信打卡提醒、好友特别关心与撤回同步' },
   { migrationId: '009_friend_profiles', schemaVersion: 9, description: '好友资料、备注、单好友隐私例外与申请通知' },
-  { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批、群主移出成员及个人社交列表设置' }
+  { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批、群主移出成员及个人社交列表设置' },
+  { migrationId: '011_default_admin_friend', schemaVersion: 11, description: '所有用户默认建立受保护的管理员好友关系' }
 ]
+
+function normalizeShareCode(value) {
+  return String(value || '').trim().toUpperCase()
+}
+
+function defaultAdminShareCode(event) {
+  const direct = normalizeShareCode(event.defaultAdminShareCode || process.env.DEFAULT_FRIEND_ADMIN_SHARE_CODE)
+  if (direct) return direct
+  return String(process.env.FEEDBACK_ADMIN_SHARE_CODES || '')
+    .split(',')
+    .map(normalizeShareCode)
+    .find(Boolean) || ''
+}
+
+async function friendshipBetween(userA, userB) {
+  const [forward, reverse] = await Promise.all([
+    db.collection('friendships').where({ userA, userB }).limit(1).get(),
+    db.collection('friendships').where({ userA: userB, userB: userA }).limit(1).get()
+  ])
+  return forward.data[0] || reverse.data[0] || null
+}
+
+async function activeUsers() {
+  const users = []
+  const pageSize = 100
+  for (let offset = 0; ; offset += pageSize) {
+    const result = await db.collection('users').where({ status: 'ACTIVE' }).skip(offset).limit(pageSize).get()
+    users.push(...result.data)
+    if (result.data.length < pageSize) return users
+  }
+}
+
+async function backfillDefaultAdminFriendships(event) {
+  const shareCode = defaultAdminShareCode(event)
+  if (!shareCode) return { configured: false, adminFound: false, totalUsers: 0, inserted: 0, updated: 0, unchanged: 0 }
+
+  const adminResult = await db.collection('users').where({ shareCode, status: 'ACTIVE' }).limit(1).get()
+  const admin = adminResult.data[0]
+  if (!admin) return { configured: true, adminFound: false, shareCode, totalUsers: 0, inserted: 0, updated: 0, unchanged: 0 }
+
+  const users = await activeUsers()
+  const result = { configured: true, adminFound: true, shareCode, adminUserId: admin._id, totalUsers: users.length, inserted: 0, updated: 0, unchanged: 0 }
+  for (const user of users) {
+    const timestamp = new Date()
+    if (user._id === admin._id) {
+      result.unchanged++
+    } else {
+      const existing = await friendshipBetween(admin._id, user._id)
+      const data = {
+        userA: admin._id,
+        userB: user._id,
+        status: 'ACCEPTED',
+        requestedBy: admin._id,
+        acceptedAt: existing?.acceptedAt || timestamp,
+        defaultAdmin: true,
+        protected: true,
+        source: DEFAULT_ADMIN_FRIEND_SOURCE,
+        defaultAdminSince: existing?.defaultAdminSince || timestamp,
+        updatedAt: timestamp
+      }
+      if (existing) {
+        await db.collection('friendships').doc(existing._id).update({ data })
+        result.updated++
+      } else {
+        await db.collection('friendships').add({ data: { ...data, createdAt: timestamp } })
+        result.inserted++
+      }
+    }
+    await db.collection('users').doc(user._id).update({ data: {
+      defaultAdminFriendshipInitialized: true,
+      defaultAdminUserId: admin._id,
+      defaultAdminFriendshipInitializedAt: timestamp,
+      updatedAt: timestamp
+    } })
+  }
+  return result
+}
 
 async function ensureCollection(name) {
   try {
@@ -94,6 +173,8 @@ exports.main = async (event = {}) => {
     await upsert('migration_history', { migrationId: migration.migrationId }, migration)
   }
 
+  const defaultAdminFriendships = await backfillDefaultAdminFriendships(event)
+
   await upsert('system_meta', { key: 'schema' }, {
     key: 'schema', schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION,
     initialized: true, initializedBy: 'admin-init'
@@ -113,6 +194,7 @@ exports.main = async (event = {}) => {
       existing: collectionResults.filter(x => !x.created).map(x => x.name)
     },
     seeded: { foods: foodResult, exercises: exerciseResult, bodyMetrics: metricResult, appConfig: configResult },
+    defaultAdminFriendships,
     migrations: migrations.map(x => x.migrationId),
     next: '初始化完成后建议删除/停用 admin-init 云函数，或配置 ADMIN_INIT_TOKEN。'
   }

@@ -7,6 +7,7 @@ const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../
 const { notifyFriendRequest, notifyFriendAccepted, resolveFriendRequestNotification } = require('../services/friend-notifications')
 const { normalizeFriendRequestMessage } = require('../domain/friend-request')
 const { pinnedFirst } = require('../domain/social-list')
+const { isDefaultAdminFriendship } = require('../domain/default-admin-friend')
 
 function publicUser(user) {
   return { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode }
@@ -87,6 +88,7 @@ async function acceptFriendRequest({ user, event }) {
 async function removeFriend({ user, event }) {
   const friendship = await friendshipBetween(user._id, event.friendUserId)
   if (!friendship || friendship.status !== 'ACCEPTED') throw fail('NOT_FOUND', '好友关系不存在')
+  if (isDefaultAdminFriendship(friendship)) throw fail('DEFAULT_ADMIN_FRIENDSHIP_REQUIRED', '管理员是系统默认好友，不能删除')
   await db.collection(C.FRIENDSHIPS).doc(friendship._id).remove()
   const [mine, theirs] = await Promise.all([
     db.collection(C.SPECIAL_CARES).where({ userId: user._id, targetUserId: event.friendUserId }).get(),
@@ -131,6 +133,7 @@ async function getFriends({ user, localDate }) {
       pinnedAt: mySettings?.pinnedAt || null,
       specialCare: Boolean(care?.enabled),
       specialCareWechat: Boolean(care?.enabled && care?.wechatEnabled),
+      defaultAdminFriendship: isDefaultAdminFriendship(friendship),
       planStatus: privacy.showPlanStatusToFriends ? { total: plans.length, completed: plans.filter(x => x.completed).length } : null,
       studyStatus: privacy.showStudyStatusToFriends && privacy.showPlanStatusToFriends
         ? { total: studyPlans.length, completed: studyPlans.filter(x => x.completed).length, done: studyPlans.length > 0 && studyPlans.every(x => x.completed) }
