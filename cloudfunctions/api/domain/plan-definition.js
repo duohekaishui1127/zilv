@@ -95,7 +95,6 @@ function normalizeLongTermGoal(input, localDate, existing = {}) {
     targetValue,
     unit: goalType === 'ACCUMULATION' ? String(value.unit ?? existing.unit ?? '次').trim().slice(0, 20) || '次' : '',
     goalStatus: existing.goalStatus || 'ACTIVE',
-    reminderEnabled: value.reminderEnabled === undefined ? existing.reminderEnabled !== false : Boolean(value.reminderEnabled),
     startDate: existing.startDate || localDate,
     privacyLevel: 'PRIVATE'
   }

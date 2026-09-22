@@ -12,8 +12,7 @@ Page({
     id: '', editMode: false, loading: false, saving: false,
     name: '', description: '', goalTypes: LONG_TERM_GOAL_TYPES,
     goalType: 'DEADLINE', deadlineDate: futureDate(), habitDays: 21,
-    targetValue: 5000, unit: '词', unlimited: false,
-    reminderEnabled: true
+    targetValue: 5000, unit: '词', unlimited: false
   },
   onLoad(options) {
     if (!options.id) return
@@ -28,8 +27,7 @@ Page({
       this.setData({
         name: plan.name || '', description: plan.description || '', goalType: plan.goalType || 'DEADLINE',
         deadlineDate: plan.deadlineDate || futureDate(), habitDays: plan.habitDays || 21,
-        targetValue: plan.targetValue || 5000, unit: plan.unit || '次', unlimited: Boolean(plan.unlimited),
-        reminderEnabled: plan.reminderEnabled !== false
+        targetValue: plan.targetValue || 5000, unit: plan.unit || '次', unlimited: Boolean(plan.unlimited)
       })
     } finally { this.setData({ loading: false }) }
   },
@@ -37,7 +35,6 @@ Page({
   input(e) { this.setData({ [e.currentTarget.dataset.key]: e.detail.value }) },
   dateChange(e) { this.setData({ deadlineDate: e.detail.value }) },
   toggleUnlimited(e) { this.setData({ unlimited: Boolean(e.detail.value) }) },
-  toggleReminder(e) { this.setData({ reminderEnabled: Boolean(e.detail.value) }) },
   async save() {
     if (this.data.saving) return
     const name = this.data.name.trim()
@@ -45,8 +42,7 @@ Page({
     const goal = {
       name, description: this.data.description.trim(), goalType: this.data.goalType,
       deadlineDate: this.data.deadlineDate, habitDays: Number(this.data.habitDays || 21),
-      targetValue: Number(this.data.targetValue || 0), unit: this.data.unit.trim(), unlimited: this.data.unlimited,
-      reminderEnabled: this.data.reminderEnabled
+      targetValue: Number(this.data.targetValue || 0), unit: this.data.unit.trim(), unlimited: this.data.unlimited
     }
     this.setData({ saving: true })
     try {

@@ -9,7 +9,6 @@ function notificationId(goalId) {
 }
 
 async function notifyGoalAchieved(userId, goal, timestamp = now()) {
-  if (goal.reminderEnabled === false) return 'disabled'
   const id=notificationId(goal._id)
   const existing=await db.collection(C.NOTIFICATIONS).doc(id).get().then(result => result.data).catch(() => null)
   if(existing)return 'duplicate'

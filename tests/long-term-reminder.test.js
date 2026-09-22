@@ -13,7 +13,6 @@ function goal(overrides = {}) {
     goalType: 'DEADLINE',
     goalStatus: 'ACTIVE',
     enabled: true,
-    reminderEnabled: true,
     deadlineDate: '2027-04-10',
     ...overrides
   }
@@ -31,12 +30,15 @@ test('考试倒计时只在五个固定节点触发', () => {
   assert.equal(deadlineReminderDue(goal(), '2027-04-08'), null)
 })
 
-test('关闭、归档或非考试目标不触发倒计时提醒', () => {
-  assert.equal(deadlineReminderDue(goal({ reminderEnabled: false }), '2027-04-09'), null)
+test('归档、停用或非考试目标不触发倒计时提醒', () => {
   assert.equal(deadlineReminderDue(goal({ enabled: false }), '2027-04-09'), null)
   assert.equal(deadlineReminderDue(goal({ goalStatus: 'COMPLETED' }), '2027-04-09'), null)
   assert.equal(deadlineReminderDue(goal({ goalType: 'HABIT' }), '2027-04-09'), null)
   assert.equal(deadlineReminderDue(goal({ deadlineReminderDaysSent: [1] }), '2027-04-09'), null)
+})
+
+test('长期目标消息中心提醒始终开启并兼容旧开关数据', () => {
+  assert.equal(deadlineReminderDue(goal({ reminderEnabled: false }), '2027-04-09'), 1)
 })
 
 test('考试提醒默认在用户当地上午九点后发送', () => {

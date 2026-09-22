@@ -8,7 +8,7 @@
 - 执行任务增加 `executionTime` 和 `longTermGoalIds`；`repeatType=ONE_TIME` 时仅在 `startDate` 执行。
 - 长期目标使用 `goalType=DEADLINE/HABIT/ACCUMULATION`，分别保存 `deadlineDate`、`habitDays`、`targetValue/unlimited/unit`。
 - 长期目标使用 `goalStatus=ACTIVE/COMPLETED`；习惯和有上限的累计目标达成后自动归档。
-- `plans.reminderEnabled` 控制目标的消息中心提醒，`plans.deadlineReminderDaysSent` 保存已投递节点。考试目标在剩余 200、100、30、7、1 天的当地上午 09:00 后提醒；习惯达成后先提醒再归档。长期目标不使用微信订阅消息，旧记录中的 `wechatReminderEnabled` 字段会被忽略。
+- `plans.deadlineReminderDaysSent` 保存已投递节点。考试目标在剩余 200、100、30、7、1 天的当地上午 09:00 后自动提醒；习惯达成后先提醒再归档。长期目标消息中心提醒始终生效，不提供开关，也不使用微信订阅消息；旧记录中的 `reminderEnabled`、`wechatReminderEnabled` 字段会被忽略。
 - 长期目标不直接创建 `checkins`，其进度始终由 `longTermGoalIds` 关联的执行任务打卡计算。
 - 长期目标固定 `privacyLevel=PRIVATE`，API 禁止其绑定群组，并在好友、特别关心、群日历、群动态和提醒中再次过滤。
 - `users.homePreferences` 增加 `showLongTermGoals` 与 `cardOrder`，只影响今日页展示，不删除业务数据。

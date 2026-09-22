@@ -13,7 +13,7 @@ function deadlineDaysRemaining(localDate,deadlineDate) {
 
 function deadlineReminderDue(goal,localDate) {
   if(!goal || goal.planType !== 'LONG_TERM' || goal.goalType !== 'DEADLINE'
-    || goal.goalStatus !== 'ACTIVE' || goal.enabled === false || goal.deletedAt || goal.reminderEnabled === false)return null
+    || goal.goalStatus !== 'ACTIVE' || goal.enabled === false || goal.deletedAt)return null
   const daysRemaining=deadlineDaysRemaining(localDate,goal.deadlineDate)
   if(!DEADLINE_REMINDER_DAYS.includes(daysRemaining))return null
   return Array.isArray(goal.deadlineReminderDaysSent) && goal.deadlineReminderDaysSent.includes(daysRemaining)
