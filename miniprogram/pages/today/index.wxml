@@ -19,8 +19,9 @@
     <view class="card long-term-card" style="order:{{cardOrders.LONG_TERM}}" wx:if="{{dashboard.homePreferences.showLongTermGoals && dashboard.longTermGoals.length}}" data-card="LONG_TERM" catchlongpress="manageCard">
       <view class="row"><view><view class="h2">长期目标</view><view class="sub">进度由执行任务自动更新</view></view><view class="card-link" bindtap="goTasks">全部 ›</view></view>
       <view class="goal-summary" wx:for="{{dashboard.longTermGoals}}" wx:key="_id">
-        <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.typeLabel}} · {{item.primaryText}}</view></view><view class="goal-summary-progress">{{item.progressText}}</view></view>
+        <view class="row goal-summary-head"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.typeLabel}} · {{item.primaryText}}</view></view><view wx:if="{{item.isDeadline}}" class="goal-countdown goal-countdown-{{item.countdownTone}}"><view class="goal-countdown-label">{{item.countdownLabel}}</view><view class="goal-countdown-value" wx:if="{{item.countdownValue !== ''}}"><text class="goal-countdown-number">{{item.countdownValue}}</text><text class="goal-countdown-unit">{{item.countdownUnit}}</text></view></view><view wx:else class="goal-summary-progress">{{item.progressText}}</view></view>
         <view class="progress goal-mini-progress" wx:if="{{item.showProgress}}"><view class="progress-inner" style="width:{{item.progressPct}}%"></view></view>
+        <view class="sub goal-recent-progress" wx:if="{{item.isDeadline && item.showRecentProgress}}">{{item.recentProgressText}}</view>
         <view class="sub" wx:if="{{item.todayProgress.total}}">今日关联任务 {{item.todayProgress.completed}}/{{item.todayProgress.total}}</view>
       </view>
     </view>

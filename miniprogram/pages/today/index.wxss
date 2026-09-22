@@ -13,7 +13,16 @@
 .card-link { color: #6d5a99; font-size: 25rpx; }
 .goal-summary { padding: 22rpx 0; border-bottom: 1rpx solid #e9e3f5; }
 .goal-summary:last-child { border-bottom: 0; padding-bottom: 0; }
+.goal-summary-head { align-items: center; }
 .goal-summary-progress { flex: 0 0 auto; color: #6d5a99; font-weight: 700; }
+.goal-countdown { flex: 0 0 auto; min-width: 104rpx; margin-left: 20rpx; padding: 10rpx 14rpx; border-radius: 18rpx; text-align: center; color: #654c9a; background: #eee8fb; }
+.goal-countdown-label { font-size: 20rpx; line-height: 1.2; }
+.goal-countdown-value { margin-top: 2rpx; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.goal-countdown-number { font-size: 40rpx; font-weight: 800; letter-spacing: -1rpx; }
+.goal-countdown-unit { margin-left: 4rpx; font-size: 21rpx; font-weight: 700; }
+.goal-countdown-warning { color: #9a5b13; background: #fff0d8; }
+.goal-countdown-danger { color: #b42318; background: #fee4e2; }
+.goal-recent-progress { margin-top: 12rpx; }
 .goal-mini-progress { height: 12rpx; background: #e7e0f7; }
 .goal-mini-progress .progress-inner { background: #7560a9; }
 .plan-time { display: inline-block; margin-top: 8rpx; padding: 4rpx 10rpx; border-radius: 10rpx; color: #344054; background: #eef1f5; font-size: 22rpx; font-weight: 700; }

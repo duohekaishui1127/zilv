@@ -14,8 +14,20 @@ function emptyEditor() {
 }
 
 function presentGoal(goal) {
-  if (goal.goalType === 'DEADLINE') return {
-    ...goal, typeLabel:'日期目标', primaryText:goal.overdue ? `已超过目标日 ${Math.abs(goal.daysRemaining)} 天` : `还有 ${goal.daysRemaining} 天`, progressText:`近7天 ${goal.recentProgress.completed}/${goal.recentProgress.total}`
+  if (goal.goalType === 'DEADLINE') {
+    const daysRemaining=Number(goal.daysRemaining || 0)
+    const overdue=daysRemaining < 0
+    const dueToday=daysRemaining === 0
+    const countdownTone=overdue || daysRemaining <= 7 ? 'danger' : (daysRemaining <= 30 ? 'warning' : 'normal')
+    return {
+      ...goal,typeLabel:'日期目标',isDeadline:true,
+      primaryText:`目标日 ${goal.deadlineDate}`,
+      countdownLabel:overdue ? '已逾期' : (dueToday ? '就是今天' : '倒计时'),
+      countdownValue:dueToday ? '' : Math.abs(daysRemaining),
+      countdownUnit:dueToday ? '' : '天',countdownTone,
+      showRecentProgress:Number(goal.recentProgress?.total || 0) > 0,
+      recentProgressText:`关联任务近7天 ${goal.recentProgress?.completed || 0}/${goal.recentProgress?.total || 0}`
+    }
   }
   if (goal.goalType === 'HABIT') return {
     ...goal, typeLabel:'习惯养成', primaryText:`连续 ${goal.currentValue}/${goal.targetValue} 天`, progressText:`${goal.progressPct}%`, showProgress:true
