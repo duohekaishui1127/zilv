@@ -4,7 +4,7 @@
   <view class="section-title">关联长期目标</view>
   <view class="card goal-binding-card">
     <view class="list-item row" wx:for="{{goals}}" wx:key="_id">
-      <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.goalType === 'DEADLINE' ? '考试 / 日期' : (item.goalType === 'HABIT' ? '习惯养成' : '数量积累')}}</view></view>
+      <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.goalType === 'DEADLINE' ? '考试倒计时' : (item.goalType === 'HABIT' ? '习惯养成' : '数量积累')}}</view></view>
       <button class="btn btn-small {{item.bound ? 'btn-danger' : ''}}" data-id="{{item._id}}" data-bound="{{item.bound}}" bindtap="toggleGoal">{{item.bound ? '解除' : '关联'}}</button>
     </view>
     <view class="empty compact" wx:if="{{!goals.length}}">还没有进行中的长期目标</view>

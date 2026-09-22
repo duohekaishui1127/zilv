@@ -20,6 +20,20 @@ function deadlineReminderDue(goal,localDate) {
     ? null : daysRemaining
 }
 
+function examArchiveDue(goal,localDate) {
+  return Boolean(goal && goal.planType === 'LONG_TERM' && goal.goalType === 'DEADLINE'
+    && goal.goalStatus === 'ACTIVE' && goal.enabled !== false && !goal.deletedAt
+    && goal.deadlineDate && goal.deadlineDate <= localDate)
+}
+
+function examResultReminderDue(goal,localDate) {
+  if(!goal || goal.planType !== 'LONG_TERM' || goal.goalType !== 'DEADLINE'
+    || goal.goalStatus !== 'COMPLETED' || goal.completionMode !== 'EXAM_DATE' || goal.deletedAt
+    || (goal.examResultStatus && goal.examResultStatus !== 'PENDING') || goal.examResultReminderSentAt)return false
+  const daysRemaining=deadlineDaysRemaining(localDate,goal.deadlineDate)
+  return daysRemaining != null && daysRemaining <= -60
+}
+
 function reminderTimeReached(localTime, reminderTime = '09:00') {
   const parse=value => {
     const match=String(value || '').match(/^([01]\d|2[0-3]):([0-5]\d)$/)
@@ -30,4 +44,7 @@ function reminderTimeReached(localTime, reminderTime = '09:00') {
   return current != null && current >= target
 }
 
-module.exports={ DEADLINE_REMINDER_DAYS,deadlineDaysRemaining,deadlineReminderDue,reminderTimeReached }
+module.exports={
+  DEADLINE_REMINDER_DAYS,deadlineDaysRemaining,deadlineReminderDue,
+  examArchiveDue,examResultReminderDue,reminderTimeReached
+}

@@ -68,6 +68,28 @@ test('累计目标和习惯目标由关联执行任务打卡自动计算', () =>
   assert.equal(newGoal.currentValue,110)
 })
 
+test('习惯连续天数忽略已停用或删除的绑定任务', () => {
+  const plans = [
+    { _id:'active',repeatType:'DAILY',startDate:'2026-09-01',longTermGoalIds:['habit'] },
+    { _id:'disabled',repeatType:'DAILY',startDate:'2026-09-01',enabled:false,longTermGoalIds:['habit'] },
+    { _id:'deleted',repeatType:'DAILY',startDate:'2026-09-01',deletedAt:'2026-09-22T00:00:00.000Z',longTermGoalIds:['habit'] }
+  ]
+  const checkins = [
+    { planId:'active',date:'2026-09-20',completed:true },
+    { planId:'active',date:'2026-09-21',completed:true },
+    { planId:'active',date:'2026-09-22',completed:true }
+  ]
+  const habit = decorateGoal(
+    { _id:'habit',planType:'LONG_TERM',goalType:'HABIT',habitDays:21,goalStatus:'ACTIVE' },
+    plans,
+    checkins,
+    '2026-09-22'
+  )
+  assert.equal(habit.currentValue,3)
+  assert.equal(habit.linkedPlanCount,1)
+  assert.deepEqual(habit.todayProgress,{ completed:1,total:1 })
+})
+
 test('长期目标始终不向好友公开', () => {
   assert.equal(canSharePlanWithFriend({ planType:'LONG_TERM',category:'STUDY' },{
     showPlanStatusToFriends:true,showStudyStatusToFriends:true

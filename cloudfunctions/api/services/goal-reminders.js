@@ -17,7 +17,7 @@ async function notifyGoalAchieved(userId, goal, timestamp = now()) {
     : `长期目标“${text(goal.name,30)}”已达成`
   const notification={
     _id:id,userId,type:'GOAL_ACHIEVED',title:'长期目标已达成',content,
-    page:'/pages/plan/index',goalId:goal._id,status:'UNREAD',pushStatus:'IN_APP_ONLY',
+    page:'/pages/progress/index',goalId:goal._id,status:'UNREAD',pushStatus:'IN_APP_ONLY',
     createdAt:timestamp,updatedAt:timestamp
   }
   const { _id,...data }=notification

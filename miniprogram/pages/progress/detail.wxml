@@ -1,0 +1,45 @@
+<view class="container">
+  <view class="empty" wx:if="{{loading && !goal}}">正在整理完整历程…</view>
+  <block wx:elif="{{goal}}">
+    <view class="hero"><view class="h1">{{goal.name}}</view><view class="sub">{{goal.isExam ? '考试备考历程' : '长期目标历程'}} · 已归档</view></view>
+
+    <view class="card" wx:if="{{goal.isExam}}">
+      <view class="journey-dates">
+        <view class="journey-date"><view class="label">创建日期</view><view class="value">{{goal.createdDate}}</view></view>
+        <view class="journey-line"></view>
+        <view class="journey-date journey-date-right"><view class="label">考试日期</view><view class="value">{{goal.examDate}}</view></view>
+      </view>
+      <view class="metric-grid journey-metrics">
+        <view class="metric"><view class="label">准备时间</view><view class="journey-value">{{goal.preparationDays}} 天</view></view>
+        <view class="metric"><view class="label">备考完成率</view><view class="journey-value">{{goal.completionText}}</view></view>
+        <view class="metric"><view class="label">累计完成</view><view class="journey-value">{{goal.completedCount}} 次</view></view>
+        <view class="metric"><view class="label">累计学习</view><view class="journey-value">{{goal.durationText}}</view></view>
+      </view>
+      <view class="tip journey-note" wx:if="{{goal.description}}">{{goal.description}}</view>
+    </view>
+
+    <view class="card" wx:if="{{goal.isExam}}">
+      <view class="h2">关联过的执行任务</view>
+      <view class="linked-plan" wx:for="{{goal.linkedPlans}}" wx:key="_id"><view class="linked-dot"></view><view>{{item.name}}</view></view>
+      <view class="empty compact" wx:if="{{!goal.linkedPlans.length}}">备考期间没有关联执行任务</view>
+    </view>
+
+    <view class="card" wx:if="{{goal.isExam}}">
+      <view class="h2">考试结果与复盘</view>
+      <view class="sub">只需选择结果；分数和复盘都可以留空，以后随时补充。</view>
+      <view class="result-options">
+        <view wx:for="{{resultOptions}}" wx:key="value" class="result-option {{resultStatus === item.value ? 'result-option-active' : ''}}" data-value="{{item.value}}" bindtap="chooseResult">{{item.label}}</view>
+      </view>
+      <view class="field"><view class="label">分数（可选）</view><input class="input" maxlength="40" data-key="score" value="{{score}}" bindinput="input" placeholder="例如：425 分、A、排名 12"/></view>
+      <view class="field"><view class="label">复盘备注（可选）</view><textarea class="input review-input" maxlength="2000" data-key="review" value="{{review}}" bindinput="input" placeholder="哪些方法有效、哪里可以改进，或者给下一次考试的自己留句话"/></view>
+      <button class="btn" loading="{{saving}}" bindtap="save">保存考试记录</button>
+    </view>
+
+    <view class="card" wx:else>
+      <view class="h2">完成记录</view>
+      <view class="detail-row"><text class="label">开始日期</text><text>{{goal.createdDate}}</text></view>
+      <view class="detail-row"><text class="label">完成日期</text><text>{{goal.completedDate}}</text></view>
+      <view class="tip" wx:if="{{goal.description}}">{{goal.description}}</view>
+    </view>
+  </block>
+</view>

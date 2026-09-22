@@ -3,7 +3,7 @@
   <view class="card" wx:else>
     <view class="field"><view class="label">目标类型</view><view class="goal-types"><view wx:for="{{goalTypes}}" wx:key="value" class="goal-type {{goalType === item.value ? 'goal-type-active' : ''}}" data-value="{{item.value}}" bindtap="chooseType">{{item.label}}</view></view></view>
     <view class="field"><view class="label">目标名称</view><input class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="例如：英语六级"/></view>
-    <view class="field" wx:if="{{goalType === 'DEADLINE'}}"><view class="label">目标日期</view><picker mode="date" value="{{deadlineDate}}" bindchange="dateChange"><view class="input">{{deadlineDate}}</view></picker><view class="sub">自动显示倒计时，并在剩余200、100、30、7、1天时发送消息中心提醒。</view></view>
+    <view class="field" wx:if="{{goalType === 'DEADLINE'}}"><view class="label">考试日期</view><picker mode="date" value="{{deadlineDate}}" bindchange="dateChange"><view class="input">{{deadlineDate}}</view></picker><view class="sub">显示倒计时并在固定节点提醒；考试日自动结束备考并归档，不会产生逾期。</view></view>
     <view class="field" wx:if="{{goalType === 'HABIT'}}"><view class="label">连续打卡天数</view><input class="input" type="number" data-key="habitDays" value="{{habitDays}}" bindinput="input"/><view class="sub">默认连续21天，达成后自动提醒并归档为已养成。</view></view>
     <block wx:if="{{goalType === 'ACCUMULATION'}}">
       <view class="list-item row"><view><view class="value">不设上限</view><view class="sub">只记录累计成果，不显示百分比</view></view><switch checked="{{unlimited}}" bindchange="toggleUnlimited"/></view>

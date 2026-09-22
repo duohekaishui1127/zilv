@@ -1,14 +1,15 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 13）
+# 云数据库集合设计（应用 1.6.0 / Schema 14）
 
-> Schema 13 在执行任务与私密长期目标的基础上增加目标提醒，并清理历史重复好友关系。
+> Schema 14 增加考试目标自动归档、备考历程快照、考试结果与复盘字段。
 
 ## 执行任务与长期目标
 
 - `plans.planType`: `EXECUTION` / `LONG_TERM`；旧记录缺失时按 `EXECUTION` 处理。
 - 执行任务增加 `executionTime` 和 `longTermGoalIds`；`repeatType=ONE_TIME` 时仅在 `startDate` 执行。
 - 长期目标使用 `goalType=DEADLINE/HABIT/ACCUMULATION`，分别保存 `deadlineDate`、`habitDays`、`targetValue/unlimited/unit`。
-- 长期目标使用 `goalStatus=ACTIVE/COMPLETED`；习惯和有上限的累计目标达成后自动归档。
+- 长期目标使用 `goalStatus=ACTIVE/COMPLETED`；习惯和有上限的累计目标达成后自动归档，考试目标在考试日自动结束备考并归档，不进入逾期状态。
 - `plans.deadlineReminderDaysSent` 保存已投递节点。考试目标在剩余 200、100、30、7、1 天的当地上午 09:00 后自动提醒；习惯达成后先提醒再归档。长期目标消息中心提醒始终生效，不提供开关，也不使用微信订阅消息；旧记录中的 `reminderEnabled`、`wechatReminderEnabled` 字段会被忽略。
+- 考试归档在 `plans.archiveSnapshot` 冻结创建日期、考试日期、准备天数、关联任务、打卡次数、学习时长和完成率；`linkedPlanHistory` 保留曾经绑定过的执行任务。`examResultStatus=PENDING/PASSED/FAILED/ABSENT` 与 `examScore`、`examReview` 保存后续结果和复盘。待出分满 60 天后默认生成一次消息中心提醒。
 - 长期目标不直接创建 `checkins`，其进度始终由 `longTermGoalIds` 关联的执行任务打卡计算。
 - 长期目标固定 `privacyLevel=PRIVATE`，API 禁止其绑定群组，并在好友、特别关心、群日历、群动态和提醒中再次过滤。
 - `users.homePreferences` 增加 `showLongTermGoals` 与 `cardOrder`，只影响今日页展示，不删除业务数据。
@@ -117,7 +118,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 打卡提醒模板类型由 `api` 和 `reminder-dispatch` 的 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 共同配置；一次性模板发送成功或微信返回无授权时关闭 `checkinReminderPushEnabled`。
 
-`notifications` 保存站内消息及推送结果：`userId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。目标提醒类型为 `GOAL_DEADLINE_REMINDER` / `GOAL_ACHIEVED`，使用目标和节点生成确定性 ID。每名用户只保留按 `createdAt` 排序的最新 20 条。
+`notifications` 保存站内消息及推送结果：`userId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。目标提醒类型为 `GOAL_DEADLINE_REMINDER` / `GOAL_ACHIEVED` / `GOAL_RESULT_REMINDER`，使用目标和节点生成确定性 ID。每名用户只保留按 `createdAt` 排序的最新 20 条。
 
 `users.lastReleaseAnnouncementId` 和 `users.lastCheckinReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日打卡提醒不会重复创建。
 

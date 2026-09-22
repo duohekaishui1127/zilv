@@ -3,6 +3,9 @@
     <view class="row"><view class="row-start profile-identity"><button class="avatar-button" open-type="chooseAvatar" bindchooseavatar="chooseAvatar" loading="{{avatarSaving}}"><image wx:if="{{profile.user.avatar}}" class="profile-avatar" src="{{profile.user.avatar}}" mode="aspectFill"/><view wx:else class="profile-avatar avatar-placeholder">＋</view></button><view class="profile-name-wrap"><input class="profile-nickname" type="nickname" maxlength="30" confirm-type="done" value="{{nicknameDraft}}" placeholder="填写微信昵称" placeholder-class="profile-nickname-placeholder" bindinput="nicknameInput" bindblur="nicknameBlur" bindnicknamereview="nicknameReview"/><view class="sub">好友码 {{profile.user.shareCode}}</view><view class="avatar-hint">点击头像或昵称即可修改</view></view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view>
     <view wx:if="{{profileIncomplete}}" class="profile-completion-hint">完善头像和昵称，让好友更容易认出你</view>
   </view>
+  <view class="card progress-entry" data-url="/pages/progress/index" bindtap="go">
+    <view class="row"><view><view class="h2">我的进步</view><view class="sub">目标、习惯和考试的完整历程</view></view><view class="progress-entry-arrow">›</view></view>
+  </view>
   <view class="card">
     <view class="list-item row reminder-setting">
       <picker class="flex-1" mode="time" value="{{profile.user.checkinReminderTime || '21:00'}}" disabled="{{!profile.user.checkinReminderEnabled || reminderSaving}}" bindchange="reminderTimeChange">

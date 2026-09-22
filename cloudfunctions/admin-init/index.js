@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const APP_VERSION = '1.6.0'
-const SCHEMA_VERSION = 13
+const SCHEMA_VERSION = 14
 const DEFAULT_ADMIN_FRIEND_SOURCE = 'DEFAULT_ADMIN'
 
 const collections = [
@@ -29,7 +29,8 @@ const migrations = [
   { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批、群主移出成员及个人社交列表设置' },
   { migrationId: '011_default_admin_friend', schemaVersion: 11, description: '所有用户默认建立受保护的管理员好友关系' },
   { migrationId: '012_long_term_goals', schemaVersion: 12, description: '执行任务时间、私密长期目标、自动累计进度与今日卡片设置' },
-  { migrationId: '013_goal_reminders_and_friend_dedupe', schemaVersion: 13, description: '长期目标节点提醒与重复好友关系清理' }
+  { migrationId: '013_goal_reminders_and_friend_dedupe', schemaVersion: 13, description: '长期目标节点提醒与重复好友关系清理' },
+  { migrationId: '014_exam_progress_archives', schemaVersion: 14, description: '考试目标自动归档、备考快照、结果复盘与出分提醒' }
 ]
 
 function normalizeShareCode(value) {

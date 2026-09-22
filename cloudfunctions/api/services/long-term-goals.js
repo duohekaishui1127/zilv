@@ -2,6 +2,7 @@ const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
 const { decorateGoals } = require('../domain/long-term-goal')
 const { isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
+const { examArchiveDue,examProgressSnapshot } = require('../domain/exam-progress')
 const { notifyGoalAchieved } = require('./goal-reminders')
 
 async function allMatches(collection, where) {
@@ -21,6 +22,20 @@ async function longTermContext(userId, localDate) {
   if (!goals.length) return { plans: executionPlans, goals: [], checkins: [] }
   const checkins = await allMatches(C.CHECKINS, { userId, completed: true })
   const allExecutionPlans = plans.filter(isExecutionPlan)
+  const timestamp=now()
+  for(const goal of goals) {
+    const shouldArchive=examArchiveDue(goal,localDate)
+    const needsSnapshot=goal.goalType === 'DEADLINE' && goal.goalStatus === 'COMPLETED'
+      && goal.deadlineDate <= localDate && !goal.archiveSnapshot
+    if(!shouldArchive && !needsSnapshot)continue
+    const data={ archiveSnapshot:examProgressSnapshot(goal,allExecutionPlans,checkins),updatedAt:timestamp }
+    if(shouldArchive)Object.assign(data,{
+      goalStatus:'COMPLETED',enabled:false,completionMode:'EXAM_DATE',completedAt:timestamp,
+      examResultStatus:goal.examResultStatus || 'PENDING'
+    })
+    await db.collection(C.PLANS).doc(goal._id).update({ data })
+    Object.assign(goal,data)
+  }
   return { plans: executionPlans, goals: decorateGoals(goals, allExecutionPlans, checkins, localDate), checkins }
 }
 

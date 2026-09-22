@@ -27,7 +27,7 @@ const TIMER_MODES = [
   { label: '倒计时', value: 'COUNT_DOWN' }
 ]
 const LONG_TERM_GOAL_TYPES = [
-  { label: '考试 / 日期', value: 'DEADLINE' },
+  { label: '考试倒计时', value: 'DEADLINE' },
   { label: '习惯养成', value: 'HABIT' },
   { label: '数量积累', value: 'ACCUMULATION' }
 ]

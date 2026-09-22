@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="hero"><view class="h1">我的进步</view><view class="sub">完成过的目标不会消失，每一段坚持都有迹可循</view></view>
+  <view class="empty" wx:if="{{loading && !goals.length}}">正在整理你的进步…</view>
+  <view wx:elif="{{goals.length}}">
+    <view class="card progress-card" wx:for="{{goals}}" wx:key="_id" data-id="{{item._id}}" bindtap="open">
+      <view class="row">
+        <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.typeLabel}} · {{item.summary}}</view></view>
+        <view class="progress-status progress-status-{{item.examResultStatus || 'DONE'}}">{{item.statusLabel}}</view>
+      </view>
+      <view class="progress-more">查看完整历程 ›</view>
+    </view>
+  </view>
+  <view class="empty" wx:else>完成长期目标后，它们会保留在这里</view>
+</view>

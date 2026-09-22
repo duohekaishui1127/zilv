@@ -2,7 +2,8 @@ const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
 const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType, localParts } = require('./reminder-rules')
 const { expiredCountdownFields, countUpRestReminderDue } = require('./timer-rules')
-const { deadlineReminderDue, reminderTimeReached } = require('./deadline-goal-rules')
+const { deadlineReminderDue,examArchiveDue,examResultReminderDue,reminderTimeReached } = require('./deadline-goal-rules')
+const { examProgressSnapshot } = require('./exam-progress')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -57,6 +58,10 @@ function timerRestNotificationId(checkinId) {
 
 function goalDeadlineNotificationId(goal, daysRemaining) {
   return crypto.createHash('sha256').update(`goal-deadline:${goal._id}:${goal.deadlineDate}:${daysRemaining}`).digest('hex').slice(0, 32)
+}
+
+function examResultNotificationId(goal) {
+  return crypto.createHash('sha256').update(`exam-result:${goal._id}:${goal.deadlineDate}`).digest('hex').slice(0, 32)
 }
 
 function localTime(date = new Date()) {
@@ -219,8 +224,43 @@ async function processDeadlineGoal(goal, at) {
   const user=await document(COLLECTIONS.USERS,goal.userId)
   if(!user)return 'skipped'
   const local=localParts(at,user.checkinReminderTimezoneOffset ?? 480)
-  if(!reminderTimeReached(local.time,process.env.GOAL_REMINDER_TIME || '09:00'))return 'skipped'
-  const daysRemaining=deadlineReminderDue(goal,local.date)
+  let current=goal
+  let archived=false
+  if(examArchiveDue(current,local.date)) {
+    const [plans,checkins]=await Promise.all([
+      allMatches(COLLECTIONS.PLANS,{ userId:goal.userId }),
+      allMatches(COLLECTIONS.CHECKINS,{ userId:goal.userId,completed:true })
+    ])
+    const data={
+      goalStatus:'COMPLETED',enabled:false,completionMode:'EXAM_DATE',completedAt:at,
+      examResultStatus:current.examResultStatus || 'PENDING',
+      archiveSnapshot:examProgressSnapshot(current,plans,checkins),updatedAt:at
+    }
+    await db.collection(COLLECTIONS.PLANS).doc(current._id).update({ data })
+    current={ ...current,...data }
+    archived=true
+  }
+  if(!reminderTimeReached(local.time,process.env.GOAL_REMINDER_TIME || '09:00'))return archived ? 'archived' : 'skipped'
+  if(examResultReminderDue(current,local.date)) {
+    const id=examResultNotificationId(current)
+    const data={ examResultReminderSentAt:at,examResultReminderDate:local.date,updatedAt:at }
+    if(await document(COLLECTIONS.NOTIFICATIONS,id)) {
+      await db.collection(COLLECTIONS.PLANS).doc(current._id).update({ data })
+      return 'duplicate'
+    }
+    const notification={
+      _id:id,userId:current.userId,type:'GOAL_RESULT_REMINDER',title:'补充考试结果',
+      content:`“${text(current.name,30)}”成绩出来了吗？可以补充结果和复盘`,
+      page:`/pages/progress/detail?id=${current._id}`,goalId:current._id,recordDate:local.date,
+      status:'UNREAD',pushStatus:'IN_APP_ONLY',createdAt:at,updatedAt:at
+    }
+    const { _id,...notificationData }=notification
+    await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data:notificationData })
+    await db.collection(COLLECTIONS.PLANS).doc(current._id).update({ data })
+    await trimNotificationHistory(current.userId)
+    return 'result-reminder'
+  }
+  const daysRemaining=deadlineReminderDue(current,local.date)
   if(daysRemaining == null)return 'skipped'
   const id=goalDeadlineNotificationId(goal,daysRemaining)
   if(await document(COLLECTIONS.NOTIFICATIONS,id)) {
@@ -403,7 +443,8 @@ exports.main = async () => {
   const summary = {
     scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0, autoRemoved: 0,
     timersScanned: runningTimers.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0,
-    restReminders: 0, goalsScanned:longTermGoals.length,goalSent:0,goalInternalOnly:0,goalFailed:0,goalDuplicate:0
+    restReminders: 0, goalsScanned:longTermGoals.length,goalSent:0,goalInternalOnly:0,goalFailed:0,goalDuplicate:0,
+    examsArchived:0,examResultReminders:0
   }
   for (const user of users) {
     const status = await processUser(user, startedAt)
@@ -429,7 +470,9 @@ exports.main = async () => {
   }
   for(const goal of longTermGoals) {
     const status=await processDeadlineGoal(goal,startedAt)
-    if(status === 'sent')summary.goalSent++
+    if(status === 'archived')summary.examsArchived++
+    else if(status === 'result-reminder')summary.examResultReminders++
+    else if(status === 'sent')summary.goalSent++
     else if(status === 'internal-only' || status === 'not-configured')summary.goalInternalOnly++
     else if(status === 'failed')summary.goalFailed++
     else if(status === 'duplicate')summary.goalDuplicate++

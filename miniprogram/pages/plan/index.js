@@ -7,8 +7,8 @@ function goalView(goal) {
   let progressText = ''
   if (goal.goalType === 'DEADLINE') {
     progressText = goal.goalStatus === 'COMPLETED'
-      ? `已完成 · 目标日 ${goal.deadlineDate}`
-      : (goal.overdue ? `已超过目标日 ${Math.abs(goal.daysRemaining)} 天` : `距离目标还有 ${goal.daysRemaining} 天`)
+      ? `已归档 · 考试日 ${goal.deadlineDate}`
+      : `距离考试还有 ${goal.daysRemaining} 天`
   } else if (goal.goalType === 'HABIT') {
     progressText = `连续 ${goal.currentValue}/${goal.targetValue} 天`
   } else {
@@ -19,13 +19,14 @@ function goalView(goal) {
   return {
     ...goal,
     goalTypeLabel: GOAL_LABELS[goal.goalType] || '长期目标',
+    canManualComplete:goal.goalType !== 'DEADLINE',
     progressText,
     progressPct: goal.progressPct == null ? 0 : goal.progressPct,
     hasProgressBar: goal.goalType !== 'DEADLINE' && !goal.unlimited
   }
 }
 Page({
-  data: { plans: [], goals: [], achievedGoals: [] },
+  data: { plans: [], goals: [] },
   onShow() { this.load() },
   async load() {
     const d = await api.call('getPlans')
@@ -38,7 +39,7 @@ Page({
       scheduleLabel: p.repeatType === 'ONE_TIME' ? `${p.startDate} · 仅一次` : (REPEAT_LABELS[p.repeatType] || p.repeatType),
       timerLabel: TIMER_LABELS[p.timerMode || 'NONE'] || '不计时',
       goalBindingCount: Array.isArray(p.longTermGoalIds) ? p.longTermGoalIds.filter(id => activeGoalIds.has(id)).length : 0
-    })), goals: goals.filter(goal => goal.goalStatus === 'ACTIVE'), achievedGoals: goals.filter(goal => goal.goalStatus === 'COMPLETED') })
+    })), goals: goals.filter(goal => goal.goalStatus === 'ACTIVE') })
   },
   async add() {
     try {

@@ -16,13 +16,12 @@ function emptyEditor() {
 function presentGoal(goal) {
   if (goal.goalType === 'DEADLINE') {
     const daysRemaining=Number(goal.daysRemaining || 0)
-    const overdue=daysRemaining < 0
-    const dueToday=daysRemaining === 0
-    const countdownTone=overdue || daysRemaining <= 7 ? 'danger' : (daysRemaining <= 30 ? 'warning' : 'normal')
+    const dueToday=daysRemaining <= 0
+    const countdownTone=daysRemaining <= 7 ? 'danger' : (daysRemaining <= 30 ? 'warning' : 'normal')
     return {
-      ...goal,typeLabel:'日期目标',isDeadline:true,
-      primaryText:`目标日 ${goal.deadlineDate}`,
-      countdownLabel:overdue ? '已逾期' : (dueToday ? '就是今天' : '倒计时'),
+      ...goal,typeLabel:'考试计划',isDeadline:true,
+      primaryText:`考试日 ${goal.deadlineDate}`,
+      countdownLabel:dueToday ? '考试日' : '倒计时',
       countdownValue:dueToday ? '' : Math.abs(daysRemaining),
       countdownUnit:dueToday ? '' : '天',countdownTone,
       showRecentProgress:Number(goal.recentProgress?.total || 0) > 0,

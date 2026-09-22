@@ -1,0 +1,5 @@
+.progress-card { border:1rpx solid #e3e7e5; background:linear-gradient(135deg,#fff,#f7faf8); }
+.progress-status { flex:0 0 auto; padding:8rpx 14rpx; border-radius:999rpx; color:#3f6d58; background:#e8f4ed; font-size:22rpx; font-weight:700; }
+.progress-status-PENDING { color:#765b25; background:#fff3d6; }
+.progress-status-FAILED,.progress-status-ABSENT { color:#697386; background:#eef0f3; }
+.progress-more { margin-top:22rpx; padding-top:18rpx; border-top:1rpx solid #edf0ee; color:#697386; font-size:23rpx; text-align:right; }

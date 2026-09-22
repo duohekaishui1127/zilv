@@ -109,10 +109,10 @@ function decorateGoal(goal, plans, checkins, localDate) {
   }
   if (goal.goalType === 'DEADLINE') {
     const remaining = daysBetween(localDate, goal.deadlineDate)
-    return { ...base, daysRemaining: remaining, overdue: remaining != null && remaining < 0 }
+    return { ...base, daysRemaining:remaining == null ? null : Math.max(0,remaining),examDateReached:remaining != null && remaining <= 0 }
   }
   if (goal.goalType === 'HABIT') {
-    const currentValue = habitStreak(linkedPlans, checkinMap, localDate)
+    const currentValue = habitStreak(activeLinkedPlans, checkinMap, localDate)
     const targetValue = Number(goal.habitDays || 21)
     return { ...base, currentValue, targetValue, progressPct: Math.min(100, Math.round(currentValue / targetValue * 100)) }
   }

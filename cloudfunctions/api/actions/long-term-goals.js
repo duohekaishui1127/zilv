@@ -1,6 +1,7 @@
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { normalizeLongTermGoal, isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
+const { EXAM_RESULT_STATUSES } = require('../domain/exam-progress')
 const { allMatches, longTermContext, syncLongTermGoalAchievements } = require('../services/long-term-goals')
 
 async function ownedPlan(userId, planId) {
@@ -52,6 +53,7 @@ async function deleteLongTermGoal({ user, event }) {
 async function completeLongTermGoal({ user, event }) {
   const goal = await ownedPlan(user._id, event.goalId)
   if (!isLongTermGoal(goal)) throw fail('INVALID_PARAMETER', '这不是长期目标')
+  if (goal.goalType === 'DEADLINE') throw fail('INVALID_PARAMETER', '考试目标会在考试日期自动归档')
   const timestamp = now()
   await db.collection(C.PLANS).doc(goal._id).update({ data: {
     goalStatus: 'COMPLETED', enabled: false, completionMode: 'MANUAL', completedAt: timestamp, updatedAt: timestamp
@@ -73,7 +75,17 @@ async function setPlanLongTermGoalBinding({ user, event, localDate }) {
   const next = event.bound
     ? [...new Set([...current, goal._id])].slice(0, 20)
     : current.filter(id => id !== goal._id)
-  await db.collection(C.PLANS).doc(plan._id).update({ data: { longTermGoalIds: next, updatedAt: now() } })
+  const timestamp=now()
+  const writes=[db.collection(C.PLANS).doc(plan._id).update({ data:{ longTermGoalIds:next,updatedAt:timestamp } })]
+  const history=Array.isArray(goal.linkedPlanHistory) ? goal.linkedPlanHistory : []
+  if(event.bound && !history.some(item => item.planId === plan._id)) {
+    writes.push(db.collection(C.PLANS).doc(goal._id).update({ data:{
+      linkedPlanHistory:[...history,{
+        planId:plan._id,name:plan.name,category:plan.category || 'CUSTOM',boundAt:timestamp
+      }].slice(-50),updatedAt:timestamp
+    } }))
+  }
+  await Promise.all(writes)
   const sync = await syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true })
   return { bound: Boolean(event.bound), longTermGoalIds: next, achievedGoals: sync.achievedGoals }
 }
@@ -83,7 +95,40 @@ async function getLongTermGoals({ user, localDate }) {
   return { goals: context.goals }
 }
 
+async function getProgressGoals({ user, localDate }) {
+  const context=await longTermContext(user._id,localDate)
+  const goals=context.goals.filter(goal => goal.goalStatus === 'COMPLETED')
+    .sort((a,b) => new Date(b.completedAt || b.updatedAt || 0) - new Date(a.completedAt || a.updatedAt || 0))
+  return { goals }
+}
+
+async function getProgressGoal({ user, event, localDate }) {
+  const context=await longTermContext(user._id,localDate)
+  const goal=context.goals.find(item => item._id === event.goalId && item.goalStatus === 'COMPLETED')
+  if(!goal)throw fail('PLAN_NOT_FOUND','进步记录不存在')
+  return { goal }
+}
+
+async function updateExamGoalResult({ user, event }) {
+  const goal=await ownedPlan(user._id,event.goalId)
+  if(!isLongTermGoal(goal) || goal.goalType !== 'DEADLINE' || goal.goalStatus !== 'COMPLETED') {
+    throw fail('INVALID_PARAMETER','只能更新已归档考试的结果')
+  }
+  const resultStatus=String(event.resultStatus || 'PENDING').toUpperCase()
+  if(!EXAM_RESULT_STATUSES.includes(resultStatus))throw fail('INVALID_PARAMETER','考试结果不合法')
+  const timestamp=now()
+  const data={
+    examResultStatus:resultStatus,
+    examScore:String(event.score ?? '').trim().slice(0,40),
+    examReview:String(event.review ?? '').trim().slice(0,2000),
+    examResultUpdatedAt:timestamp,updatedAt:timestamp
+  }
+  await db.collection(C.PLANS).doc(goal._id).update({ data })
+  return { goal:{ ...goal,...data } }
+}
+
 module.exports = {
   createLongTermGoal, updateLongTermGoal, deleteLongTermGoal,
-  completeLongTermGoal, setPlanLongTermGoalBinding, getLongTermGoals
+  completeLongTermGoal, setPlanLongTermGoalBinding, getLongTermGoals,
+  getProgressGoals,getProgressGoal,updateExamGoalResult
 }

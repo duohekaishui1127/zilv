@@ -49,7 +49,8 @@ Page({
       await api.call('markNotificationRead', { notificationId: id }, { silent: true }).catch(() => {})
     }
     if (['PLAN_REMINDER','CHECKIN_REMINDER','TIMER_REMINDER','TIMER_REST_REMINDER'].includes(item?.type)) return wx.switchTab({ url: '/pages/today/index' })
-    if (['GOAL_DEADLINE_REMINDER','GOAL_ACHIEVED'].includes(item?.type)) return wx.switchTab({ url: '/pages/plan/index' })
+    if (item?.type === 'GOAL_DEADLINE_REMINDER') return wx.switchTab({ url: '/pages/plan/index' })
+    if (item?.type === 'GOAL_ACHIEVED') return wx.navigateTo({ url: '/pages/progress/index' })
     if (item?.page) return wx.navigateTo({ url: item.page })
     await this.load()
   },

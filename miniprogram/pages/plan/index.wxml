@@ -10,7 +10,7 @@
     <view class="progress goal-progress" wx:if="{{item.hasProgressBar}}"><view class="progress-inner" style="width:{{item.progressPct}}%"></view></view>
     <view class="action-row">
       <button class="btn btn-light btn-small" data-id="{{item._id}}" bindtap="editGoal">编辑</button>
-      <button class="btn btn-light btn-small" data-id="{{item._id}}" bindtap="finishGoal">完成</button>
+      <button wx:if="{{item.canManualComplete}}" class="btn btn-light btn-small" data-id="{{item._id}}" bindtap="finishGoal">完成</button>
       <button class="btn btn-danger btn-small" data-id="{{item._id}}" bindtap="removeGoal">删除</button>
     </view>
   </view>
@@ -33,9 +33,5 @@
     <view class="empty compact" wx:if="{{!plans.length}}">还没有执行任务</view>
   </view>
 
-  <view wx:if="{{achievedGoals.length}}" class="achieved-section">
-    <view class="section-head"><view class="h2">我的进步之路</view><view class="sub">已达成的目标和养成的习惯会保留在这里</view></view>
-    <view class="card achieved-card"><view class="list-item row" wx:for="{{achievedGoals}}" wx:key="_id"><view><view class="value">{{item.name}}</view><view class="sub">{{item.goalTypeLabel}} · {{item.progressText}}</view></view><view class="success">✓</view></view></view>
-  </view>
   <view class="fab" bindtap="add">+</view>
 </view>
