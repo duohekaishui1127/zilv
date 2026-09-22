@@ -6,6 +6,8 @@ const { normalizeGroupPermissions } = require('../domain/group-policy')
 const { pinnedFirst } = require('../domain/social-list')
 const { publicCommitment, requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
 const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
+const { isExecutionPlan } = require('../domain/plan-definition')
+const { longTermContext } = require('../services/long-term-goals')
 
 async function groupById(groupId) {
   const group = await db.collection(C.GROUPS).doc(groupId).get().then(x => x.data).catch(() => null)
@@ -89,6 +91,7 @@ async function updateGroupMemberSettings({ user, event }) {
 async function bindPlanToGroup({ user, event }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '长期目标保持私密，不能绑定群组')
   if (!(await isGroupMember(event.groupId, user._id))) throw fail('GROUP_PERMISSION_DENIED', '你不是该群成员')
   const existing = await db.collection(C.PLAN_GROUPS).where({ planId: plan._id, groupId: event.groupId, userId: user._id }).limit(1).get()
   if (existing.data.length) {
@@ -113,15 +116,22 @@ async function unbindPlanFromGroup({ user, event, localDate, requestId }) {
   return result
 }
 
-async function getPlanBindings({ user, event }) {
+async function getPlanBindings({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
-  const [groupsResult, bindingsResult] = await Promise.all([
+  if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '长期目标不提供绑定入口')
+  const [groupsResult, bindingsResult, goalContext] = await Promise.all([
     getGroups({ user }),
-    db.collection(C.PLAN_GROUPS).where({ planId: plan._id, userId: user._id, enabled: true }).get()
+    db.collection(C.PLAN_GROUPS).where({ planId: plan._id, userId: user._id, enabled: true }).get(),
+    longTermContext(user._id, localDate)
   ])
   const boundIds = new Set(bindingsResult.data.map(x => x.groupId))
-  return { groups: groupsResult.groups.map(group => ({ ...group, bound: boundIds.has(group._id) })) }
+  const goalIds = new Set(Array.isArray(plan.longTermGoalIds) ? plan.longTermGoalIds : [])
+  return {
+    goals: goalContext.goals.filter(goal => goal.goalStatus === 'ACTIVE')
+      .map(goal => ({ _id:goal._id,name:goal.name,goalType:goal.goalType,bound:goalIds.has(goal._id) })),
+    groups: groupsResult.groups.map(group => ({ ...group, bound: boundIds.has(group._id) }))
+  }
 }
 
 module.exports = {

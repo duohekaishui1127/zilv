@@ -5,7 +5,8 @@ const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
 const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
 const { completedTimerFields } = require('../domain/plan-timer')
-const { normalizePlan } = require('../domain/plan-definition')
+const { normalizePlan, isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
+const { longTermContext, syncLongTermGoalAchievements } = require('../services/long-term-goals')
 const { requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
 const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
 async function createPlan({ user, event, localDate }) {
@@ -21,6 +22,7 @@ async function getPlan({ user, event }) {
 async function updatePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '请使用长期目标编辑入口')
   const normalized = normalizePlan(event.plan, localDate, plan)
   const decision = await requestGroupPlanChange({ userId:user._id,plan,type:'UPDATE',payload:{ plan:normalized } })
   if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
@@ -31,6 +33,7 @@ async function updatePlan({ user, event, localDate, requestId }) {
 async function setPlanEnabled({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '长期目标不能作为执行任务启停')
   const enabled = !!event.enabled
   if (enabled === Boolean(plan.enabled)) return { enabled }
   const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'SET_ENABLED',payload:{ enabled } })
@@ -42,19 +45,22 @@ async function setPlanEnabled({ user, event, localDate, requestId }) {
 async function deletePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '请使用长期目标删除入口')
   const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'DELETE' })
   if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
   const result=await applyPlanChange(decision.change,localDate)
   await broadcastGroupPlanChange({ actor:user,change:decision.change,sourceId:requestId })
   return result
 }
-async function getPlans({ user }) {
-  const r = await db.collection(C.PLANS).where({ userId: user._id }).orderBy('createdAt', 'desc').get()
-  return { plans: r.data.filter(p => !p.deletedAt) }
+async function getPlans({ user, localDate }) {
+  const context = await longTermContext(user._id, localDate)
+  const newestFirst = items => items.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+  return { plans: newestFirst(context.plans), goals: newestFirst(context.goals) }
 }
 async function completePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
+  if (isLongTermGoal(plan)) throw fail('INVALID_PARAMETER', '长期目标不能直接打卡')
   if (!plan.enabled) throw fail('PLAN_DISABLED', '计划已停用')
   if (!isBasePlanDue(plan, localDate)) throw fail('PLAN_NOT_DUE', '该计划今天无需执行')
   const cr = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: localDate }).limit(1).get()
@@ -112,7 +118,11 @@ async function completePlan({ user, event, localDate }) {
     console.warn('[auto-daily-review]', error?.message || error)
     return null
   })
-  return { checkin, dailyReview }
+  const goalSync = await syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true }).catch(error => {
+    console.warn('[long-term-goal-sync]', error?.message || error)
+    return { achievedGoals: [] }
+  })
+  return { checkin, dailyReview, achievedGoals: goalSync.achievedGoals }
 }
 function roundTimerMinutes(seconds) { const value = Number(seconds); return Number.isFinite(value) && value >= 0 ? Math.round(value / 6) / 10 : null }
 module.exports = { createPlan, getPlan, updatePlan, setPlanEnabled, deletePlan, getPlans, completePlan }

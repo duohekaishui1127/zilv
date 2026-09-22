@@ -1,9 +1,21 @@
 <view class="container">
-  <view class="card warn-card"><view class="value">{{name}}</view><view class="sub">绑定后，计划名称和完成状态会在群内公开；本人担任群主的群自动批准计划变更，其他群仍需群主审核，生效后会向相关群成员广播。计划描述、备注和其他隐私内容不会公开。</view></view>
+  <view class="card"><view class="value">{{name}}</view><view class="sub">执行任务可以同时关联长期目标和监督群组。长期目标始终保持私密。</view></view>
+
+  <view class="section-title">关联长期目标</view>
+  <view class="card goal-binding-card">
+    <view class="list-item row" wx:for="{{goals}}" wx:key="_id">
+      <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.goalType === 'DEADLINE' ? '考试 / 日期' : (item.goalType === 'HABIT' ? '习惯养成' : '数量积累')}}</view></view>
+      <button class="btn btn-small {{item.bound ? 'btn-danger' : ''}}" data-id="{{item._id}}" data-bound="{{item.bound}}" bindtap="toggleGoal">{{item.bound ? '解除' : '关联'}}</button>
+    </view>
+    <view class="empty compact" wx:if="{{!goals.length}}">还没有进行中的长期目标</view>
+  </view>
+
+  <view class="section-title">绑定监督群组</view>
+  <view class="card warn-card"><view class="sub">绑定后，仅任务名称、目标和完成状态会在群内公开。长期目标、任务描述和备注不会公开；部分变更需要群主审核。</view></view>
   <view class="card">
     <view class="list-item row" wx:for="{{groups}}" wx:key="_id">
       <view class="flex-1"><view class="value">{{item.displayName || item.name}}</view><view class="sub" wx:if="{{item.remark}}">群名称：{{item.name}}</view><view class="sub">{{item.memberCount}}人 · 邀请码 {{item.inviteCode}}</view></view>
-      <button class="btn btn-small {{item.bound ? 'btn-danger' : ''}}" data-id="{{item._id}}" data-bound="{{item.bound}}" bindtap="toggle">{{item.bound ? '解除' : '绑定'}}</button>
+      <button class="btn btn-small {{item.bound ? 'btn-danger' : ''}}" data-id="{{item._id}}" data-bound="{{item.bound}}" bindtap="toggleGroup">{{item.bound ? '解除' : '绑定'}}</button>
     </view>
     <view class="empty compact" wx:if="{{!groups.length}}">还没有加入群组</view>
   </view>

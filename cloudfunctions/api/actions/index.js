@@ -6,6 +6,7 @@ module.exports = {
   ...require('./workouts'),
   ...require('./study'),
   ...require('./plans'),
+  ...require('./long-term-goals'),
   ...require('./plan-completion-revocation'),
   ...require('./plan-timers'),
   ...require('./plan-timer-reminders'),

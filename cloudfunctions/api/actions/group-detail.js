@@ -7,6 +7,7 @@ const { sortGroupMemberProgress } = require('../domain/group-progress')
 const { normalizeGroupPermissions } = require('../domain/group-policy')
 const { enforceGroupInactivity } = require('../services/group-policy')
 const { pendingChangesForGroup } = require('../services/group-plan-changes')
+const { isExecutionPlan } = require('../domain/plan-definition')
 
 async function memberProgress(groupId, member, localDate) {
   const user = await getUserById(member.userId)
@@ -14,7 +15,7 @@ async function memberProgress(groupId, member, localDate) {
   const bindings = await db.collection(C.PLAN_GROUPS).where({ groupId, userId: user._id, enabled: true }).get()
   const details = await Promise.all(bindings.data.map(async binding => {
     const plan = await db.collection(C.PLANS).doc(binding.planId).get().then(x => x.data).catch(() => null)
-    if (!plan || !plan.enabled || plan.deletedAt || !isBasePlanDue(plan, localDate)) return null
+    if (!plan || !isExecutionPlan(plan) || !plan.enabled || plan.deletedAt || !isBasePlanDue(plan, localDate)) return null
     if (plan.repeatType === 'WEEKLY_COUNT') {
       const { startDate, endDate } = weekRange(localDate)
       const count = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: _.gte(startDate).and(_.lte(endDate)), completed: true }).count()

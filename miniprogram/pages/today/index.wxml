@@ -15,9 +15,19 @@
       </view>
     </view>
 
-    <view class="card plan-card">
+    <view class="today-widgets" bindlongpress="restoreCards">
+    <view class="card long-term-card" style="order:{{cardOrders.LONG_TERM}}" wx:if="{{dashboard.homePreferences.showLongTermGoals && dashboard.longTermGoals.length}}" data-card="LONG_TERM" catchlongpress="manageCard">
+      <view class="row"><view><view class="h2">长期目标</view><view class="sub">进度由执行任务自动更新</view></view><view class="card-link" bindtap="goTasks">全部 ›</view></view>
+      <view class="goal-summary" wx:for="{{dashboard.longTermGoals}}" wx:key="_id">
+        <view class="row"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.typeLabel}} · {{item.primaryText}}</view></view><view class="goal-summary-progress">{{item.progressText}}</view></view>
+        <view class="progress goal-mini-progress" wx:if="{{item.showProgress}}"><view class="progress-inner" style="width:{{item.progressPct}}%"></view></view>
+        <view class="sub" wx:if="{{item.todayProgress.total}}">今日关联任务 {{item.todayProgress.completed}}/{{item.todayProgress.total}}</view>
+      </view>
+    </view>
+
+    <view class="card plan-card" style="order:{{cardOrders.PLANS}}" data-card="PLANS" catchlongpress="manageCard">
       <view class="row card-toggle" bindtap="togglePlans">
-        <view class="h2">今日计划</view>
+        <view class="h2">今日任务</view>
         <view class="row compact-row"><view class="big">{{dashboard.completion.completed}}/{{dashboard.completion.total}}</view><view class="chevron">{{plansExpanded ? '⌃' : '⌄'}}</view></view>
       </view>
       <view class="progress"><view class="progress-inner" style="width: {{completionPct}}%;"></view></view>
@@ -36,6 +46,7 @@
           <view class="row-start">
             <view class="flex-1">
               <view class="value plan-name">{{item.name}}</view>
+              <view class="plan-time" wx:if="{{item.executionTime}}">{{item.executionTime}}</view>
               <view class="sub plan-description" wx:if="{{item.description}}">{{item.description}}</view>
               <view class="sub" wx:if="{{item.repeatType === 'WEEKLY_COUNT'}}">{{item.categoryLabel}} · 本周 {{item.weeklyProgress.completed}}/{{item.weeklyProgress.target}} · 每次 {{item.targetValue}}{{item.unit}}</view>
               <view class="sub" wx:else>{{item.categoryLabel}} · 目标 {{item.targetValue}}{{item.unit}}</view>
@@ -49,6 +60,7 @@
                   <button wx:if="{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED'}}" class="btn btn-small btn-danger" data-index="{{index}}" catchtap="finishTimer">结束</button>
                 </view>
               </view>
+              <view class="completion-meta" wx:if="{{item.completed && item.targetType !== 'BOOLEAN'}}">本次完成 {{item.checkin.actualValue}}{{item.unit}}</view>
               <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.note || item.checkin.timerStatus)}}">
                 <text wx:if="{{item.checkin.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</text>
                 <text wx:elif="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
@@ -59,11 +71,11 @@
           </view>
         </view>
         <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
-        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈直接完成；完成后点任务可补充备注。计划内容与群组关联请到“计划”页修改。</view>
+        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈直接完成；完成后点任务可修改实际完成量或补充备注。目标与群组关联请到“任务”页修改。</view>
       </view>
     </view>
 
-    <view class="card energy-card" wx:if="{{dashboard.homePreferences.showEnergy}}">
+    <view class="card energy-card" style="order:{{cardOrders.ENERGY}}" wx:if="{{dashboard.homePreferences.showEnergy}}" data-card="ENERGY" catchlongpress="manageCard">
       <view class="row card-toggle" bindtap="toggleEnergy">
         <view class="h2">今日能量</view><view class="chevron">{{energyExpanded ? '⌃' : '⌄'}}</view>
       </view>
@@ -92,6 +104,7 @@
         <view class="sub">热量缺口按预计总消耗计算；所有消耗均为模型估算值。</view>
       </view>
     </view>
+    </view>
   </block>
 </view>
 
@@ -109,6 +122,7 @@
       <view class="label">备注（可选）</view>
       <textarea class="input note-input" maxlength="500" data-key="note" value="{{completionEditor.note}}" bindinput="editorInput" placeholder="补充这项任务的过程或结果"/>
     </view>
+    <view class="field" wx:if="{{completionEditor.quantitative}}"><view class="label">本次完成量</view><view class="row"><input class="input flex-1" type="digit" data-key="actualValue" value="{{completionEditor.actualValue}}" bindinput="editorInput"/><view class="completion-unit">{{completionEditor.unit}}</view></view><view class="sub">已按任务目标自动填写，仅在实际完成量不同时修改。</view></view>
     <button class="btn" loading="{{completionSaving}}" bindtap="saveCompletion">保存备注</button>
   </view>
 </view>

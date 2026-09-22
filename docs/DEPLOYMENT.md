@@ -4,7 +4,7 @@
 2. 开通云开发，推荐分别创建开发环境和真实体验环境。
 3. 在 `miniprogram/config/env.js` 填写 develop / trial / release 对应环境 ID。
 4. 上传部署 `cloudfunctions/admin-init`（云端安装依赖）。
-5. 调用 `admin-init` 一次，确认 `success: true`、`appVersion: 1.6.0`、`schemaVersion: 10`。
+5. 调用 `admin-init` 一次，确认 `success: true`、`appVersion: 1.6.0`、`schemaVersion: 13`，并检查 `friendshipDeduplication` 结果。
 6. 按 `DATABASE_SCHEMA.md` 创建推荐索引。
 7. 在微信公众平台选择打卡提醒模板，并按 `REMINDERS.md` 配置模板字段。
 8. 为 `api` 和 `reminder-dispatch` 同时配置 `PLAN_REMINDER_TEMPLATE_ID` 与 `PLAN_REMINDER_SUBSCRIPTION_TYPE`；普通模板填 `ONE_TIME`，微信后台明确标记为长期订阅的模板才填 `LONG_TERM`。另为 `api` 配置 `SOCIAL_CHECKIN_TEMPLATE_ID` 及对应模板字段。

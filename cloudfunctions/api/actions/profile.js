@@ -2,7 +2,7 @@ const { db, C } = require('../lib/db')
 const { now, fail, sanitizeNumber } = require('../lib/utils')
 const { getUserById, getPrivacy, getNutritionProfile } = require('../services/users')
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
-const { homePreferencesOf } = require('../services/preferences')
+const { homePreferencesOf, normalizedCardOrder } = require('../services/preferences')
 const { isFeedbackAdmin } = require('../services/feedback-admin')
 
 async function getProfile({ user, localDate }) {
@@ -18,7 +18,9 @@ async function getProfile({ user, localDate }) {
 async function updateHomePreferences({ user, event }) {
   const input = event.preferences || {}
   const homePreferences = {
-    showEnergy: input.showEnergy !== false
+    showEnergy: input.showEnergy !== false,
+    showLongTermGoals: input.showLongTermGoals !== false,
+    cardOrder: normalizedCardOrder(input.cardOrder)
   }
   await db.collection(C.USERS).doc(user._id).update({ data: { homePreferences, updatedAt: now() } })
   return { homePreferences }

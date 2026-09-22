@@ -5,6 +5,7 @@ const { getUserById } = require('./users')
 const { visibilityFor, canSharePlanWithFriend } = require('./friend-visibility')
 const { trimNotificationHistory } = require('./notification-retention')
 const { normalizeSocialSubscriptionType, shouldConsumeSocialSubscription } = require('../domain/social-subscription')
+const { preferredFriendship } = require('../domain/friendship-dedup')
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
 
@@ -14,10 +15,10 @@ async function document(collection, id) {
 
 async function friendshipBetween(a, b) {
   const [ab, ba] = await Promise.all([
-    db.collection(C.FRIENDSHIPS).where({ userA: a, userB: b }).limit(1).get(),
-    db.collection(C.FRIENDSHIPS).where({ userA: b, userB: a }).limit(1).get()
+    db.collection(C.FRIENDSHIPS).where({ userA: a, userB: b }).limit(100).get(),
+    db.collection(C.FRIENDSHIPS).where({ userA: b, userB: a }).limit(100).get()
   ])
-  return ab.data[0] || ba.data[0] || null
+  return preferredFriendship([...ab.data, ...ba.data])
 }
 
 async function isGroupMember(groupId, userId) {
@@ -147,6 +148,7 @@ async function notifyRecipients(recipients, actor, plan, checkin) {
 }
 
 async function emitGroupEventsForCheckin(actor, plan, checkin) {
+  if (plan?.planType === 'LONG_TERM') return
   const recipients = new Map()
   await addGroupEventsAndRecipients(actor, plan, checkin, recipients)
   await addSpecialCareRecipients(actor, plan, recipients)
@@ -154,6 +156,7 @@ async function emitGroupEventsForCheckin(actor, plan, checkin) {
 }
 
 async function emitGroupEventsForRevocation(actor, plan, checkin) {
+  if (plan?.planType === 'LONG_TERM') return
   const bindings = await db.collection(C.PLAN_GROUPS).where({ userId: actor._id, planId: plan._id, enabled: true }).get()
   const version = Number(checkin.completionVersion || 1)
   await Promise.all(bindings.data.map(async binding => {

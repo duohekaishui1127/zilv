@@ -4,6 +4,7 @@ const { normalizedMonth, monthDates, buildCheckinCalendar } = require('../domain
 const { friendRelationshipState } = require('../domain/friend-request')
 const { getUserById } = require('../services/users')
 const { isGroupMember, friendshipBetween } = require('../services/social')
+const { isExecutionPlan } = require('../domain/plan-definition')
 
 function joinedDateOf(membership, fallback) {
   if (membership?.joinedDate) return String(membership.joinedDate)
@@ -36,7 +37,7 @@ async function getGroupMemberCalendar({ user, event, localDate }) {
   ])
   if (!member) throw fail('NOT_FOUND','群成员不存在')
   const plans=(await Promise.all(bindings.data.map(binding => db.collection(C.PLANS).doc(binding.planId).get()
-    .then(result => result.data).catch(() => null)))).filter(plan => plan && !plan.deletedAt)
+    .then(result => result.data).catch(() => null)))).filter(plan => plan && isExecutionPlan(plan) && !plan.deletedAt)
   const calendar=buildCheckinCalendar(month,plans,checkins.data,{ startDate:joinedDate,endDate:localDate })
   return {
     member:{ _id:member._id,nickname:member.nickname,avatar:member.avatar,role:targetMembership.role,joinedDate },

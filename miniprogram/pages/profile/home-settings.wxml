@@ -1,10 +1,10 @@
 <view class="container">
   <view class="card">
-    <view class="h2">首页显示内容</view>
-    <view class="sub">今日计划始终保留；如果你只关注学习或运动，可以隐藏能量模块。隐藏不会删除任何数据。</view>
-    <view class="list-item row">
-      <view class="flex-1"><view class="value">今日能量与营养</view><view class="sub">摄入、消耗、热量缺口和营养目标</view></view>
-      <switch checked="{{preferences.showEnergy}}" data-key="showEnergy" bindchange="toggle"/>
+    <view class="h2">今日卡片</view>
+    <view class="sub">调整顺序或暂时隐藏；隐藏不会删除任务和数据。今日任务始终保留。</view>
+    <view class="setting-card" wx:for="{{cards}}" wx:key="key">
+      <view class="flex-1"><view class="value">{{item.label}}</view><view class="sub">{{item.description}}</view></view>
+      <view class="card-actions"><button class="order-button" disabled="{{index === 0}}" data-index="{{index}}" data-offset="-1" bindtap="move">↑</button><button class="order-button" disabled="{{index === cards.length - 1}}" data-index="{{index}}" data-offset="1" bindtap="move">↓</button><switch wx:if="{{!item.locked}}" checked="{{item.visible}}" data-key="{{item.key}}" bindchange="toggle"/><view wx:else class="locked-tag">固定</view></view>
     </view>
   </view>
   <button class="btn" loading="{{saving}}" bindtap="save">保存设置</button>

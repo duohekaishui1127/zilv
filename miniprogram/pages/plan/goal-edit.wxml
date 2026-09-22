@@ -1,0 +1,21 @@
+<view class="container">
+  <view class="empty" wx:if="{{loading}}">正在加载长期目标…</view>
+  <view class="card" wx:else>
+    <view class="field"><view class="label">目标类型</view><view class="goal-types"><view wx:for="{{goalTypes}}" wx:key="value" class="goal-type {{goalType === item.value ? 'goal-type-active' : ''}}" data-value="{{item.value}}" bindtap="chooseType">{{item.label}}</view></view></view>
+    <view class="field"><view class="label">目标名称</view><input class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="例如：英语六级"/></view>
+    <view class="field" wx:if="{{goalType === 'DEADLINE'}}"><view class="label">目标日期</view><picker mode="date" value="{{deadlineDate}}" bindchange="dateChange"><view class="input">{{deadlineDate}}</view></picker><view class="sub">系统会自动显示倒计时和关联任务执行情况。</view></view>
+    <view class="field" wx:if="{{goalType === 'HABIT'}}"><view class="label">连续打卡天数</view><input class="input" type="number" data-key="habitDays" value="{{habitDays}}" bindinput="input"/><view class="sub">默认连续21天后自动归档为已养成。</view></view>
+    <block wx:if="{{goalType === 'ACCUMULATION'}}">
+      <view class="list-item row"><view><view class="value">不设上限</view><view class="sub">只记录累计成果，不显示百分比</view></view><switch checked="{{unlimited}}" bindchange="toggleUnlimited"/></view>
+      <view class="row" wx:if="{{!unlimited}}"><view class="field flex-1"><view class="label">总目标</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="词/页/公里"/></view></view>
+      <view class="field" wx:else><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="词/页/公里"/></view>
+    </block>
+    <view class="list-item row"><view><view class="value">目标提醒</view><view class="sub">习惯达成，或日期目标剩余200、100、30、7、1天时提醒</view></view><switch checked="{{reminderEnabled}}" bindchange="toggleReminder"/></view>
+    <view class="tip" wx:if="{{reminderEnabled && reminderConfig && !reminderConfig.configured}}">微信模板尚未配置，将只发送消息中心提醒。</view>
+    <view class="tip" wx:elif="{{reminderEnabled && reminderConfig && reminderConfig.subscriptionType === 'ONE_TIME'}}">当前微信模板为一次性订阅，只能保证下一次微信提醒；其他节点仍会发送消息中心提醒。</view>
+    <view class="tip" wx:elif="{{reminderEnabled && wechatReminderEnabled}}">微信目标提醒已授权。</view>
+    <view class="field"><view class="label">备注（可选）</view><textarea class="input" data-key="description" value="{{description}}" bindinput="input" maxlength="300" placeholder="写一句目标说明即可"/></view>
+    <view class="tip">创建后，请在执行任务的“绑定”中选择这个目标。长期目标默认完全私密。</view>
+    <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建长期目标'}}</button>
+  </view>
+</view>

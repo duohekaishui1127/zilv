@@ -12,6 +12,8 @@
 - 手机是否弹出通知由微信和手机系统设置决定，小程序不能保证系统弹窗。
 - 拒绝订阅或发送失败不会影响站内消息。
 - 单项任务完成后仍照常广播到关联群组；群组详情不再提供微信打卡提醒开关。特别关心逻辑保持独立。
+- 长期目标可独立关闭提醒。考试目标在剩余 200、100、30、7、1 天时写入消息中心；习惯达到连续天数时先发送达成消息，再从进行中列表归档到“我的进步之路”。
+- 五个考试节点要持续收到微信服务通知，微信后台必须提供长期订阅模板；一次性模板只能保证当前已授权的下一次推送，后续节点仍会保留站内消息，并可在用户再次编辑目标时续订。
 
 ## 执行流程
 
@@ -56,6 +58,7 @@ SOCIAL_CHECKIN_SUBSCRIPTION_TYPE=ONE_TIME
 SOCIAL_TEMPLATE_TIME_KEY=time30
 SOCIAL_TEMPLATE_CONTENT_KEY=thing2
 SOCIAL_MINIPROGRAM_STATE=trial
+GOAL_REMINDER_MINIPROGRAM_STATE=trial
 ```
 
 `reminder-dispatch`：
@@ -67,9 +70,10 @@ REMINDER_TEMPLATE_TIME_KEY=time30
 REMINDER_TEMPLATE_CONTENT_KEY=thing2
 REMINDER_MESSAGE_PAGE=pages/today/index
 REMINDER_MINIPROGRAM_STATE=trial
+GOAL_REMINDER_TIME=09:00
 ```
 
-体验环境使用 `trial`，正式环境改为 `formal`，开发环境可用 `developer`。
+体验环境使用 `trial`，正式环境改为 `formal`，开发环境可用 `developer`。`GOAL_REMINDER_TIME` 是考试节点提醒的当地触发时间，未配置时默认 09:00，不需要用户每天设置。
 
 `PLAN_REMINDER_TEMPLATE_ID` 和 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 不是密钥，但两个云函数必须保持一致。普通模板保留 `ONE_TIME`；只有微信后台明确将该模板标记为长期订阅时才设置 `LONG_TERM`。错误地把一次性模板配置为长期模板并不能绕过微信限制，后续发送仍会被微信拒绝并自动关闭提醒。AppSecret 不应放入小程序前端或仓库。
 
@@ -104,7 +108,9 @@ countUpReminderPushEnabled
 
 `users.lastReminderRenewalDate` 记录最近一次通过“完成最后任务/手动续订”登记授权的业务日期，防止同一天重复弹出续订请求。旧用户缺失该字段时按尚未续订处理。
 
-`notifications` 保存：用户、业务日期、当日完成进度、未读状态、微信推送状态和错误码。消息中心只允许当前用户读取和修改自己的消息；新增第 21 条时自动清理最旧记录，用户文档上的日期凭证继续负责防止同日重复提醒。
+`plans.reminderEnabled` 控制目标站内提醒，`plans.wechatReminderEnabled` 保存目标自己的微信订阅状态，不与整日打卡提醒额度混用。
+
+`notifications` 保存：用户、业务日期、目标节点、当日完成进度、未读状态、微信推送状态和错误码。消息中心只允许当前用户读取和修改自己的消息；新增第 21 条时自动清理最旧记录，用户文档上的日期凭证及目标节点确定性 ID 继续负责防止重复提醒。
 
 ## 验收建议
 
@@ -119,5 +125,7 @@ countUpReminderPushEnabled
 9. 启动一个短倒计时并同意订阅：前台到点只振动且任务保持未完成；再次启动后退到后台，到点后收到订阅消息，回到“今日”点击右侧圆圈才完成任务。
 10. 启动正计时并同意订阅，构造累计有效时间达到 2.5 小时：前台确认只振动且继续计时；后台确认收到措辞为休息建议的订阅消息。手动结束任务时确认已消耗额度会续订、未消耗额度不会重复申请。
 11. 创建新的测试日期且不打卡，确认整天只收到一条微信提醒和一条站内提醒。
+12. 创建考试目标并把日期分别调整为剩余 200、100、30、7、1 天，确认每个节点只生成一条站内消息；长期模板下微信提醒持续有效，一次性模板发送一次后关闭授权。
+13. 将每日任务绑定到 21 天习惯目标，连续完成第 21 天后确认先生成达成消息，目标随后进入“我的进步之路”。
 
 微信接口说明：[订阅消息](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/subscribe-message.html)、[`wx.requestSubscribeMessage`](https://developers.weixin.qq.com/miniprogram/dev/api/open-api/subscribe-message/wx.requestSubscribeMessage.html)、[服务端发送接口](https://developers.weixin.qq.com/miniprogram/dev/server/API/mp-message-management/subscribe-message/api_sendmessage.html)。

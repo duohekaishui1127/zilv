@@ -1,1 +1,7 @@
 /* 使用全局样式 */
+.setting-card { display:flex; align-items:center; gap:18rpx; padding:24rpx 0; border-bottom:1rpx solid #eef0f2; }
+.setting-card:last-child { border-bottom:0; }
+.card-actions { display:flex; align-items:center; gap:8rpx; }
+.order-button { width:58rpx; min-width:58rpx; padding:10rpx 0; margin:0; border-radius:12rpx; color:#4b5563; background:#eef0f3; font-size:25rpx; line-height:1; }
+.order-button::after { border:0; }
+.locked-tag { padding:8rpx 12rpx; border-radius:999rpx; color:#697386; background:#eef0f3; font-size:21rpx; }

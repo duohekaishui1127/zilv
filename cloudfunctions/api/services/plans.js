@@ -1,6 +1,7 @@
 const { db, _, C } = require('../lib/db')
 const { weekRange, fail } = require('../lib/utils')
 const { isBasePlanDue } = require('../domain/plan-schedule')
+const { isExecutionPlan } = require('../domain/plan-definition')
 
 async function getTodayPlans(userId, dateStr) {
   const [planResult, todayCheckResult] = await Promise.all([
@@ -8,7 +9,7 @@ async function getTodayPlans(userId, dateStr) {
     db.collection(C.CHECKINS).where({ userId, date: dateStr }).get()
   ])
   const todayCheckMap = Object.fromEntries(todayCheckResult.data.map(c => [c.planId, c]))
-  const basePlans = planResult.data.filter(p => isBasePlanDue(p, dateStr))
+  const basePlans = planResult.data.filter(p => isExecutionPlan(p) && isBasePlanDue(p, dateStr))
   if (!basePlans.length) return []
 
   const weeklyPlans = basePlans.filter(p => p.repeatType === 'WEEKLY_COUNT')
@@ -44,6 +45,12 @@ async function getTodayPlans(userId, dateStr) {
       }
     })
     .filter(Boolean)
+    .sort((a, b) => {
+      if (!a.executionTime && !b.executionTime) return 0
+      if (!a.executionTime) return -1
+      if (!b.executionTime) return 1
+      return a.executionTime.localeCompare(b.executionTime)
+    })
 }
 
 async function assertNoActiveTimer(userId, planId, dateStr) {

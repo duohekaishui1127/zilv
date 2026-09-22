@@ -151,7 +151,7 @@ async function finishAndCompletePlanTimer(context) {
     ...context,
     event: { planId: context.event.planId }
   })
-  return { ...timer, checkin: completed.checkin, dailyReview: completed.dailyReview || null }
+  return { ...timer, checkin:completed.checkin, dailyReview:completed.dailyReview || null, achievedGoals:completed.achievedGoals || [] }
 }
 
 module.exports = { startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer, finishAndCompletePlanTimer }

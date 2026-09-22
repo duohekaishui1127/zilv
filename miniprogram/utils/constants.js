@@ -14,6 +14,7 @@ const TARGET_TYPES = [
   { label: '数值', value: 'VALUE' }
 ]
 const REPEAT_TYPES = [
+  { label: '仅一次', value: 'ONE_TIME' },
   { label: '每天', value: 'DAILY' },
   { label: '工作日', value: 'WEEKDAYS' },
   { label: '周末', value: 'WEEKENDS' },
@@ -24,6 +25,11 @@ const TIMER_MODES = [
   { label: '不计时', value: 'NONE' },
   { label: '正计时', value: 'COUNT_UP' },
   { label: '倒计时', value: 'COUNT_DOWN' }
+]
+const LONG_TERM_GOAL_TYPES = [
+  { label: '考试 / 日期', value: 'DEADLINE' },
+  { label: '习惯养成', value: 'HABIT' },
+  { label: '数量积累', value: 'ACCUMULATION' }
 ]
 const CATEGORY_LABELS = PLAN_CATEGORIES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
 const REPEAT_LABELS = REPEAT_TYPES.reduce((map, item) => { map[item.value] = item.label; return map }, {})
@@ -52,4 +58,4 @@ const POSE_TYPES = Object.freeze([
   { key: 'BACK', label: '背面' }
 ])
 
-module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES, CATEGORY_LABELS, REPEAT_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS }
+module.exports = { NOTE_TYPES, POSE_TYPES, PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES, LONG_TERM_GOAL_TYPES, CATEGORY_LABELS, REPEAT_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS }

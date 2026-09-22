@@ -8,6 +8,7 @@ const { notifyFriendRequest, notifyFriendAccepted, resolveFriendRequestNotificat
 const { normalizeFriendRequestMessage } = require('../domain/friend-request')
 const { pinnedFirst } = require('../domain/social-list')
 const { isDefaultAdminFriendship, isDefaultAdministrator } = require('../domain/default-admin-friend')
+const { uniqueFriendshipsForUser } = require('../domain/friendship-dedup')
 
 function publicUser(user) {
   return { _id: user._id, nickname: user.nickname, avatar: user.avatar, shareCode: user.shareCode }
@@ -58,12 +59,13 @@ async function getFriendRequests({ user }) {
     db.collection(C.FRIENDSHIPS).where({ userB: user._id, status: 'PENDING' }).get(),
     db.collection(C.FRIENDSHIPS).where({ userA: user._id, status: 'PENDING' }).get()
   ])
-  const incoming = [...a.data, ...b.data].filter(item => item.requestedBy !== user._id)
+  const rows = uniqueFriendshipsForUser([...a.data, ...b.data], user._id)
+  const incoming = rows.filter(item => item.requestedBy !== user._id)
   const requests = await Promise.all(incoming.map(async item => {
     const other = await getUserById(item.userA === user._id ? item.userB : item.userA)
     return other ? { friendship: item, user: publicUser(other) } : null
   }))
-  const outgoingRows = [...a.data, ...b.data].filter(item => item.requestedBy === user._id)
+  const outgoingRows = rows.filter(item => item.requestedBy === user._id)
   const outgoing = await Promise.all(outgoingRows.map(async item => {
     const other = await getUserById(item.userA === user._id ? item.userB : item.userA)
     return other ? { friendship: item, user: publicUser(other) } : null
@@ -112,7 +114,8 @@ async function getFriends({ user, localDate }) {
     db.collection(C.SPECIAL_CARES).where({ userId: user._id }).get()
   ])
   const careMap = new Map(cares.data.map(item => [item.targetUserId, item]))
-  const friends = await Promise.all([...a.data, ...b.data].map(async friendship => {
+  const uniqueFriendships = uniqueFriendshipsForUser([...a.data, ...b.data], user._id)
+  const friends = await Promise.all(uniqueFriendships.map(async friendship => {
     const other = await getUserById(friendship.userA === user._id ? friendship.userB : friendship.userA)
     if (!other) return null
     const [visibility, mySettings] = await Promise.all([

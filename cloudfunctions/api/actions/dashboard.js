@@ -7,17 +7,19 @@ const { homePreferencesOf } = require('../services/preferences')
 const { ensureReleaseAnnouncement } = require('../services/release-announcements')
 const { ensureDailyReviewAfterCompletion, dailyReviewStreak } = require('../services/daily-reviews')
 const { notificationWindow } = require('../services/notification-retention')
+const { longTermContext } = require('../services/long-term-goals')
 
 async function dashboard({ user, localDate }) {
   await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
-  const [weight, plans, nutrition, workout, study, notifications, dailyReviewResult] = await Promise.all([
+  const [weight, plans, nutrition, workout, study, notifications, dailyReviewResult, goalContext] = await Promise.all([
     latestWeight(user._id),
     getTodayPlansService(user._id, localDate),
     nutritionSummary(user._id, localDate),
     workoutSummary(user._id, localDate),
     studySummary(user._id, localDate),
     notificationWindow(user._id),
-    db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get()
+    db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get(),
+    longTermContext(user._id, localDate)
   ])
   let target = await currentNutritionTarget(user._id)
   if (!target && weight) target = await recalcNutritionTarget(user, localDate)
@@ -45,6 +47,7 @@ async function dashboard({ user, localDate }) {
     homePreferences: homePreferencesOf(user),
     nutritionTarget: target,
     plans,
+    longTermGoals: goalContext.goals.filter(goal => goal.goalStatus === 'ACTIVE'),
     nutrition,
     workout,
     study,

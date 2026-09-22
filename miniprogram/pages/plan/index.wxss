@@ -1,0 +1,9 @@
+.section-head { margin: 34rpx 4rpx 18rpx; }
+.execution-head { margin-top: 42rpx; }
+.goal-card { border: 1rpx solid #ddd5f5; background: linear-gradient(135deg, #fbf9ff, #f5f1ff); }
+.goal-tag { color: #66519a; background: #eee8ff; }
+.goal-status { flex: 0 0 auto; color: #6b55a1; font-size: 34rpx; font-weight: 700; }
+.goal-progress { background: #e7e0f7; }
+.goal-progress .progress-inner { background: #7560a9; }
+.achieved-section { margin-top: 42rpx; }
+.achieved-card { background: #f7faf8; }

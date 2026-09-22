@@ -26,9 +26,11 @@ function normalizeReminderSubscriptionType(value) {
 }
 
 function isPlanDue(plan, local) {
+  if (plan.planType === 'LONG_TERM') return false
   if (plan.startDate && local.date < plan.startDate) return false
   if (plan.endDate && local.date > plan.endDate) return false
   switch (plan.repeatType) {
+    case 'ONE_TIME': return local.date === plan.startDate
     case 'WEEKDAYS': return local.weekday <= 5
     case 'WEEKENDS': return local.weekday >= 6
     case 'SPECIFIC_WEEKDAYS': return Array.isArray(plan.repeatConfig?.weekdays) && plan.repeatConfig.weekdays.includes(local.weekday)

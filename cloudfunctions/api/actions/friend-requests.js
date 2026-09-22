@@ -1,13 +1,15 @@
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { notifyFriendRejected, resolveFriendRequestNotification } = require('../services/friend-notifications')
+const { uniqueFriendshipsForUser } = require('../domain/friendship-dedup')
 
 async function getFriendRequestSummary({ user }) {
   const [a, b] = await Promise.all([
     db.collection(C.FRIENDSHIPS).where({ userA: user._id, status: 'PENDING' }).get(),
     db.collection(C.FRIENDSHIPS).where({ userB: user._id, status: 'PENDING' }).get()
   ])
-  return { pendingCount: [...a.data, ...b.data].filter(item => item.requestedBy !== user._id).length }
+  const pending = uniqueFriendshipsForUser([...a.data, ...b.data], user._id)
+  return { pendingCount: pending.filter(item => item.requestedBy !== user._id).length }
 }
 
 async function rejectFriendRequest({ user, event }) {

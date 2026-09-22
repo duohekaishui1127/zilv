@@ -3,6 +3,7 @@ const { now, fail } = require('../lib/utils')
 const { revokePlanCategoryRecord } = require('../services/plan-records')
 const { revokeDailyReview } = require('../services/daily-reviews')
 const { emitGroupEventsForRevocation } = require('../services/social')
+const { syncLongTermGoalAchievements } = require('../services/long-term-goals')
 
 async function revokePlanCompletion({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
@@ -17,6 +18,9 @@ async function revokePlanCompletion({ user, event, localDate }) {
   await revokeDailyReview(user._id, localDate, plan._id)
   await emitGroupEventsForRevocation(user, plan, revokedCheckin).catch(error => {
     console.warn('[social-revoke]', error?.message || error)
+  })
+  await syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true }).catch(error => {
+    console.warn('[long-term-goal-reopen]', error?.message || error)
   })
   return { revoked: true, checkin: revokedCheckin }
 }

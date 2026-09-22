@@ -96,8 +96,8 @@ progress-report.js
 - 15 个运动项目；
 - 12 个身体指标定义；
 - 7 项系统配置；
-- `schemaVersion = 10`；
-- Schema 1~10 migration 记录。
+- `schemaVersion = 13`；
+- Schema 1~13 migration 记录。
 
 真实微信云环境仍需要你部署后调用一次 `admin-init`；工程本身无法代替你的微信账号授权。
 

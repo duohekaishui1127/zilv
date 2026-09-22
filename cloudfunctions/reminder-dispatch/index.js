@@ -1,7 +1,8 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
-const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType } = require('./reminder-rules')
+const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType, localParts } = require('./reminder-rules')
 const { expiredCountdownFields, countUpRestReminderDue } = require('./timer-rules')
+const { deadlineReminderDue, reminderTimeReached } = require('./deadline-goal-rules')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
@@ -52,6 +53,10 @@ function timerNotificationId(checkinId) {
 
 function timerRestNotificationId(checkinId) {
   return crypto.createHash('sha256').update(`timer-rest-reminder:${checkinId}`).digest('hex').slice(0, 32)
+}
+
+function goalDeadlineNotificationId(goal, daysRemaining) {
+  return crypto.createHash('sha256').update(`goal-deadline:${goal._id}:${goal.deadlineDate}:${daysRemaining}`).digest('hex').slice(0, 32)
 }
 
 function localTime(date = new Date()) {
@@ -210,6 +215,77 @@ async function sendTimerWechatReminder(user, checkin, plan, notification) {
   }
 }
 
+async function sendGoalWechatReminder(user, goal, notification, at) {
+  const templateId=String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
+  const subscriptionType=normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
+  if(!goal.wechatReminderEnabled) {
+    await updateNotification(notification._id,{ pushStatus:'NOT_SUBSCRIBED' })
+    return 'internal-only'
+  }
+  if(!templateId) {
+    await updateNotification(notification._id,{ pushStatus:'NOT_CONFIGURED' })
+    return 'not-configured'
+  }
+  if(!user?.openid) {
+    await updateNotification(notification._id,{ pushStatus:'FAILED',pushErrorCode:'USER_NOT_FOUND' })
+    return 'failed'
+  }
+  const timeKey=process.env.REMINDER_TEMPLATE_TIME_KEY || 'time30'
+  const contentKey=process.env.REMINDER_TEMPLATE_CONTENT_KEY || 'thing2'
+  const local=localParts(at,user.checkinReminderTimezoneOffset ?? 480)
+  try {
+    const result=await cloud.openapi.subscribeMessage.send({
+      touser:user.openid,templateId,page:'pages/plan/index',
+      miniprogramState:process.env.REMINDER_MINIPROGRAM_STATE || 'formal',lang:'zh_CN',
+      data:{
+        [timeKey]:{ value:local.time },
+        [contentKey]:{ value:text(`“${goal.name || '目标'}”还有${notification.daysRemaining}天`) }
+      }
+    })
+    const code=Number(result.errCode ?? result.errcode ?? 0)
+    if(code !== 0)throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'),result)
+    await updateNotification(notification._id,{ pushStatus:'SENT',pushedAt:new Date() })
+    if(subscriptionType === 'ONE_TIME')await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{ wechatReminderEnabled:false,updatedAt:new Date() } })
+    return 'sent'
+  } catch(error) {
+    const code=Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
+    await updateNotification(notification._id,{
+      pushStatus:code === 43101 ? 'NOT_SUBSCRIBED' : 'FAILED',pushErrorCode:code,
+      pushErrorMessage:text(error?.errMsg || error?.message || '发送失败',120)
+    })
+    if(code === 43101)await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{ wechatReminderEnabled:false,updatedAt:new Date() } })
+    return 'failed'
+  }
+}
+
+async function processDeadlineGoal(goal, at) {
+  const user=await document(COLLECTIONS.USERS,goal.userId)
+  if(!user)return 'skipped'
+  const local=localParts(at,user.checkinReminderTimezoneOffset ?? 480)
+  if(!reminderTimeReached(local.time,process.env.GOAL_REMINDER_TIME || '09:00'))return 'skipped'
+  const daysRemaining=deadlineReminderDue(goal,local.date)
+  if(daysRemaining == null)return 'skipped'
+  const id=goalDeadlineNotificationId(goal,daysRemaining)
+  if(await document(COLLECTIONS.NOTIFICATIONS,id)) {
+    await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{
+      deadlineReminderDaysSent:[...new Set([...(goal.deadlineReminderDaysSent || []),daysRemaining])],updatedAt:new Date()
+    } })
+    return 'duplicate'
+  }
+  const notification={
+    _id:id,userId:goal.userId,type:'GOAL_DEADLINE_REMINDER',title:'长期目标倒计时',
+    content:`距离“${text(goal.name,30)}”还有${daysRemaining}天`,page:'/pages/plan/index',
+    goalId:goal._id,daysRemaining,recordDate:local.date,status:'UNREAD',pushStatus:'PENDING',createdAt:at,updatedAt:at
+  }
+  const { _id,...data }=notification
+  await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data })
+  await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{
+    deadlineReminderDaysSent:[...new Set([...(goal.deadlineReminderDaysSent || []),daysRemaining])],updatedAt:new Date()
+  } })
+  await trimNotificationHistory(goal.userId)
+  return sendGoalWechatReminder(user,goal,notification,at)
+}
+
 async function processExpiredCountdown(checkin, at) {
   const latest = await document(COLLECTIONS.CHECKINS, checkin._id)
   const fields = expiredCountdownFields(latest, at)
@@ -359,17 +435,18 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [users, groups, runningTimers] = await Promise.all([
+  const [users, groups, runningTimers, longTermGoals] = await Promise.all([
     allMatches(COLLECTIONS.USERS,{ checkinReminderEnabled:true }),
     allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) }),
-    allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' })
+    allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' }),
+    allMatches(COLLECTIONS.PLANS,{ planType:'LONG_TERM' })
   ])
   const countdowns = runningTimers.filter(item => item.timerMode === 'COUNT_DOWN')
   const countUps = runningTimers.filter(item => item.timerMode === 'COUNT_UP')
   const summary = {
     scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0, autoRemoved: 0,
     timersScanned: runningTimers.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0,
-    restReminders: 0
+    restReminders: 0, goalsScanned:longTermGoals.length,goalSent:0,goalInternalOnly:0,goalFailed:0,goalDuplicate:0
   }
   for (const user of users) {
     const status = await processUser(user, startedAt)
@@ -392,6 +469,13 @@ exports.main = async () => {
     if (status === 'sent') summary.timerSent++
     else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
     else if (status === 'failed') summary.timerFailed++
+  }
+  for(const goal of longTermGoals) {
+    const status=await processDeadlineGoal(goal,startedAt)
+    if(status === 'sent')summary.goalSent++
+    else if(status === 'internal-only' || status === 'not-configured')summary.goalInternalOnly++
+    else if(status === 'failed')summary.goalFailed++
+    else if(status === 'duplicate')summary.goalDuplicate++
   }
   const localDate = dateOnly(startedAt)
   for (const group of groups) summary.autoRemoved += await enforceInactiveGroup(group, localDate)

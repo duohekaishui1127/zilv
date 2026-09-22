@@ -7,8 +7,10 @@ function isBasePlanDue(plan, dateStr) {
   const mondayBased = day === 0 ? 7 : day
   if (plan.startDate && dateStr < plan.startDate) return false
   if (plan.endDate && dateStr > plan.endDate) return false
+  if (plan.planType === 'LONG_TERM') return false
 
   switch (plan.repeatType) {
+    case 'ONE_TIME': return dateStr === plan.startDate
     case 'DAILY': return true
     case 'WEEKDAYS': return mondayBased <= 5
     case 'WEEKENDS': return mondayBased >= 6

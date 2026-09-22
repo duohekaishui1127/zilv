@@ -8,8 +8,28 @@ const COUNT_UP_REST_SECONDS = 2.5 * 60 * 60
 function emptyEditor() {
   return {
     visible: false, planId: '', planName: '', note: '', timed: false,
+    actualValue: '', unit: '', quantitative: false,
     timerEffectiveDisplay: '', timerTotalDisplay: '', timerPausedDisplay: ''
   }
+}
+
+function presentGoal(goal) {
+  if (goal.goalType === 'DEADLINE') return {
+    ...goal, typeLabel:'日期目标', primaryText:goal.overdue ? `已超过目标日 ${Math.abs(goal.daysRemaining)} 天` : `还有 ${goal.daysRemaining} 天`, progressText:`近7天 ${goal.recentProgress.completed}/${goal.recentProgress.total}`
+  }
+  if (goal.goalType === 'HABIT') return {
+    ...goal, typeLabel:'习惯养成', primaryText:`连续 ${goal.currentValue}/${goal.targetValue} 天`, progressText:`${goal.progressPct}%`, showProgress:true
+  }
+  return {
+    ...goal, typeLabel:'数量积累', primaryText:goal.unlimited ? `已累计 ${goal.currentValue}${goal.unit}` : `${goal.currentValue}/${goal.targetValue}${goal.unit}`,
+    progressText:goal.unlimited ? `完成 ${goal.totalCompletedCount} 次` : `${goal.progressPct}%`, showProgress:!goal.unlimited
+  }
+}
+
+const HOME_CARDS = Object.freeze(['LONG_TERM', 'PLANS', 'ENERGY'])
+function cardOrders(preferences) {
+  const order = Array.isArray(preferences?.cardOrder) ? preferences.cardOrder : HOME_CARDS
+  return Object.fromEntries(HOME_CARDS.map(key => [key, order.indexOf(key) < 0 ? HOME_CARDS.indexOf(key) : order.indexOf(key)]))
 }
 
 function emptyDailyReviewEditor() { return { visible: false, mood: '', note: '' } }
@@ -95,6 +115,7 @@ Page({
     carbPct: 0,
     fatPct: 0,
     energyState: { deficit: 0, surplus: 0, isDeficit: false, isSurplus: false },
+    cardOrders: cardOrders(),
     moods: MOODS,
     completionEditor: emptyEditor(),
     dailyReviewEditor: emptyDailyReviewEditor(),
@@ -132,8 +153,9 @@ Page({
       const serverMs = timeMs(d.serverTime)
       this._clockOffset = serverMs == null ? 0 : serverMs - Date.now()
       const target = d.nutritionTarget || {}
-      d.homePreferences = { showEnergy: true, ...(d.homePreferences || {}) }
+      d.homePreferences = { showEnergy:true,showLongTermGoals:true,cardOrder:HOME_CARDS, ...(d.homePreferences || {}) }
       d.plans = (d.plans || []).map(plan => decoratePlan(plan, this.serverNow()))
+      d.longTermGoals = (d.longTermGoals || []).map(presentGoal).slice(0, 3)
       if (d.dailyReview) d.dailyReview = {
         ...d.dailyReview,
         moodIcon: MOOD_ICONS[d.dailyReview.mood] || '',
@@ -145,7 +167,8 @@ Page({
         proteinPct: fmt.pct(d.nutrition.proteinIntake, target.proteinGram),
         carbPct: fmt.pct(d.nutrition.carbIntake, target.carbGram),
         fatPct: fmt.pct(d.nutrition.fatIntake, target.fatGram),
-        energyState: fmt.energyState(d.energy.estimatedCalorieBalance)
+        energyState: fmt.energyState(d.energy.estimatedCalorieBalance),
+        cardOrders:cardOrders(d.homePreferences)
       },() => this.updateReminderRenewalState())
       this.startTicker()
       this.maybePromptDailyReview(d)
@@ -227,6 +250,49 @@ Page({
   toggleEnergy() { this.setData({ energyExpanded: !this.data.energyExpanded }) },
   goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
+  goTasks() { wx.switchTab({ url: '/pages/plan/index' }) },
+  async saveCardPreferences(preferences) {
+    await api.call('updateHomePreferences',{ preferences })
+    this.setData({ 'dashboard.homePreferences':preferences,cardOrders:cardOrders(preferences) })
+  },
+  async manageCard(e) {
+    const key=e.currentTarget.dataset.card
+    const preferences={ ...this.data.dashboard.homePreferences,cardOrder:[...this.data.dashboard.homePreferences.cardOrder] }
+    const index=preferences.cardOrder.indexOf(key)
+    const actions=[]
+    if(index > 0)actions.push({ type:'UP',label:'向上移动' })
+    if(index >= 0 && index < preferences.cardOrder.length - 1)actions.push({ type:'DOWN',label:'向下移动' })
+    if(key !== 'PLANS')actions.push({ type:'HIDE',label:'暂时隐藏' })
+    if(!actions.length)return
+    try {
+      const result=await wx.showActionSheet({ itemList:actions.map(item => item.label) })
+      const action=actions[result.tapIndex]
+      if(action.type === 'HIDE') {
+        if(key === 'ENERGY')preferences.showEnergy=false
+        if(key === 'LONG_TERM')preferences.showLongTermGoals=false
+      } else {
+        const target=index + (action.type === 'UP' ? -1 : 1)
+        ;[preferences.cardOrder[index],preferences.cardOrder[target]]=[preferences.cardOrder[target],preferences.cardOrder[index]]
+      }
+      await this.saveCardPreferences(preferences)
+      wx.showToast({ title:action.type === 'HIDE' ? '已暂时隐藏' : '位置已调整',icon:'none' })
+    } catch (error) {}
+  },
+  async restoreCards() {
+    const preferences={ ...this.data.dashboard.homePreferences,cardOrder:[...this.data.dashboard.homePreferences.cardOrder] }
+    const hidden=[]
+    if(!preferences.showLongTermGoals)hidden.push({ key:'LONG_TERM',label:'恢复长期目标' })
+    if(!preferences.showEnergy)hidden.push({ key:'ENERGY',label:'恢复今日能量' })
+    if(!hidden.length)return wx.showToast({ title:'没有隐藏的卡片',icon:'none' })
+    try {
+      const result=await wx.showActionSheet({ itemList:hidden.map(item => item.label) })
+      const key=hidden[result.tapIndex].key
+      if(key === 'LONG_TERM')preferences.showLongTermGoals=true
+      if(key === 'ENERGY')preferences.showEnergy=true
+      await this.saveCardPreferences(preferences)
+      wx.showToast({ title:'卡片已恢复',icon:'success' })
+    } catch (error) {}
+  },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
   completesAllTasks(plan) { return reminderRenewal.completesAllTasks(this.data.dashboard,plan) },
   shouldRenewAfter(plan) {
@@ -297,6 +363,8 @@ Page({
         planId: plan._id,
         planName: plan.name,
         note: checkin.note || '',
+        actualValue: checkin.actualValue == null ? plan.targetValue : checkin.actualValue,
+        unit: plan.unit || '', quantitative: plan.targetType !== 'BOOLEAN',
         timed,
         timerEffectiveDisplay: plan.timerEffectiveDisplay,
         timerTotalDisplay: plan.timerTotalDisplay,
@@ -317,9 +385,9 @@ Page({
       const completesToday=this.completesAllTasks(plan)
       const reminderAccepted=await this.requestNextReminder(plan)
       const payload = { planId: plan._id, actualValue: Number(plan.targetValue) }
-      await api.call('completePlan', payload)
+      const result=await api.call('completePlan', payload)
       await this.saveReminderRenewal(reminderAccepted)
-      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成', icon:'success' })
+      wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'), icon:'success' })
       await this.load()
     } finally {
       this._quickCompleting = false
@@ -383,12 +451,12 @@ Page({
     try {
       const completesToday=this.completesAllTasks(plan)
       const authorizations=await this.completionReminderAuthorizations(plan)
-      await api.call('finishAndCompletePlanTimer', {
+      const result=await api.call('finishAndCompletePlanTimer', {
         planId: plan._id,
         timerReminderAuthorized: authorizations.timerReminderAuthorized
       })
       await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
-      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
+      wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -402,12 +470,12 @@ Page({
     try {
       const completesToday=this.completesAllTasks(plan)
       const authorizations=await this.completionReminderAuthorizations(plan)
-      await api.call('finishAndCompletePlanTimer', {
+      const result=await api.call('finishAndCompletePlanTimer', {
         planId: plan._id,
         timerReminderAuthorized: authorizations.timerReminderAuthorized
       })
       await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
-      wx.showToast({ title:completesToday ? '今日打卡完成' : '计划已完成',icon:'success' })
+      wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),icon:'success' })
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -430,7 +498,8 @@ Page({
     try {
       await api.call('completePlan', {
         planId: editor.planId,
-        note: editor.note
+        note: editor.note,
+        actualValue: editor.quantitative && editor.actualValue !== '' ? Number(editor.actualValue) : undefined
       })
       this.setData({ completionEditor: emptyEditor() })
       wx.showToast({ title: '备注已保存', icon: 'success' })

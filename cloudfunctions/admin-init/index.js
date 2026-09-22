@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const APP_VERSION = '1.6.0'
-const SCHEMA_VERSION = 11
+const SCHEMA_VERSION = 13
 const DEFAULT_ADMIN_FRIEND_SOURCE = 'DEFAULT_ADMIN'
 
 const collections = [
@@ -27,7 +27,9 @@ const migrations = [
   { migrationId: '008_social_encouragement', schemaVersion: 8, description: '群组点赞、微信打卡提醒、好友特别关心与撤回同步' },
   { migrationId: '009_friend_profiles', schemaVersion: 9, description: '好友资料、备注、单好友隐私例外与申请通知' },
   { migrationId: '010_group_plan_approvals', schemaVersion: 10, description: '群监督计划锁定、变更审批、群主移出成员及个人社交列表设置' },
-  { migrationId: '011_default_admin_friend', schemaVersion: 11, description: '所有用户默认建立受保护的管理员好友关系' }
+  { migrationId: '011_default_admin_friend', schemaVersion: 11, description: '所有用户默认建立受保护的管理员好友关系' },
+  { migrationId: '012_long_term_goals', schemaVersion: 12, description: '执行任务时间、私密长期目标、自动累计进度与今日卡片设置' },
+  { migrationId: '013_goal_reminders_and_friend_dedupe', schemaVersion: 13, description: '长期目标节点提醒与重复好友关系清理' }
 ]
 
 function normalizeShareCode(value) {
@@ -45,20 +47,82 @@ function defaultAdminShareCode(event) {
 
 async function friendshipBetween(userA, userB) {
   const [forward, reverse] = await Promise.all([
-    db.collection('friendships').where({ userA, userB }).limit(1).get(),
-    db.collection('friendships').where({ userA: userB, userB: userA }).limit(1).get()
+    db.collection('friendships').where({ userA, userB }).limit(100).get(),
+    db.collection('friendships').where({ userA: userB, userB: userA }).limit(100).get()
   ])
-  return forward.data[0] || reverse.data[0] || null
+  return preferredFriendship([...forward.data, ...reverse.data])
+}
+
+function timestampOf(friendship) {
+  const value = friendship?.updatedAt || friendship?.acceptedAt || friendship?.requestedAt || friendship?.createdAt
+  const timestamp = new Date(value || 0).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function friendshipRank(friendship) {
+  const isDefaultAdmin = friendship?.defaultAdmin === true
+    || friendship?.protected === true
+    || friendship?.source === DEFAULT_ADMIN_FRIEND_SOURCE
+  let rank = 0
+  if (friendship?.status === 'ACCEPTED') rank = 30
+  else if (friendship?.status === 'PENDING') rank = 20
+  return rank && isDefaultAdmin ? rank + 100 : rank
+}
+
+function preferredFriendship(friendships) {
+  return [...(friendships || [])].sort((a, b) => {
+    const rankDifference = friendshipRank(b) - friendshipRank(a)
+    if (rankDifference) return rankDifference
+    const timeDifference = timestampOf(b) - timestampOf(a)
+    if (timeDifference) return timeDifference
+    return String(a?._id || '').localeCompare(String(b?._id || ''))
+  })[0] || null
+}
+
+async function allMatches(collectionName, where) {
+  const records = []
+  while (true) {
+    const result = await db.collection(collectionName).where(where).skip(records.length).limit(100).get()
+    records.push(...result.data)
+    if (result.data.length < 100) return records
+  }
 }
 
 async function activeUsers() {
-  const users = []
-  const pageSize = 100
-  for (let offset = 0; ; offset += pageSize) {
-    const result = await db.collection('users').where({ status: 'ACTIVE' }).skip(offset).limit(pageSize).get()
-    users.push(...result.data)
-    if (result.data.length < pageSize) return users
+  return allMatches('users', { status: 'ACTIVE' })
+}
+
+async function dedupeActiveFriendships() {
+  const [accepted, pending] = await Promise.all([
+    allMatches('friendships', { status: 'ACCEPTED' }),
+    allMatches('friendships', { status: 'PENDING' })
+  ])
+  const grouped = new Map()
+  for (const friendship of [...accepted, ...pending]) {
+    const userA = String(friendship.userA || '')
+    const userB = String(friendship.userB || '')
+    if (!userA || !userB || userA === userB) continue
+    const key = [userA, userB].sort().join(':')
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key).push(friendship)
   }
+  const result = { activeRecords: accepted.length + pending.length, duplicatePairs: 0, markedDuplicate: 0 }
+  for (const records of grouped.values()) {
+    if (records.length < 2) continue
+    result.duplicatePairs++
+    const canonical = preferredFriendship(records)
+    const timestamp = new Date()
+    for (const duplicate of records.filter(item => item._id !== canonical._id)) {
+      await db.collection('friendships').doc(duplicate._id).update({ data: {
+        status: 'DUPLICATE',
+        duplicateOf: canonical._id,
+        deduplicatedAt: timestamp,
+        updatedAt: timestamp
+      } })
+      result.markedDuplicate++
+    }
+  }
+  return result
 }
 
 async function backfillDefaultAdminFriendships(event) {
@@ -174,6 +238,7 @@ exports.main = async (event = {}) => {
   }
 
   const defaultAdminFriendships = await backfillDefaultAdminFriendships(event)
+  const friendshipDeduplication = await dedupeActiveFriendships()
 
   await upsert('system_meta', { key: 'schema' }, {
     key: 'schema', schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION,
@@ -195,6 +260,7 @@ exports.main = async (event = {}) => {
     },
     seeded: { foods: foodResult, exercises: exerciseResult, bodyMetrics: metricResult, appConfig: configResult },
     defaultAdminFriendships,
+    friendshipDeduplication,
     migrations: migrations.map(x => x.migrationId),
     next: '初始化完成后建议删除/停用 admin-init 云函数，或配置 ADMIN_INIT_TOKEN。'
   }

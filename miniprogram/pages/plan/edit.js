@@ -13,16 +13,17 @@ Page({
     categories: PLAN_CATEGORIES.map(x => x.label), categoryValues: PLAN_CATEGORIES.map(x => x.value), categoryIndex: 0,
     targetTypes: TARGET_TYPES.map(x => x.label), targetValues: TARGET_TYPES.map(x => x.value), targetIndex: 0,
     targetValue: 1, unit: '', weeklyCount: 3,
+    executionDate: api.localDate(), executionTime: '08:00', hasExecutionTime: false,
     timerModes: TIMER_MODES.map(x => x.label), timerValues: TIMER_MODES.map(x => x.value), timerIndex: 0,
     timerDurationMinutes: 25, isCountdown: false,
     repeatTypes: REPEAT_TYPES.map(x => x.label), repeatValues: REPEAT_TYPES.map(x => x.value), repeatIndex: 0,
-    isSpecificDays: false, isWeeklyCount: false,
+    isOneTime: true, isSpecificDays: false, isWeeklyCount: false,
     weekdays: [1,2,3,4,5,6,7].map((value, i) => ({ value, label: ['一','二','三','四','五','六','日'][i], selected: false }))
   },
   onLoad(options) {
     if (options.id) {
       this.setData({ id: options.id, editMode: true })
-      wx.setNavigationBarTitle({ title: '编辑计划' })
+      wx.setNavigationBarTitle({ title: '编辑执行任务' })
       this.loadPlan()
     }
   },
@@ -40,11 +41,12 @@ Page({
         targetValue: plan.targetValue,
         unit: plan.unit || '',
         weeklyCount: plan.repeatConfig?.weeklyCount || (plan.repeatType === 'WEEKLY_COUNT' ? plan.targetValue : 3),
+        executionDate: plan.startDate || api.localDate(), executionTime: plan.executionTime || '08:00', hasExecutionTime: Boolean(plan.executionTime),
         timerIndex: indexOfValue(TIMER_MODES, plan.timerMode || 'NONE'),
         timerDurationMinutes: plan.timerDurationMinutes || 25,
         isCountdown: plan.timerMode === 'COUNT_DOWN',
         repeatIndex,
-        isSpecificDays: plan.repeatType === 'SPECIFIC_WEEKDAYS',
+        isOneTime: plan.repeatType === 'ONE_TIME', isSpecificDays: plan.repeatType === 'SPECIFIC_WEEKDAYS',
         isWeeklyCount: plan.repeatType === 'WEEKLY_COUNT',
         weekdays: this.data.weekdays.map(x => ({ ...x, selected: selectedDays.has(x.value) }))
       })
@@ -60,8 +62,11 @@ Page({
   repeat(e) {
     const i = Number(e.detail.value)
     const value = this.data.repeatValues[i]
-    this.setData({ repeatIndex: i, isSpecificDays: value === 'SPECIFIC_WEEKDAYS', isWeeklyCount: value === 'WEEKLY_COUNT' })
+    this.setData({ repeatIndex: i, isOneTime: value === 'ONE_TIME', isSpecificDays: value === 'SPECIFIC_WEEKDAYS', isWeeklyCount: value === 'WEEKLY_COUNT' })
   },
+  dateChange(e) { this.setData({ executionDate: e.detail.value }) },
+  timeChange(e) { this.setData({ executionTime: e.detail.value }) },
+  toggleExecutionTime(e) { this.setData({ hasExecutionTime: Boolean(e.detail.value) }) },
   toggleDay(e) {
     const day = Number(e.currentTarget.dataset.day)
     this.setData({ weekdays: this.data.weekdays.map(x => x.value === day ? { ...x, selected: !x.selected } : x) })
@@ -69,7 +74,7 @@ Page({
   async save() {
     if (this.data.saving) return
     const name = this.data.name.trim()
-    if (!name) return wx.showToast({ title: '请输入计划名称', icon: 'none' })
+    if (!name) return wx.showToast({ title: '请输入任务名称', icon: 'none' })
     const repeatType = this.data.repeatValues[this.data.repeatIndex]
     const selectedDays = this.data.weekdays.filter(x => x.selected).map(x => x.value)
     if (repeatType === 'SPECIFIC_WEEKDAYS' && !selectedDays.length) return wx.showToast({ title: '请至少选择一天', icon: 'none' })
@@ -91,6 +96,8 @@ Page({
       unit: this.data.unit,
       repeatType,
       repeatConfig: { weekdays: selectedDays, weeklyCount: repeatType === 'WEEKLY_COUNT' ? Number(this.data.weeklyCount || 1) : undefined },
+      startDate: this.data.executionDate,
+      executionTime: this.data.hasExecutionTime ? this.data.executionTime : '',
       timerMode,
       timerDurationMinutes: timerMode === 'COUNT_DOWN' ? timerDurationMinutes : null
     }

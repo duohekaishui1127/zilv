@@ -9,6 +9,7 @@
     "pages/record/study",
     "pages/plan/index",
     "pages/plan/edit",
+    "pages/plan/goal-edit",
     "pages/plan/bind",
     "pages/circle/index",
     "pages/circle/friends",
@@ -57,7 +58,7 @@
       },
       {
         "pagePath": "pages/plan/index",
-        "text": "计划",
+        "text": "任务",
         "iconPath": "assets/tabbar/plan.png",
         "selectedIconPath": "assets/tabbar/plan-active.png"
       },

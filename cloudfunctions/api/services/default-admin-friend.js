@@ -4,6 +4,7 @@ const {
   configuredDefaultAdminShareCode,
   defaultAdminFriendshipData
 } = require('../domain/default-admin-friend')
+const { preferredFriendship } = require('../domain/friendship-dedup')
 
 function configuredShareCode(explicitShareCode) {
   return configuredDefaultAdminShareCode(
@@ -14,10 +15,10 @@ function configuredShareCode(explicitShareCode) {
 
 async function friendshipBetween(userA, userB) {
   const [forward, reverse] = await Promise.all([
-    db.collection(C.FRIENDSHIPS).where({ userA, userB }).limit(1).get(),
-    db.collection(C.FRIENDSHIPS).where({ userA: userB, userB: userA }).limit(1).get()
+    db.collection(C.FRIENDSHIPS).where({ userA, userB }).limit(100).get(),
+    db.collection(C.FRIENDSHIPS).where({ userA: userB, userB: userA }).limit(100).get()
   ])
-  return forward.data[0] || reverse.data[0] || null
+  return preferredFriendship([...forward.data, ...reverse.data])
 }
 
 async function ensureDefaultAdminFriendship(user, explicitShareCode) {

@@ -15,6 +15,7 @@ function effectiveFriendPrivacy(globalPrivacy, privacyMode, input) {
 
 function canSharePlanWithFriend(plan, privacy) {
   if (!privacy?.showPlanStatusToFriends) return false
+  if (plan?.planType === 'LONG_TERM') return false
   if (plan?.category === 'STUDY') return Boolean(privacy.showStudyStatusToFriends)
   if (plan?.category === 'WORKOUT') return Boolean(privacy.showWorkoutStatusToFriends)
   return true

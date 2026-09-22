@@ -1,6 +1,17 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 10）
+# 云数据库集合设计（应用 1.6.0 / Schema 13）
 
-> Schema 10 新增群监督计划变更申请；本人担任群主的群自动批准，其余群组的计划修改、停用、删除和解绑仍需对应群主审核。
+> Schema 13 在执行任务与私密长期目标的基础上增加目标提醒，并清理历史重复好友关系。
+
+## 执行任务与长期目标
+
+- `plans.planType`: `EXECUTION` / `LONG_TERM`；旧记录缺失时按 `EXECUTION` 处理。
+- 执行任务增加 `executionTime` 和 `longTermGoalIds`；`repeatType=ONE_TIME` 时仅在 `startDate` 执行。
+- 长期目标使用 `goalType=DEADLINE/HABIT/ACCUMULATION`，分别保存 `deadlineDate`、`habitDays`、`targetValue/unlimited/unit`。
+- 长期目标使用 `goalStatus=ACTIVE/COMPLETED`；习惯和有上限的累计目标达成后自动归档。
+- `plans.reminderEnabled` 控制站内目标提醒，`plans.wechatReminderEnabled` 保存用户主动授予的微信提醒机会，`plans.deadlineReminderDaysSent` 保存已投递节点。考试目标在剩余 200、100、30、7、1 天的当地上午 09:00 后提醒；习惯达成后先提醒再归档。
+- 长期目标不直接创建 `checkins`，其进度始终由 `longTermGoalIds` 关联的执行任务打卡计算。
+- 长期目标固定 `privacyLevel=PRIVATE`，API 禁止其绑定群组，并在好友、特别关心、群日历、群动态和提醒中再次过滤。
+- `users.homePreferences` 增加 `showLongTermGoals` 与 `cardOrder`，只影响今日页展示，不删除业务数据。
 
 ## 计划专注计时字段
 
@@ -62,7 +73,7 @@ audit_logs
 
 ## 好友资料与权限
 
-- `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`；`requestVersion` 用于重复申请时通知去重；`requestMessage` 保存最多 60 字的选填申请备注。
+- `friendships`: `status` 支持 `PENDING`、`ACCEPTED`、`REJECTED`、`CANCELLED`、`DUPLICATE`；`requestVersion` 用于重复申请时通知去重；`requestMessage` 保存最多 60 字的选填申请备注。Schema 13 为历史重复关系写入 `duplicateOf`、`deduplicatedAt`，好友接口也按对端用户即时去重。
 - `friend_settings`: `userId`、`friendUserId`、仅本人可见的 `remark`、`pinned`、`pinnedAt`、`privacyMode` 与 `privacyOverrides`；`pinned` 只影响本人好友列表排序，新置顶项按 `pinnedAt` 优先。
 - `privacy_settings`: 保存对所有好友生效的默认规则；`friend_settings` 只在 `CUSTOM` 模式覆盖指定好友。
 - 单好友例外只能决定“我向对方公开什么”，不能扩大对方授予我的权限；特别关心同样不能绕过被关注人的可见规则。
@@ -106,7 +117,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 打卡提醒模板类型由 `api` 和 `reminder-dispatch` 的 `PLAN_REMINDER_SUBSCRIPTION_TYPE` 共同配置；一次性模板发送成功或微信返回无授权时关闭 `checkinReminderPushEnabled`。
 
-`notifications` 保存站内消息及推送结果：`userId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。每名用户只保留按 `createdAt` 排序的最新 20 条。
+`notifications` 保存站内消息及推送结果：`userId`、`recordDate`、`status`、`pushStatus`、`pushErrorCode`、`createdAt`、`readAt`。目标提醒类型为 `GOAL_DEADLINE_REMINDER` / `GOAL_ACHIEVED`，使用目标和节点生成确定性 ID。每名用户只保留按 `createdAt` 排序的最新 20 条。
 
 `users.lastReleaseAnnouncementId` 和 `users.lastCheckinReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日打卡提醒不会重复创建。
 
@@ -123,7 +134,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `meals`: `userId + recordDate + mealType`
 - `meal_items`: `userId + recordDate`；`mealId`
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
-- `plans`: `userId + enabled`
+- `plans`: `userId + enabled`；`planType`
 - `checkins`: `userId + planId + date`；`userId + date`；`userId + completed + completedAt desc`
 - `daily_reviews`: `userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`
