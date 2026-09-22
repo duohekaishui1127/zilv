@@ -2,7 +2,8 @@ const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { normalizeLongTermGoal, isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
 const { EXAM_RESULT_STATUSES } = require('../domain/exam-progress')
-const { allMatches, longTermContext, syncLongTermGoalAchievements } = require('../services/long-term-goals')
+const { allMatches,longTermContext,syncLongTermGoalAchievements,archiveAccumulationGoal } = require('../services/long-term-goals')
+const { managedPlanData,ensureManagedAccumulationPlan } = require('../services/managed-accumulation')
 
 async function ownedPlan(userId, planId) {
   const plan = await db.collection(C.PLANS).doc(planId).get().then(result => result.data).catch(() => null)
@@ -12,18 +13,26 @@ async function ownedPlan(userId, planId) {
 
 async function createLongTermGoal({ user, event, localDate }) {
   const timestamp = now()
+  const normalized=normalizeLongTermGoal(event.goal,localDate)
+  if(normalized.goalType === 'ACCUMULATION')managedPlanData({ _id:'pending',...normalized },event.goal,localDate)
   const data = {
-    userId: user._id, ...normalizeLongTermGoal(event.goal, localDate),
+    userId:user._id,...normalized,
     deadlineReminderDaysSent: [],
     enabled: true, createdAt: timestamp, updatedAt: timestamp
   }
   const result = await db.collection(C.PLANS).add({ data })
-  return { goal: { _id: result._id, ...data } }
+  let goal={ _id:result._id,...data }
+  if(goal.goalType === 'ACCUMULATION') {
+    const plan=await ensureManagedAccumulationPlan(user._id,goal,event.goal,localDate)
+    goal={ ...goal,managedExecutionPlanId:plan._id }
+  }
+  return { goal }
 }
 
 async function updateLongTermGoal({ user, event, localDate }) {
   const goal = await ownedPlan(user._id, event.goalId)
   if (!isLongTermGoal(goal)) throw fail('INVALID_PARAMETER', '这不是长期目标')
+  if(event.goal?.goalType && event.goal.goalType !== goal.goalType)throw fail('INVALID_PARAMETER','长期目标创建后不能更改类型')
   const normalized = normalizeLongTermGoal(event.goal, localDate, goal)
   const data = {
     ...normalized,
@@ -33,13 +42,21 @@ async function updateLongTermGoal({ user, event, localDate }) {
     updatedAt: now()
   }
   await db.collection(C.PLANS).doc(goal._id).update({ data })
+  if(normalized.goalType === 'ACCUMULATION') {
+    const plan=await ensureManagedAccumulationPlan(user._id,{ ...goal,...data },event.goal,localDate)
+    data.managedExecutionPlanId=plan._id
+  }
   const sync = await syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true })
   return { goal: { ...goal, ...data }, achievedGoals: sync.achievedGoals }
 }
 
-async function deleteLongTermGoal({ user, event }) {
+async function deleteLongTermGoal({ user, event, localDate }) {
   const goal = await ownedPlan(user._id, event.goalId)
   if (!isLongTermGoal(goal)) throw fail('INVALID_PARAMETER', '这不是长期目标')
+  if(goal.goalType === 'ACCUMULATION') {
+    await archiveAccumulationGoal(user._id,goal._id,localDate)
+    return { deleted:true,archived:true }
+  }
   const timestamp = now()
   await db.collection(C.PLANS).doc(goal._id).update({ data: { enabled: false, deletedAt: timestamp, updatedAt: timestamp } })
   const plans = await allMatches(C.PLANS, { userId: user._id })
@@ -50,10 +67,14 @@ async function deleteLongTermGoal({ user, event }) {
   return { deleted: true }
 }
 
-async function completeLongTermGoal({ user, event }) {
+async function completeLongTermGoal({ user, event, localDate }) {
   const goal = await ownedPlan(user._id, event.goalId)
   if (!isLongTermGoal(goal)) throw fail('INVALID_PARAMETER', '这不是长期目标')
   if (goal.goalType === 'DEADLINE') throw fail('INVALID_PARAMETER', '考试目标会在考试日期自动归档')
+  if(goal.goalType === 'ACCUMULATION') {
+    await archiveAccumulationGoal(user._id,goal._id,localDate)
+    return { completed:true,archived:true,completionMode:'TERMINATED' }
+  }
   const timestamp = now()
   await db.collection(C.PLANS).doc(goal._id).update({ data: {
     goalStatus: 'COMPLETED', enabled: false, completionMode: 'MANUAL', completedAt: timestamp, updatedAt: timestamp
@@ -68,6 +89,8 @@ async function setPlanLongTermGoalBinding({ user, event, localDate }) {
   if (!isExecutionPlan(plan) || !isLongTermGoal(goal) || goal.goalStatus !== 'ACTIVE') {
     throw fail('INVALID_PARAMETER', '只能把执行任务绑定到进行中的长期目标')
   }
+  if(plan.managedByGoalId)throw fail('INVALID_PARAMETER','系统托管任务不能手动关联其他长期目标')
+  if(goal.goalType === 'ACCUMULATION')throw fail('INVALID_PARAMETER','数量积累目标会自动创建执行任务，无需手动关联')
   if (event.bound && goal.goalType === 'HABIT' && plan.repeatType === 'WEEKLY_COUNT') {
     throw fail('INVALID_PARAMETER', '习惯养成请绑定具有明确执行日的任务')
   }

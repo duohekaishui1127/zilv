@@ -9,6 +9,7 @@ const { normalizePlan, isExecutionPlan, isLongTermGoal } = require('../domain/pl
 const { longTermContext, syncLongTermGoalAchievements } = require('../services/long-term-goals')
 const { requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
 const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
+const { prepareManagedAccumulationPlanUpdate } = require('../services/managed-accumulation')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
   const add = await db.collection(C.PLANS).add({ data })
@@ -23,7 +24,8 @@ async function updatePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '请使用长期目标编辑入口')
-  const normalized = normalizePlan(event.plan, localDate, plan)
+  let normalized = normalizePlan(event.plan, localDate, plan)
+  if(plan.managedByGoalId)normalized=await prepareManagedAccumulationPlanUpdate(user._id,plan,normalized,localDate)
   const decision = await requestGroupPlanChange({ userId:user._id,plan,type:'UPDATE',payload:{ plan:normalized } })
   if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
   const result=await applyPlanChange(decision.change,localDate)
@@ -34,6 +36,7 @@ async function setPlanEnabled({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '长期目标不能作为执行任务启停')
+  if(plan.managedByGoalId)throw fail('INVALID_PARAMETER','该任务由数量积累目标管理，不能单独启停')
   const enabled = !!event.enabled
   if (enabled === Boolean(plan.enabled)) return { enabled }
   const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'SET_ENABLED',payload:{ enabled } })
@@ -46,6 +49,7 @@ async function deletePlan({ user, event, localDate, requestId }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (!isExecutionPlan(plan)) throw fail('INVALID_PARAMETER', '请使用长期目标删除入口')
+  if(plan.managedByGoalId)throw fail('INVALID_PARAMETER','该任务由数量积累目标管理，请结束或删除长期目标')
   const decision=await requestGroupPlanChange({ userId:user._id,plan,type:'DELETE' })
   if (decision.approvalRequired) return { approvalRequired:true,request:decision.request }
   const result=await applyPlanChange(decision.change,localDate)

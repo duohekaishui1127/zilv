@@ -1,3 +1,8 @@
 .goal-types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 12rpx; }
 .goal-type { padding: 20rpx 8rpx; border-radius: 16rpx; text-align: center; color: #665f72; background: #f2eff8; font-size: 24rpx; }
 .goal-type-active { color: #fff; background: #6d5a99; }
+.goal-type-locked:not(.goal-type-active) { opacity:.48; }
+.managed-title { margin-top:24rpx; }
+.managed-description { margin:8rpx 0 22rpx; }
+.managed-weekdays { gap:12rpx; margin-top:12rpx; }
+.managed-unit { flex:0 0 auto; margin-left:16rpx; color:#697386; }

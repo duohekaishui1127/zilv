@@ -90,6 +90,22 @@ test('习惯连续天数忽略已停用或删除的绑定任务', () => {
   assert.deepEqual(habit.todayProgress,{ completed:1,total:1 })
 })
 
+test('数量积累迁移后保留历史基线并继续累计托管任务',() => {
+  const plans=[{
+    _id:'managed',planType:'EXECUTION',managedByGoalId:'words',repeatType:'DAILY',startDate:'2026-09-01',
+    longTermGoalIds:['words']
+  }]
+  const checkins=[{ planId:'managed',date:'2026-09-22',completed:true,actualValue:50,durationMinutes:20 }]
+  const words=decorateGoal({
+    _id:'words',planType:'LONG_TERM',goalType:'ACCUMULATION',targetValue:500,unit:'词',goalStatus:'ACTIVE',
+    accumulationBaselineValue:120,accumulationBaselineCompletedCount:3,accumulationBaselineDurationMinutes:45
+  },plans,checkins,'2026-09-22')
+  assert.equal(words.currentValue,170)
+  assert.equal(words.totalCompletedCount,4)
+  assert.equal(words.totalDurationMinutes,65)
+  assert.equal(words.progressPct,34)
+})
+
 test('长期目标始终不向好友公开', () => {
   assert.equal(canSharePlanWithFriend({ planType:'LONG_TERM',category:'STUDY' },{
     showPlanStatusToFriends:true,showStudyStatusToFriends:true

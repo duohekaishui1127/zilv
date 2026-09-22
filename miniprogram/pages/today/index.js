@@ -32,7 +32,9 @@ function presentGoal(goal) {
     ...goal, typeLabel:'习惯养成', primaryText:`连续 ${goal.currentValue}/${goal.targetValue} 天`, progressText:`${goal.progressPct}%`, showProgress:true
   }
   return {
-    ...goal, typeLabel:'数量积累', primaryText:goal.unlimited ? `已累计 ${goal.currentValue}${goal.unit}` : `${goal.currentValue}/${goal.targetValue}${goal.unit}`,
+    ...goal,typeLabel:'数量积累',primaryText:goal.unlimited
+      ? `已累计 ${goal.currentValue}${goal.unit}`
+      : `${goal.currentValue}/${goal.targetValue}${goal.unit} · 剩余 ${goal.remainingValue}${goal.unit}`,
     progressText:goal.unlimited ? `完成 ${goal.totalCompletedCount} 次` : `${goal.progressPct}%`, showProgress:!goal.unlimited
   }
 }

@@ -128,7 +128,9 @@ async function getPlanBindings({ user, event, localDate }) {
   const boundIds = new Set(bindingsResult.data.map(x => x.groupId))
   const goalIds = new Set(Array.isArray(plan.longTermGoalIds) ? plan.longTermGoalIds : [])
   return {
-    goals: goalContext.goals.filter(goal => goal.goalStatus === 'ACTIVE')
+    managedByGoalId:plan.managedByGoalId || '',
+    goals: goalContext.goals.filter(goal => goal.goalStatus === 'ACTIVE'
+      && goal.goalType !== 'ACCUMULATION' && !plan.managedByGoalId)
       .map(goal => ({ _id:goal._id,name:goal.name,goalType:goal.goalType,bound:goalIds.has(goal._id) })),
     groups: groupsResult.groups.map(group => ({ ...group, bound: boundIds.has(group._id) }))
   }

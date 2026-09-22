@@ -28,8 +28,9 @@ function dateText(value) {
 function present(goal) {
   const snapshot=goal.archiveSnapshot || {}
   const isExam=goal.goalType === 'DEADLINE'
+  const isAccumulation=goal.goalType === 'ACCUMULATION'
   return {
-    ...goal,isExam,snapshot,
+    ...goal,isExam,isAccumulation,snapshot,
     createdDate:dateText(snapshot.createdDate || goal.startDate || goal.createdAt),
     examDate:dateText(snapshot.examDate || goal.deadlineDate),
     completedDate:dateText(goal.completedAt),
@@ -37,7 +38,14 @@ function present(goal) {
     completedCount:Number(snapshot.completedCount || 0),
     durationText:durationLabel(snapshot.durationMinutes),
     completionText:snapshot.completionPct == null ? '--' : `${snapshot.completionPct}%`,
-    linkedPlans:snapshot.linkedPlans || []
+    linkedPlans:snapshot.linkedPlans || [],
+    accumulatedValue:Number(snapshot.accumulatedValue ?? goal.currentValue ?? 0),
+    accumulatedTarget:snapshot.unlimited || goal.unlimited ? '持续积累' : `${snapshot.targetValue ?? goal.targetValue}${snapshot.unit || goal.unit || ''}`,
+    accumulatedText:`${Number(snapshot.accumulatedValue ?? goal.currentValue ?? 0)}${snapshot.unit || goal.unit || ''}`,
+    accumulationOutcome:snapshot.outcome === 'TERMINATED' ? '主动结束' : '已达成',
+    accumulationPlan:snapshot.executionPlan || null,
+    accumulationCompletedCount:Number(snapshot.completedCount ?? goal.totalCompletedCount ?? 0),
+    accumulationDurationText:durationLabel(snapshot.durationMinutes ?? goal.totalDurationMinutes)
   }
 }
 

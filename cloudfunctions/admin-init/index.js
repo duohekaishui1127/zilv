@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 
 const APP_VERSION = '1.6.0'
-const SCHEMA_VERSION = 14
+const SCHEMA_VERSION = 15
 const DEFAULT_ADMIN_FRIEND_SOURCE = 'DEFAULT_ADMIN'
 
 const collections = [
@@ -30,7 +30,8 @@ const migrations = [
   { migrationId: '011_default_admin_friend', schemaVersion: 11, description: '所有用户默认建立受保护的管理员好友关系' },
   { migrationId: '012_long_term_goals', schemaVersion: 12, description: '执行任务时间、私密长期目标、自动累计进度与今日卡片设置' },
   { migrationId: '013_goal_reminders_and_friend_dedupe', schemaVersion: 13, description: '长期目标节点提醒与重复好友关系清理' },
-  { migrationId: '014_exam_progress_archives', schemaVersion: 14, description: '考试目标自动归档、备考快照、结果复盘与出分提醒' }
+  { migrationId: '014_exam_progress_archives', schemaVersion: 14, description: '考试目标自动归档、备考快照、结果复盘与出分提醒' },
+  { migrationId: '015_managed_accumulation_plans', schemaVersion: 15, description: '数量积累目标自动创建托管执行任务并统一归档生命周期' }
 ]
 
 function normalizeShareCode(value) {
@@ -122,6 +123,67 @@ async function dedupeActiveFriendships() {
       } })
       result.markedDuplicate++
     }
+  }
+  return result
+}
+
+async function backfillManagedAccumulationPlans() {
+  const goals=(await allMatches('plans',{ planType:'LONG_TERM' })).filter(goal =>
+    goal.goalType === 'ACCUMULATION' && goal.goalStatus === 'ACTIVE'
+    && !goal.deletedAt && goal.enabled !== false)
+  const result={ total:goals.length,created:0,adopted:0,migratedBindings:0 }
+  for(const goal of goals) {
+    const userPlans=await allMatches('plans',{ userId:goal.userId })
+    const managed=userPlans.find(plan => !plan.deletedAt && plan.managedByGoalId === goal._id)
+    if(goal.managedExecutionPlanId && userPlans.some(plan => plan._id === goal.managedExecutionPlanId))continue
+    if(managed) {
+      await db.collection('plans').doc(goal._id).update({ data:{ managedExecutionPlanId:managed._id,updatedAt:new Date() } })
+      result.adopted++
+      continue
+    }
+    const linked=userPlans.filter(plan => plan.planType !== 'LONG_TERM' && !plan.deletedAt
+      && Array.isArray(plan.longTermGoalIds) && plan.longTermGoalIds.includes(goal._id))
+    const linkedIds=new Set(linked.map(plan => plan._id))
+    const checkins=await allMatches('checkins',{ userId:goal.userId,completed:true })
+    const historical=checkins.filter(item => linkedIds.has(item.planId)
+      && (!goal.startDate || item.date >= goal.startDate))
+    const primary=linked[0] || {}
+    const allowedRepeats=new Set(['DAILY','WEEKDAYS','WEEKENDS','SPECIFIC_WEEKDAYS','WEEKLY_COUNT'])
+    const timestamp=new Date()
+    const remaining=Math.max(1,Number(goal.targetValue || 1)
+      - historical.reduce((sum,item) => sum + Number(item.actualValue || 0),0))
+    const childData={
+      userId:goal.userId,planType:'EXECUTION',name:goal.name,description:'',
+      category:primary.category || 'CUSTOM',targetType:'VALUE',
+      targetValue:goal.unlimited ? Number(primary.targetValue || 1) : Number(primary.targetValue || Math.ceil(remaining / 100)),
+      unit:goal.unit || '次',repeatType:allowedRepeats.has(primary.repeatType) ? primary.repeatType : 'DAILY',
+      repeatConfig:primary.repeatConfig || {},startDate:goal.startDate || timestamp.toISOString().slice(0,10),
+      endDate:null,executionTime:primary.executionTime || '',longTermGoalIds:[goal._id],
+      privacyLevel:primary.privacyLevel || 'FRIENDS',timerMode:'NONE',timerDurationMinutes:null,
+      managedByGoalId:goal._id,managedPlanType:'ACCUMULATION',managedLifecycleStatus:'ACTIVE',
+      enabled:true,createdAt:timestamp,updatedAt:timestamp
+    }
+    const added=await db.collection('plans').add({ data:childData })
+    for(const plan of linked) {
+      await db.collection('plans').doc(plan._id).update({ data:{
+        longTermGoalIds:plan.longTermGoalIds.filter(id => id !== goal._id),updatedAt:timestamp
+      } })
+      result.migratedBindings++
+    }
+    const history=Array.isArray(goal.linkedPlanHistory) ? goal.linkedPlanHistory : []
+    const historicalPlans=linked.filter(plan => !history.some(item => item.planId === plan._id)).map(plan => ({
+      planId:plan._id,name:plan.name,category:plan.category || 'CUSTOM',boundAt:timestamp,legacy:true
+    }))
+    await db.collection('plans').doc(goal._id).update({ data:{
+      managedExecutionPlanId:added._id,
+      accumulationBaselineValue:historical.reduce((sum,item) => sum + Number(item.actualValue || 0),0),
+      accumulationBaselineCompletedCount:historical.length,
+      accumulationBaselineDurationMinutes:historical.reduce((sum,item) => sum + Number(item.durationMinutes || 0),0),
+      linkedPlanHistory:[...history,...historicalPlans,{
+        planId:added._id,name:goal.name,category:childData.category,boundAt:timestamp,managed:true
+      }].slice(-50),updatedAt:timestamp
+    } })
+    result.created++
   }
   return result
 }
@@ -240,6 +302,7 @@ exports.main = async (event = {}) => {
 
   const defaultAdminFriendships = await backfillDefaultAdminFriendships(event)
   const friendshipDeduplication = await dedupeActiveFriendships()
+  const managedAccumulationPlans = await backfillManagedAccumulationPlans()
 
   await upsert('system_meta', { key: 'schema' }, {
     key: 'schema', schemaVersion: SCHEMA_VERSION, appVersion: APP_VERSION,
@@ -262,6 +325,7 @@ exports.main = async (event = {}) => {
     seeded: { foods: foodResult, exercises: exerciseResult, bodyMetrics: metricResult, appConfig: configResult },
     defaultAdminFriendships,
     friendshipDeduplication,
+    managedAccumulationPlans,
     migrations: migrations.map(x => x.migrationId),
     next: '初始化完成后建议删除/停用 admin-init 云函数，或配置 ADMIN_INIT_TOKEN。'
   }

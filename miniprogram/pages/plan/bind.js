@@ -1,13 +1,13 @@
 const api = require('../../utils/api')
 Page({
-  data: { planId:'', name:'', groups:[], goals:[] },
+  data: { planId:'',name:'',groups:[],goals:[],managed:false },
   onLoad(options) {
     this.setData({ planId: options.planId, name: decodeURIComponent(options.name || '') })
     this.load()
   },
   async load() {
     const d = await api.call('getPlanBindings', { planId: this.data.planId })
-    this.setData({ groups: d.groups, goals: d.goals || [] })
+    this.setData({ groups:d.groups,goals:d.goals || [],managed:Boolean(d.managedByGoalId) })
   },
   async toggleGroup(e) {
     const groupId = e.currentTarget.dataset.id

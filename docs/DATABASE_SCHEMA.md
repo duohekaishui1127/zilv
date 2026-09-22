@@ -1,16 +1,20 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 14）
+# 云数据库集合设计（应用 1.6.0 / Schema 15）
 
-> Schema 14 增加考试目标自动归档、备考历程快照、考试结果与复盘字段。
+> Schema 15 增加数量积累目标的托管执行任务、动态建议量和统一归档生命周期。
 
 ## 执行任务与长期目标
 
 - `plans.planType`: `EXECUTION` / `LONG_TERM`；旧记录缺失时按 `EXECUTION` 处理。
 - 执行任务增加 `executionTime` 和 `longTermGoalIds`；`repeatType=ONE_TIME` 时仅在 `startDate` 执行。
-- 长期目标使用 `goalType=DEADLINE/HABIT/ACCUMULATION`，分别保存 `deadlineDate`、`habitDays`、`targetValue/unlimited/unit`。
+- 长期目标使用 `goalType=DEADLINE/HABIT/ACCUMULATION`，分别保存 `deadlineDate`、`habitDays`、`targetValue/unlimited/unit/accumulationDeadlineDate`。
 - 长期目标使用 `goalStatus=ACTIVE/COMPLETED`；习惯和有上限的累计目标达成后自动归档，考试目标在考试日自动结束备考并归档，不进入逾期状态。
 - `plans.deadlineReminderDaysSent` 保存已投递节点。考试目标在剩余 200、100、30、7、1 天的当地上午 09:00 后自动提醒；习惯达成后先提醒再归档。长期目标消息中心提醒始终生效，不提供开关，也不使用微信订阅消息；旧记录中的 `reminderEnabled`、`wechatReminderEnabled` 字段会被忽略。
 - 考试归档在 `plans.archiveSnapshot` 冻结创建日期、考试日期、准备天数、关联任务、打卡次数、学习时长和完成率；`linkedPlanHistory` 保留曾经绑定过的执行任务。`examResultStatus=PENDING/PASSED/FAILED/ABSENT` 与 `examScore`、`examReview` 保存后续结果和复盘。待出分满 60 天后默认生成一次消息中心提醒。
-- 长期目标不直接创建 `checkins`，其进度始终由 `longTermGoalIds` 关联的执行任务打卡计算。
+- 考试和习惯目标不直接创建 `checkins`，其进度由用户主动关联的执行任务打卡计算。
+- 数量积累目标创建时自动生成唯一托管执行任务：目标保存 `managedExecutionPlanId`，子任务保存 `managedByGoalId` 和 `managedPlanType=ACCUMULATION`。普通任务不能手动绑定数量目标，托管任务不能单独启停、删除或改绑其他长期目标。
+- 有上限数量目标按“剩余数量 ÷ 截止日前剩余执行次数”更新托管任务的 `targetValue`；无上限目标使用用户设置的每次默认量，实际进度始终累计打卡的 `actualValue`。
+- Schema 15 将旧数量目标已有绑定任务的累计值、完成次数和用时冻结到 `accumulationBaseline*` 字段，解除旧绑定并创建托管任务，历史成果不会丢失。
+- 数量目标达成或主动结束后，目标以 `AUTOMATIC` 或 `TERMINATED` 模式归档，托管任务同步软删除；`archiveSnapshot` 冻结累计成果、打卡次数、用时和配套任务信息，供“我的进步”读取。
 - 长期目标固定 `privacyLevel=PRIVATE`，API 禁止其绑定群组，并在好友、特别关心、群日历、群动态和提醒中再次过滤。
 - `users.homePreferences` 增加 `showLongTermGoals` 与 `cardOrder`，只影响今日页展示，不删除业务数据。
 
@@ -135,7 +139,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `meals`: `userId + recordDate + mealType`
 - `meal_items`: `userId + recordDate`；`mealId`
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
-- `plans`: `userId + enabled`；`planType`
+- `plans`: `userId + enabled`；`planType`；`managedByGoalId`
 - `checkins`: `userId + planId + date`；`userId + date`；`userId + completed + completedAt desc`
 - `daily_reviews`: `userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`

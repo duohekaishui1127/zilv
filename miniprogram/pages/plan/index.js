@@ -14,12 +14,13 @@ function goalView(goal) {
   } else {
     progressText = goal.unlimited
       ? `已累计 ${goal.currentValue}${goal.unit}`
-      : `${goal.currentValue}/${goal.targetValue}${goal.unit}`
+      : `${goal.currentValue}/${goal.targetValue}${goal.unit} · 剩余 ${goal.remainingValue}${goal.unit}`
   }
   return {
     ...goal,
     goalTypeLabel: GOAL_LABELS[goal.goalType] || '长期目标',
-    canManualComplete:goal.goalType !== 'DEADLINE',
+    canManualComplete:goal.goalType === 'HABIT',
+    canEnd:goal.goalType === 'ACCUMULATION',
     progressText,
     progressPct: goal.progressPct == null ? 0 : goal.progressPct,
     hasProgressBar: goal.goalType !== 'DEADLINE' && !goal.unlimited
@@ -38,6 +39,7 @@ Page({
       repeatLabel: REPEAT_LABELS[p.repeatType] || p.repeatType,
       scheduleLabel: p.repeatType === 'ONE_TIME' ? `${p.startDate} · 仅一次` : (REPEAT_LABELS[p.repeatType] || p.repeatType),
       timerLabel: TIMER_LABELS[p.timerMode || 'NONE'] || '不计时',
+      isManaged:Boolean(p.managedByGoalId),
       goalBindingCount: Array.isArray(p.longTermGoalIds) ? p.longTermGoalIds.filter(id => activeGoalIds.has(id)).length : 0
     })), goals: goals.filter(goal => goal.goalStatus === 'ACTIVE') })
   },
@@ -62,15 +64,19 @@ Page({
     await this.load()
   },
   async finishGoal(e) {
-    if (!await api.confirm('完成后将归档到已达成目标，历史进度会保留。', '完成长期目标')) return
+    const ending=Boolean(e.currentTarget.dataset.ending)
+    const content=ending ? '结束后，配套执行任务会同时收起，累计成果和历史打卡将归档到“我的进步”。' : '完成后将归档到已达成目标，历史进度会保留。'
+    if (!await api.confirm(content,ending ? '结束并归档' : '完成长期目标')) return
     await api.call('completeLongTermGoal', { goalId: e.currentTarget.dataset.id })
-    wx.showToast({ title: '已归档', icon: 'success' })
+    wx.showToast({ title:ending ? '已结束并归档' : '已归档',icon:'success' })
     await this.load()
   },
   async removeGoal(e) {
-    if (!await api.confirm('删除目标会解除任务关联，但不会删除历史打卡。', '删除长期目标')) return
+    const accumulation=e.currentTarget.dataset.type === 'ACCUMULATION'
+    const content=accumulation ? '配套任务会一起收起，已有累计成果和打卡记录会进入“我的进步”。' : '删除目标会解除任务关联，但不会删除历史打卡。'
+    if (!await api.confirm(content,accumulation ? '结束并归档' : '删除长期目标')) return
     await api.call('deleteLongTermGoal', { goalId: e.currentTarget.dataset.id })
-    wx.showToast({ title: '已删除', icon: 'success' })
+    wx.showToast({ title:accumulation ? '已结束并归档' : '已删除',icon:'success' })
     await this.load()
   }
 })

@@ -69,6 +69,9 @@ async function applyPlanChange(change, localDate) {
     if (change.type === 'DELETE') return { deleted:true }
     throw fail('PLAN_NOT_FOUND', '待变更计划不存在')
   }
+  if(plan.managedByGoalId && ['DELETE','SET_ENABLED'].includes(change.type)) {
+    throw fail('INVALID_PARAMETER','该任务由数量积累目标管理，不能单独停用或删除')
+  }
   const supervised=Boolean(change.groupIds?.length)
   if ((change.type === 'UPDATE' && supervised) || change.type === 'DELETE' || (change.type === 'SET_ENABLED' && !change.payload.enabled)) {
     await assertNoActiveTimer(plan.userId,plan._id,localDate)

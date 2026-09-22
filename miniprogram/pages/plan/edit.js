@@ -8,7 +8,7 @@ function indexOfValue(list, value, fallback = 0) {
 
 Page({
   data: {
-    id: '', editMode: false, loading: false, saving: false,
+    id:'',editMode:false,loading:false,saving:false,managed:false,
     name: '', description: '',
     categories: PLAN_CATEGORIES.map(x => x.label), categoryValues: PLAN_CATEGORIES.map(x => x.value), categoryIndex: 0,
     targetTypes: TARGET_TYPES.map(x => x.label), targetValues: TARGET_TYPES.map(x => x.value), targetIndex: 0,
@@ -34,6 +34,7 @@ Page({
       const repeatIndex = indexOfValue(REPEAT_TYPES, plan.repeatType)
       const selectedDays = new Set(plan.repeatConfig?.weekdays || [])
       this.setData({
+        managed:Boolean(plan.managedByGoalId),
         name: plan.name,
         description: plan.description || '',
         categoryIndex: indexOfValue(PLAN_CATEGORIES, plan.category),

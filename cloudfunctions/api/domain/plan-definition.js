@@ -84,6 +84,16 @@ function normalizeLongTermGoal(input, localDate, existing = {}) {
   if (goalType === 'ACCUMULATION' && !unlimited && (!Number.isFinite(targetValue) || targetValue <= 0 || targetValue > 1000000000)) {
     throw fail('INVALID_PARAMETER', '累计目标值不合法')
   }
+  const accumulationDeadlineDate=goalType === 'ACCUMULATION' && !unlimited
+    ? String(value.accumulationDeadlineDate ?? existing.accumulationDeadlineDate ?? '')
+    : null
+  if(goalType === 'ACCUMULATION' && !unlimited && !validDate(accumulationDeadlineDate) && !existing._id) {
+    throw fail('INVALID_PARAMETER','请设置数量目标的计划完成日期')
+  }
+  const startDate=existing.startDate || localDate
+  if(accumulationDeadlineDate && accumulationDeadlineDate < startDate) {
+    throw fail('INVALID_PARAMETER','计划完成日期不能早于开始日期')
+  }
   return {
     planType: PLAN_TYPES.LONG_TERM,
     name: name.slice(0, 80),
@@ -93,9 +103,10 @@ function normalizeLongTermGoal(input, localDate, existing = {}) {
     habitDays,
     unlimited,
     targetValue,
+    accumulationDeadlineDate,
     unit: goalType === 'ACCUMULATION' ? String(value.unit ?? existing.unit ?? '次').trim().slice(0, 20) || '次' : '',
     goalStatus: existing.goalStatus || 'ACTIVE',
-    startDate: existing.startDate || localDate,
+    startDate,
     privacyLevel: 'PRIVATE'
   }
 }

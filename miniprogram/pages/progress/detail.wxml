@@ -35,6 +35,21 @@
       <button class="btn" loading="{{saving}}" bindtap="save">保存考试记录</button>
     </view>
 
+    <view class="card" wx:elif="{{goal.isAccumulation}}">
+      <view class="h2">累计成果</view>
+      <view class="metric-grid journey-metrics">
+        <view class="metric"><view class="label">最终累计</view><view class="journey-value">{{goal.accumulatedText}}</view></view>
+        <view class="metric"><view class="label">目标</view><view class="journey-value">{{goal.accumulatedTarget}}</view></view>
+        <view class="metric"><view class="label">完成打卡</view><view class="journey-value">{{goal.accumulationCompletedCount}} 次</view></view>
+        <view class="metric"><view class="label">累计用时</view><view class="journey-value">{{goal.accumulationDurationText}}</view></view>
+      </view>
+      <view class="detail-row"><text class="label">开始日期</text><text>{{goal.createdDate}}</text></view>
+      <view class="detail-row"><text class="label">结束日期</text><text>{{goal.completedDate}}</text></view>
+      <view class="detail-row"><text class="label">结束状态</text><text>{{goal.accumulationOutcome}}</text></view>
+      <view class="detail-row" wx:if="{{goal.accumulationPlan}}"><text class="label">配套任务</text><text>{{goal.accumulationPlan.name}}</text></view>
+      <view class="tip" wx:if="{{goal.description}}">{{goal.description}}</view>
+    </view>
+
     <view class="card" wx:else>
       <view class="h2">完成记录</view>
       <view class="detail-row"><text class="label">开始日期</text><text>{{goal.createdDate}}</text></view>

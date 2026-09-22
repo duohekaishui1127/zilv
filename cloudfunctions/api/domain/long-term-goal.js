@@ -99,12 +99,16 @@ function decorateGoal(goal, plans, checkins, localDate) {
   const completedCheckins = checkins.filter(item => item.completed && linkedIds.has(item.planId)
     && (!goal.startDate || item.date >= goal.startDate))
   const checkinMap = checkinMapOf(completedCheckins)
+  const accumulationBaselineCount=goal.goalType === 'ACCUMULATION' ? Number(goal.accumulationBaselineCompletedCount || 0) : 0
+  const accumulationBaselineDuration=goal.goalType === 'ACCUMULATION' ? Number(goal.accumulationBaselineDurationMinutes || 0) : 0
   const base = {
     ...goal,
     linkedPlanCount: activeLinkedPlans.length,
     linkedPlans: activeLinkedPlans.map(plan => ({ _id: plan._id, name: plan.name })),
     todayProgress: todayProgress(activeLinkedPlans, completedCheckins, checkinMap, localDate),
-    totalCompletedCount: completedCheckins.length,
+    totalCompletedCount: accumulationBaselineCount + completedCheckins.length,
+    totalDurationMinutes: accumulationBaselineDuration
+      + completedCheckins.reduce((sum,item) => sum + Number(item.durationMinutes || 0),0),
     recentProgress: recentExecution(activeLinkedPlans, completedCheckins, localDate, 7, goal.startDate)
   }
   if (goal.goalType === 'DEADLINE') {
@@ -116,10 +120,14 @@ function decorateGoal(goal, plans, checkins, localDate) {
     const targetValue = Number(goal.habitDays || 21)
     return { ...base, currentValue, targetValue, progressPct: Math.min(100, Math.round(currentValue / targetValue * 100)) }
   }
-  const currentValue = completedCheckins.reduce((sum, item) => sum + Number(item.actualValue || 0), 0)
+  const currentValue = Number(goal.accumulationBaselineValue || 0)
+    + completedCheckins.reduce((sum, item) => sum + Number(item.actualValue || 0), 0)
   const targetValue = goal.unlimited ? null : Number(goal.targetValue || 0)
+  const managedPlan=activeLinkedPlans.find(plan => plan.managedByGoalId === goal._id)
   return {
     ...base, currentValue, targetValue,
+    remainingValue:targetValue > 0 ? Math.max(0,targetValue - currentValue) : null,
+    recommendedValue:managedPlan ? Number(managedPlan.targetValue || 0) : null,
     progressPct: targetValue > 0 ? Math.min(100, Math.round(currentValue / targetValue * 100)) : null
   }
 }

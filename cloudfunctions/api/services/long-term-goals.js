@@ -3,7 +3,12 @@ const { now } = require('../lib/utils')
 const { decorateGoals } = require('../domain/long-term-goal')
 const { isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
 const { examArchiveDue,examProgressSnapshot } = require('../domain/exam-progress')
+const { accumulationArchiveSnapshot } = require('../domain/accumulation-plan')
 const { notifyGoalAchieved } = require('./goal-reminders')
+const { assertNoActiveTimer }=require('./plans')
+const {
+  syncManagedAccumulationTargets,archiveManagedAccumulationPlan,reopenManagedAccumulationPlan
+} = require('./managed-accumulation')
 
 async function allMatches(collection, where) {
   const records = []
@@ -19,7 +24,7 @@ async function longTermContext(userId, localDate) {
   const active = plans.filter(item => !item.deletedAt)
   const goals = active.filter(isLongTermGoal)
   const executionPlans = active.filter(isExecutionPlan)
-  if (!goals.length) return { plans: executionPlans, goals: [], checkins: [] }
+  if (!goals.length) return { plans:executionPlans,allExecutionPlans:plans.filter(isExecutionPlan),goals:[],checkins:[] }
   const checkins = await allMatches(C.CHECKINS, { userId, completed: true })
   const allExecutionPlans = plans.filter(isExecutionPlan)
   const timestamp=now()
@@ -36,7 +41,12 @@ async function longTermContext(userId, localDate) {
     await db.collection(C.PLANS).doc(goal._id).update({ data })
     Object.assign(goal,data)
   }
-  return { plans: executionPlans, goals: decorateGoals(goals, allExecutionPlans, checkins, localDate), checkins }
+  const context={
+    plans:executionPlans,allExecutionPlans,
+    goals:decorateGoals(goals,allExecutionPlans,checkins,localDate),checkins
+  }
+  await syncManagedAccumulationTargets(context,localDate)
+  return context
 }
 
 function achievementSatisfied(goal) {
@@ -53,17 +63,40 @@ async function syncLongTermGoalAchievements(userId, localDate, options = {}) {
   const timestamp = now()
   for (const goal of achieved) {
     await notifyGoalAchieved(userId,goal,timestamp).catch(error => console.warn('[goal-achieved-reminder]',error?.message || error))
-    await db.collection(C.PLANS).doc(goal._id).update({ data: {
+    const data={
       goalStatus:'COMPLETED',enabled:false,completionMode:'AUTOMATIC',completedAt:timestamp,updatedAt:timestamp
-    } })
+    }
+    if(goal.goalType === 'ACCUMULATION')data.archiveSnapshot=accumulationArchiveSnapshot(
+      goal,context.allExecutionPlans,localDate,'ACHIEVED'
+    )
+    await db.collection(C.PLANS).doc(goal._id).update({ data })
+    if(goal.goalType === 'ACCUMULATION')await archiveManagedAccumulationPlan(goal,'COMPLETED',timestamp)
   }
-  await Promise.all(reopened.map(goal => db.collection(C.PLANS).doc(goal._id).update({ data: {
-      goalStatus: 'ACTIVE', enabled: true, completionMode: null, completedAt: null, updatedAt: timestamp
-    } })))
+  await Promise.all(reopened.map(async goal => {
+    await db.collection(C.PLANS).doc(goal._id).update({ data: {
+      goalStatus:'ACTIVE',enabled:true,completionMode:null,completedAt:null,archiveSnapshot:null,updatedAt:timestamp
+    } })
+    if(goal.goalType === 'ACCUMULATION')await reopenManagedAccumulationPlan(goal,timestamp)
+  }))
   return {
     achievedGoals: achieved.map(goal => ({ _id: goal._id, name: goal.name, goalType: goal.goalType })),
     reopenedGoalIds: reopened.map(goal => goal._id)
   }
 }
 
-module.exports = { allMatches, longTermContext, syncLongTermGoalAchievements }
+async function archiveAccumulationGoal(userId,goalId,localDate) {
+  const context=await longTermContext(userId,localDate)
+  const goal=context.goals.find(item => item._id === goalId && item.goalType === 'ACCUMULATION')
+  if(!goal)return null
+  if(goal.managedExecutionPlanId)await assertNoActiveTimer(userId,goal.managedExecutionPlanId,localDate)
+  const timestamp=now()
+  const archiveSnapshot=accumulationArchiveSnapshot(goal,context.allExecutionPlans,localDate,'TERMINATED')
+  await db.collection(C.PLANS).doc(goal._id).update({ data:{
+    goalStatus:'COMPLETED',enabled:false,completionMode:'TERMINATED',completedAt:timestamp,
+    archiveSnapshot,updatedAt:timestamp
+  } })
+  await archiveManagedAccumulationPlan(goal,'TERMINATED',timestamp)
+  return { goal:{ ...goal,goalStatus:'COMPLETED',completionMode:'TERMINATED',archiveSnapshot } }
+}
+
+module.exports={ allMatches,longTermContext,syncLongTermGoalAchievements,archiveAccumulationGoal }

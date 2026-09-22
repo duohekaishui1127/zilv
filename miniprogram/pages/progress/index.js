@@ -16,8 +16,11 @@ function goalView(goal) {
     statusLabel='已养成'
     summary=`连续完成 ${goal.targetValue || goal.habitDays || 21} 天`
   } else {
-    statusLabel='已达成'
-    summary=goal.unlimited ? `累计完成 ${goal.totalCompletedCount || 0} 次` : `完成 ${goal.targetValue}${goal.unit || ''}`
+    statusLabel=goal.completionMode === 'TERMINATED' ? '已结束' : '已达成'
+    const accumulated=snapshot.accumulatedValue == null ? goal.currentValue : snapshot.accumulatedValue
+    summary=goal.unlimited
+      ? `累计 ${accumulated || 0}${goal.unit || ''}`
+      : `累计 ${accumulated || 0}/${goal.targetValue}${goal.unit || ''}`
   }
   return {
     ...goal,typeLabel:goal.goalType === 'DEADLINE' ? '考试计划' : (TYPE_LABELS[goal.goalType] || '长期目标'),
