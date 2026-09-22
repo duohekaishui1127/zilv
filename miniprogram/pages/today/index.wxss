@@ -1,5 +1,9 @@
 .retry-btn { margin-top: 20rpx; }
-.today-widgets { display:flex; flex-direction:column; }
+.today-widgets { position:relative; display:flex; flex-direction:column; }
+.today-card { position:relative; transition:transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, opacity .18s ease; will-change:transform; }
+.today-widgets-dragging .today-card { user-select:none; }
+.today-card-dragging { z-index:20; opacity:.98; box-shadow:0 22rpx 54rpx rgba(17,24,39,.18); transition:none; }
+.card-drag-tip { position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 24rpx); z-index:80; transform:translateX(-50%); padding:14rpx 24rpx; border-radius:999rpx; color:#fff; background:rgba(17,24,39,.9); box-shadow:0 8rpx 24rpx rgba(17,24,39,.18); font-size:23rpx; line-height:1; pointer-events:none; }
 .message-entry { position: relative; width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; color: #a0a6af; border-radius: 18rpx; background: #eef0f3; }
 .message-entry-unread { color: #303846; background: #fff; box-shadow: 0 4rpx 16rpx rgba(17,24,39,.08); }
 .message-envelope { position: relative; width: 34rpx; height: 25rpx; box-sizing: border-box; border: 4rpx solid currentColor; border-radius: 4rpx; }

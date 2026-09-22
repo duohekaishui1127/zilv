@@ -39,9 +39,51 @@ function presentGoal(goal) {
 }
 
 const HOME_CARDS = Object.freeze(['LONG_TERM', 'PLANS', 'ENERGY'])
+const CARD_DRAG_DISTANCE = 6
+const CARD_DRAG_SETTLE_MS = 180
+
 function cardOrders(preferences) {
   const order = Array.isArray(preferences?.cardOrder) ? preferences.cardOrder : HOME_CARDS
   return Object.fromEntries(HOME_CARDS.map(key => [key, order.indexOf(key) < 0 ? HOME_CARDS.indexOf(key) : order.indexOf(key)]))
+}
+
+function emptyCardDrag() {
+  return {
+    active:false,key:'',settling:false,moved:false,targetIndex:-1,
+    offsets:{ LONG_TERM:0,PLANS:0,ENERGY:0 }
+  }
+}
+
+function reorderedKeys(keys,sourceIndex,targetIndex) {
+  const result=[...keys]
+  const [active]=result.splice(sourceIndex,1)
+  result.splice(targetIndex,0,active)
+  return result
+}
+
+function mergeVisibleOrder(cardOrder,visibleOrder) {
+  let index=0
+  const visible=new Set(visibleOrder)
+  return cardOrder.map(key => visible.has(key) ? visibleOrder[index++] : key)
+}
+
+function dragOffsets(items,sourceIndex,targetIndex,activeOffset) {
+  const keys=items.map(item => item.key)
+  const nextOrder=reorderedKeys(keys,sourceIndex,targetIndex)
+  const gaps=items.slice(0,-1).map((item,index) => Math.max(0,items[index + 1].top - item.bottom))
+  const gap=gaps.length ? gaps.reduce((total,value) => total + value,0) / gaps.length : 0
+  const topByKey={}
+  let top=items[0]?.top || 0
+  nextOrder.forEach(key => {
+    topByKey[key]=top
+    const item=items.find(candidate => candidate.key === key)
+    top += item.height + gap
+  })
+  const offsets={ LONG_TERM:0,PLANS:0,ENERGY:0 }
+  items.forEach((item,index) => {
+    offsets[item.key]=index === sourceIndex ? activeOffset : Math.round(topByKey[item.key] - item.top)
+  })
+  return { nextOrder,offsets,settledOffset:Math.round(topByKey[items[sourceIndex].key] - items[sourceIndex].top) }
 }
 
 function emptyDailyReviewEditor() { return { visible: false, mood: '', note: '' } }
@@ -128,6 +170,7 @@ Page({
     fatPct: 0,
     energyState: { deficit: 0, surplus: 0, isDeficit: false, isSurplus: false },
     cardOrders: cardOrders(),
+    cardDrag: emptyCardDrag(),
     moods: MOODS,
     completionEditor: emptyEditor(),
     dailyReviewEditor: emptyDailyReviewEditor(),
@@ -138,8 +181,14 @@ Page({
     renewingReminder:false
   },
   onShow() { this._visible = true; this.loadReminderConfig(); this.load() },
-  onHide() { this._visible = false; this.stopTicker() },
-  onUnload() { this._visible = false; this.stopTicker() },
+  onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag() },
+  onUnload() { this._visible = false; this.stopTicker(); this.cancelCardDrag() },
+  onPageScroll(e) {
+    this._pageScrollTop=Number(e.scrollTop || 0)
+    if(this.data.cardDrag.active && !this.data.cardDrag.settling && this._cardDragState?.lastClientY != null) {
+      this.updateCardDrag(this._cardDragState.lastClientY)
+    }
+  },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
   serverNow() { return Date.now() + Number(this._clockOffset || 0) },
   async loadReminderConfig() {
@@ -267,27 +316,175 @@ Page({
     await api.call('updateHomePreferences',{ preferences })
     this.setData({ 'dashboard.homePreferences':preferences,cardOrders:cardOrders(preferences) })
   },
-  async manageCard(e) {
+  rememberCardTouch(e) {
+    const touch=e.touches?.[0]
     const key=e.currentTarget.dataset.card
-    const preferences={ ...this.data.dashboard.homePreferences,cardOrder:[...this.data.dashboard.homePreferences.cardOrder] }
-    const index=preferences.cardOrder.indexOf(key)
-    const actions=[]
-    if(index > 0)actions.push({ type:'UP',label:'向上移动' })
-    if(index >= 0 && index < preferences.cardOrder.length - 1)actions.push({ type:'DOWN',label:'向下移动' })
-    if(key !== 'PLANS')actions.push({ type:'HIDE',label:'暂时隐藏' })
-    if(!actions.length)return
-    try {
-      const result=await wx.showActionSheet({ itemList:actions.map(item => item.label) })
-      const action=actions[result.tapIndex]
-      if(action.type === 'HIDE') {
-        if(key === 'ENERGY')preferences.showEnergy=false
-        if(key === 'LONG_TERM')preferences.showLongTermGoals=false
-      } else {
-        const target=index + (action.type === 'UP' ? -1 : 1)
-        ;[preferences.cardOrder[index],preferences.cardOrder[target]]=[preferences.cardOrder[target],preferences.cardOrder[index]]
+    if(key && Number.isFinite(Number(touch?.clientY)))this._cardTouchStart={ key,clientY:Number(touch.clientY) }
+  },
+  startCardDrag(e) {
+    if(this.data.cardDrag.active || !this.data.dashboard)return
+    const key=e.currentTarget.dataset.card
+    const touch=e.touches?.[0] || e.changedTouches?.[0]
+    const startClientY=Number(touch?.clientY ?? (this._cardTouchStart?.key === key ? this._cardTouchStart.clientY : NaN))
+    if(!key || !Number.isFinite(startClientY))return
+    const query=wx.createSelectorQuery().in(this)
+    const pending={ ended:false }
+    this._cardDragPending=pending
+    query.selectAll('.today-card').fields({ id:true,dataset:true,rect:true,size:true })
+    query.select('.container').boundingClientRect()
+    query.selectViewport().scrollOffset()
+    query.exec(result => {
+      if(this._cardDragPending !== pending || pending.ended || this.data.cardDrag.active) {
+        if(this._cardDragPending === pending)this._cardDragPending=null
+        return
       }
+      this._cardDragPending=null
+      const items=(result[0] || []).map(rect => ({
+        key:rect.dataset?.card || String(rect.id || '').replace('today-card-',''),
+        top:Number(rect.top),bottom:Number(rect.bottom),height:Number(rect.height)
+      })).filter(item => HOME_CARDS.includes(item.key) && Number.isFinite(item.top) && item.height > 0).sort((a,b) => a.top - b.top)
+      const sourceIndex=items.findIndex(item => item.key === key)
+      if(sourceIndex < 0)return
+      const scrollTop=Number(result[2]?.scrollTop || this._pageScrollTop || 0)
+      const windowHeight=typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo().windowHeight : wx.getSystemInfoSync().windowHeight
+      const maxScrollTop=Math.max(0,scrollTop + Number(result[1]?.bottom || windowHeight) - windowHeight)
+      this._pageScrollTop=scrollTop
+      this._cardDragState={
+        key,items,sourceIndex,targetIndex:sourceIndex,
+        startClientY,lastClientY:startClientY,
+        startScrollTop:scrollTop,maxScrollTop,lastTravel:0,nextOrder:items.map(item => item.key)
+      }
+      this.setData({ cardDrag:{ ...emptyCardDrag(),active:true,key,targetIndex:sourceIndex } })
+      if(typeof wx.vibrateShort === 'function')wx.vibrateShort({ type:'light',fail:() => {} })
+    })
+  },
+  moveCardDrag(e) {
+    if(!this.data.cardDrag.active || this.data.cardDrag.settling)return
+    const touch=e.touches?.[0] || e.changedTouches?.[0]
+    if(!touch)return
+    const clientY=Number(touch.clientY)
+    this._cardDragState.lastClientY=clientY
+    this.updateCardDrag(clientY)
+    this.updateCardAutoScroll(clientY)
+  },
+  updateCardDrag(clientY) {
+    const state=this._cardDragState
+    if(!state || !this.data.cardDrag.active)return
+    const scrollDelta=Number(this._pageScrollTop || 0) - state.startScrollTop
+    const travel=clientY - state.startClientY + scrollDelta
+    const pointerY=clientY + scrollDelta
+    let targetIndex=state.sourceIndex
+    if(travel < 0) {
+      for(let index=state.sourceIndex - 1;index >= 0;index--) {
+        const item=state.items[index]
+        if(pointerY < item.top + item.height / 2)targetIndex=index
+      }
+    } else if(travel > 0) {
+      for(let index=state.sourceIndex + 1;index < state.items.length;index++) {
+        const item=state.items[index]
+        if(pointerY > item.top + item.height / 2)targetIndex=index
+      }
+    }
+    const targetChanged=targetIndex !== state.targetIndex
+    const layout=dragOffsets(state.items,state.sourceIndex,targetIndex,Math.round(travel))
+    state.targetIndex=targetIndex
+    state.lastTravel=travel
+    state.nextOrder=layout.nextOrder
+    state.settledOffset=layout.settledOffset
+    this.setData({ cardDrag:{
+      active:true,key:state.key,settling:false,
+      moved:Math.abs(travel) >= CARD_DRAG_DISTANCE,targetIndex,offsets:layout.offsets
+    } })
+    if(targetChanged && typeof wx.vibrateShort === 'function')wx.vibrateShort({ type:'light',fail:() => {} })
+  },
+  updateCardAutoScroll(clientY) {
+    const windowHeight=typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo().windowHeight : wx.getSystemInfoSync().windowHeight
+    const edge=Math.min(90,windowHeight * 0.16)
+    const direction=clientY < edge ? -1 : (clientY > windowHeight - edge ? 1 : 0)
+    if(direction === this._cardAutoScrollDirection)return
+    this.stopCardAutoScroll()
+    if(!direction)return
+    this._cardAutoScrollDirection=direction
+    this._cardAutoScrollTimer=setInterval(() => {
+      if(!this.data.cardDrag.active || this.data.cardDrag.settling)return this.stopCardAutoScroll()
+      const maxScrollTop=Number(this._cardDragState?.maxScrollTop || 0)
+      const next=Math.min(maxScrollTop,Math.max(0,Number(this._pageScrollTop || 0) + direction * 14))
+      if(next === this._pageScrollTop)return this.stopCardAutoScroll()
+      this._pageScrollTop=next
+      wx.pageScrollTo({ scrollTop:next,duration:0 })
+      if(this._cardDragState?.lastClientY != null)this.updateCardDrag(this._cardDragState.lastClientY)
+    },32)
+  },
+  stopCardAutoScroll() {
+    if(this._cardAutoScrollTimer)clearInterval(this._cardAutoScrollTimer)
+    this._cardAutoScrollTimer=null
+    this._cardAutoScrollDirection=0
+  },
+  cancelCardDrag() {
+    this.stopCardAutoScroll()
+    this._cardDragPending=null
+    if(!this.data.cardDrag.active || this.data.cardDrag.settling)return
+    this._cardDragState=null
+    this.setData({ cardDrag:emptyCardDrag() })
+  },
+  endCardDrag(e) {
+    if(!this.data.cardDrag.active) {
+      if(this._cardDragPending)this._cardDragPending.ended=true
+      this._cardTouchStart=null
+      return
+    }
+    if(this.data.cardDrag.settling)return
+    this.stopCardAutoScroll()
+    const touch=e.changedTouches?.[0]
+    if(touch && this._cardDragState) {
+      this._cardDragState.lastClientY=Number(touch.clientY)
+      this.updateCardDrag(Number(touch.clientY))
+    }
+    const state=this._cardDragState
+    this._cardTouchStart=null
+    if(!state)return this.setData({ cardDrag:emptyCardDrag() })
+    const reordered=state.targetIndex !== state.sourceIndex
+    if(!reordered) {
+      const shouldManage=Math.abs(state.lastTravel) < CARD_DRAG_DISTANCE
+      const key=state.key
+      this._cardDragState=null
+      return this.setData({ cardDrag:emptyCardDrag() },() => {
+        if(shouldManage)this.manageCardVisibility(key)
+      })
+    }
+    const offsets={ ...this.data.cardDrag.offsets,[state.key]:state.settledOffset }
+    this.setData({ cardDrag:{ ...this.data.cardDrag,settling:true,moved:true,offsets } })
+    setTimeout(() => this.commitCardDrag(state),CARD_DRAG_SETTLE_MS)
+  },
+  async commitCardDrag(state) {
+    if(this._cardDragState !== state)return
+    const previous={ ...this.data.dashboard.homePreferences,cardOrder:[...this.data.dashboard.homePreferences.cardOrder] }
+    const cardOrder=mergeVisibleOrder(previous.cardOrder,state.nextOrder)
+    const preferences={ ...previous,cardOrder }
+    this._cardDragState=null
+    this.setData({
+      'dashboard.homePreferences':preferences,
+      cardOrders:cardOrders(preferences),
+      cardDrag:emptyCardDrag()
+    })
+    try {
+      await api.call('updateHomePreferences',{ preferences })
+      wx.showToast({ title:'卡片位置已保存',icon:'none' })
+    } catch (error) {
+      this.setData({ 'dashboard.homePreferences':previous,cardOrders:cardOrders(previous) })
+      wx.showToast({ title:'保存失败，已恢复原顺序',icon:'none' })
+    }
+  },
+  async manageCardVisibility(key) {
+    if(key === 'PLANS')return wx.showToast({ title:'按住并上下拖动可调整位置',icon:'none' })
+    try {
+      const result=await wx.showActionSheet({ itemList:['暂时隐藏这张卡片'] })
+      if(result.tapIndex !== 0)return
+      const preferences={ ...this.data.dashboard.homePreferences,cardOrder:[...this.data.dashboard.homePreferences.cardOrder] }
+      if(key === 'ENERGY')preferences.showEnergy=false
+      if(key === 'LONG_TERM')preferences.showLongTermGoals=false
       await this.saveCardPreferences(preferences)
-      wx.showToast({ title:action.type === 'HIDE' ? '已暂时隐藏' : '位置已调整',icon:'none' })
+      wx.showToast({ title:'已暂时隐藏',icon:'none' })
     } catch (error) {}
   },
   async restoreCards() {

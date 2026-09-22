@@ -1,3 +1,4 @@
+<page-meta page-style="{{cardDrag.active ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="container">
   <view wx:if="{{loading && !dashboard}}" class="empty">正在加载今日数据…</view>
   <view wx:elif="{{error && !dashboard}}" class="card error-card">
@@ -15,8 +16,8 @@
       </view>
     </view>
 
-    <view class="today-widgets" bindlongpress="restoreCards">
-    <view class="card long-term-card" style="order:{{cardOrders.LONG_TERM}}" wx:if="{{dashboard.homePreferences.showLongTermGoals && dashboard.longTermGoals.length}}" data-card="LONG_TERM" catchlongpress="manageCard">
+    <view class="today-widgets {{cardDrag.active ? 'today-widgets-dragging' : ''}}" bindlongpress="restoreCards">
+    <view id="today-card-LONG_TERM" class="card today-card long-term-card {{cardDrag.key === 'LONG_TERM' && !cardDrag.settling ? 'today-card-dragging' : ''}}" style="order:{{cardOrders.LONG_TERM}};transform:translate3d(0,{{cardDrag.offsets.LONG_TERM}}px,0) {{cardDrag.key === 'LONG_TERM' && !cardDrag.settling ? 'scale(1.018)' : ''}}" wx:if="{{dashboard.homePreferences.showLongTermGoals && dashboard.longTermGoals.length}}" data-card="LONG_TERM" bindtouchstart="rememberCardTouch" catchlongpress="startCardDrag" bindtouchmove="moveCardDrag" bindtouchend="endCardDrag" bindtouchcancel="endCardDrag">
       <view class="row"><view><view class="h2">长期目标</view><view class="sub">进度由执行任务自动更新</view></view><view class="card-link" bindtap="goTasks">全部 ›</view></view>
       <view class="goal-summary" wx:for="{{dashboard.longTermGoals}}" wx:key="_id">
         <view class="row goal-summary-head"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.typeLabel}} · {{item.primaryText}}</view></view><view wx:if="{{item.isDeadline}}" class="goal-countdown goal-countdown-{{item.countdownTone}}"><view class="goal-countdown-label">{{item.countdownLabel}}</view><view class="goal-countdown-value" wx:if="{{item.countdownValue !== ''}}"><text class="goal-countdown-number">{{item.countdownValue}}</text><text class="goal-countdown-unit">{{item.countdownUnit}}</text></view></view><view wx:else class="goal-summary-progress">{{item.progressText}}</view></view>
@@ -26,7 +27,7 @@
       </view>
     </view>
 
-    <view class="card plan-card" style="order:{{cardOrders.PLANS}}" data-card="PLANS" catchlongpress="manageCard">
+    <view id="today-card-PLANS" class="card today-card plan-card {{cardDrag.key === 'PLANS' && !cardDrag.settling ? 'today-card-dragging' : ''}}" style="order:{{cardOrders.PLANS}};transform:translate3d(0,{{cardDrag.offsets.PLANS}}px,0) {{cardDrag.key === 'PLANS' && !cardDrag.settling ? 'scale(1.018)' : ''}}" data-card="PLANS" bindtouchstart="rememberCardTouch" catchlongpress="startCardDrag" bindtouchmove="moveCardDrag" bindtouchend="endCardDrag" bindtouchcancel="endCardDrag">
       <view class="row card-toggle" bindtap="togglePlans">
         <view class="h2">今日任务</view>
         <view class="row compact-row"><view class="big">{{dashboard.completion.completed}}/{{dashboard.completion.total}}</view><view class="chevron">{{plansExpanded ? '⌃' : '⌄'}}</view></view>
@@ -76,7 +77,7 @@
       </view>
     </view>
 
-    <view class="card energy-card" style="order:{{cardOrders.ENERGY}}" wx:if="{{dashboard.homePreferences.showEnergy}}" data-card="ENERGY" catchlongpress="manageCard">
+    <view id="today-card-ENERGY" class="card today-card energy-card {{cardDrag.key === 'ENERGY' && !cardDrag.settling ? 'today-card-dragging' : ''}}" style="order:{{cardOrders.ENERGY}};transform:translate3d(0,{{cardDrag.offsets.ENERGY}}px,0) {{cardDrag.key === 'ENERGY' && !cardDrag.settling ? 'scale(1.018)' : ''}}" wx:if="{{dashboard.homePreferences.showEnergy}}" data-card="ENERGY" bindtouchstart="rememberCardTouch" catchlongpress="startCardDrag" bindtouchmove="moveCardDrag" bindtouchend="endCardDrag" bindtouchcancel="endCardDrag">
       <view class="row card-toggle" bindtap="toggleEnergy">
         <view class="h2">今日能量</view><view class="chevron">{{energyExpanded ? '⌃' : '⌄'}}</view>
       </view>
@@ -106,6 +107,7 @@
       </view>
     </view>
     </view>
+    <view wx:if="{{cardDrag.active}}" class="card-drag-tip">{{cardDrag.settling ? '正在保存位置…' : '上下拖动 · 松手保存'}}</view>
   </block>
 </view>
 
