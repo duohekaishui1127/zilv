@@ -215,49 +215,6 @@ async function sendTimerWechatReminder(user, checkin, plan, notification) {
   }
 }
 
-async function sendGoalWechatReminder(user, goal, notification, at) {
-  const templateId=String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
-  const subscriptionType=normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
-  if(!goal.wechatReminderEnabled) {
-    await updateNotification(notification._id,{ pushStatus:'NOT_SUBSCRIBED' })
-    return 'internal-only'
-  }
-  if(!templateId) {
-    await updateNotification(notification._id,{ pushStatus:'NOT_CONFIGURED' })
-    return 'not-configured'
-  }
-  if(!user?.openid) {
-    await updateNotification(notification._id,{ pushStatus:'FAILED',pushErrorCode:'USER_NOT_FOUND' })
-    return 'failed'
-  }
-  const timeKey=process.env.REMINDER_TEMPLATE_TIME_KEY || 'time30'
-  const contentKey=process.env.REMINDER_TEMPLATE_CONTENT_KEY || 'thing2'
-  const local=localParts(at,user.checkinReminderTimezoneOffset ?? 480)
-  try {
-    const result=await cloud.openapi.subscribeMessage.send({
-      touser:user.openid,templateId,page:'pages/plan/index',
-      miniprogramState:process.env.REMINDER_MINIPROGRAM_STATE || 'formal',lang:'zh_CN',
-      data:{
-        [timeKey]:{ value:local.time },
-        [contentKey]:{ value:text(`“${goal.name || '目标'}”还有${notification.daysRemaining}天`) }
-      }
-    })
-    const code=Number(result.errCode ?? result.errcode ?? 0)
-    if(code !== 0)throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'),result)
-    await updateNotification(notification._id,{ pushStatus:'SENT',pushedAt:new Date() })
-    if(subscriptionType === 'ONE_TIME')await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{ wechatReminderEnabled:false,updatedAt:new Date() } })
-    return 'sent'
-  } catch(error) {
-    const code=Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
-    await updateNotification(notification._id,{
-      pushStatus:code === 43101 ? 'NOT_SUBSCRIBED' : 'FAILED',pushErrorCode:code,
-      pushErrorMessage:text(error?.errMsg || error?.message || '发送失败',120)
-    })
-    if(code === 43101)await db.collection(COLLECTIONS.PLANS).doc(goal._id).update({ data:{ wechatReminderEnabled:false,updatedAt:new Date() } })
-    return 'failed'
-  }
-}
-
 async function processDeadlineGoal(goal, at) {
   const user=await document(COLLECTIONS.USERS,goal.userId)
   if(!user)return 'skipped'
@@ -275,7 +232,7 @@ async function processDeadlineGoal(goal, at) {
   const notification={
     _id:id,userId:goal.userId,type:'GOAL_DEADLINE_REMINDER',title:'长期目标倒计时',
     content:`距离“${text(goal.name,30)}”还有${daysRemaining}天`,page:'/pages/plan/index',
-    goalId:goal._id,daysRemaining,recordDate:local.date,status:'UNREAD',pushStatus:'PENDING',createdAt:at,updatedAt:at
+    goalId:goal._id,daysRemaining,recordDate:local.date,status:'UNREAD',pushStatus:'IN_APP_ONLY',createdAt:at,updatedAt:at
   }
   const { _id,...data }=notification
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data })
@@ -283,7 +240,7 @@ async function processDeadlineGoal(goal, at) {
     deadlineReminderDaysSent:[...new Set([...(goal.deadlineReminderDaysSent || []),daysRemaining])],updatedAt:new Date()
   } })
   await trimNotificationHistory(goal.userId)
-  return sendGoalWechatReminder(user,goal,notification,at)
+  return 'internal-only'
 }
 
 async function processExpiredCountdown(checkin, at) {

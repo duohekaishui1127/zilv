@@ -12,7 +12,8 @@ const PUSH_LABELS = {
   NOT_SUBSCRIBED: '仅消息中心提醒',
   NOT_CONFIGURED: '微信模板未配置',
   FAILED: '微信提醒发送失败',
-  PENDING: '正在处理微信提醒'
+  PENDING: '正在处理微信提醒',
+  IN_APP_ONLY: '消息中心提醒'
 }
 
 Page({

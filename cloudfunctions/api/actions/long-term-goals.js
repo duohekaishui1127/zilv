@@ -13,7 +13,6 @@ async function createLongTermGoal({ user, event, localDate }) {
   const timestamp = now()
   const data = {
     userId: user._id, ...normalizeLongTermGoal(event.goal, localDate),
-    wechatReminderEnabled: event.reminderGrantAccepted === true,
     deadlineReminderDaysSent: [],
     enabled: true, createdAt: timestamp, updatedAt: timestamp
   }
@@ -27,9 +26,6 @@ async function updateLongTermGoal({ user, event, localDate }) {
   const normalized = normalizeLongTermGoal(event.goal, localDate, goal)
   const data = {
     ...normalized,
-    wechatReminderEnabled: normalized.reminderEnabled
-      ? (event.reminderGrantAccepted === true || Boolean(goal.wechatReminderEnabled))
-      : false,
     deadlineReminderDaysSent: normalized.goalType === 'DEADLINE'
       && goal.goalType === 'DEADLINE' && normalized.deadlineDate === goal.deadlineDate
       ? (goal.deadlineReminderDaysSent || []) : [],

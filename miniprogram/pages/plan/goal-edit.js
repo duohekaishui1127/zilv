@@ -13,10 +13,9 @@ Page({
     name: '', description: '', goalTypes: LONG_TERM_GOAL_TYPES,
     goalType: 'DEADLINE', deadlineDate: futureDate(), habitDays: 21,
     targetValue: 5000, unit: '词', unlimited: false,
-    reminderEnabled: true, wechatReminderEnabled: false, reminderConfig: null
+    reminderEnabled: true
   },
   onLoad(options) {
-    this.loadReminderConfig()
     if (!options.id) return
     this.setData({ id: options.id, editMode: true })
     wx.setNavigationBarTitle({ title: '编辑长期目标' })
@@ -30,7 +29,7 @@ Page({
         name: plan.name || '', description: plan.description || '', goalType: plan.goalType || 'DEADLINE',
         deadlineDate: plan.deadlineDate || futureDate(), habitDays: plan.habitDays || 21,
         targetValue: plan.targetValue || 5000, unit: plan.unit || '次', unlimited: Boolean(plan.unlimited),
-        reminderEnabled: plan.reminderEnabled !== false, wechatReminderEnabled: Boolean(plan.wechatReminderEnabled)
+        reminderEnabled: plan.reminderEnabled !== false
       })
     } finally { this.setData({ loading: false }) }
   },
@@ -39,20 +38,6 @@ Page({
   dateChange(e) { this.setData({ deadlineDate: e.detail.value }) },
   toggleUnlimited(e) { this.setData({ unlimited: Boolean(e.detail.value) }) },
   toggleReminder(e) { this.setData({ reminderEnabled: Boolean(e.detail.value) }) },
-  async loadReminderConfig() {
-    try {
-      const reminderConfig=await api.call('getCheckinReminderSettings',{}, { silent:true })
-      this.setData({ reminderConfig })
-    } catch (error) { this.setData({ reminderConfig:{ configured:false,subscriptionType:'ONE_TIME',templateId:'' } }) }
-  },
-  async requestGoalReminder() {
-    const config=this.data.reminderConfig
-    if(!this.data.reminderEnabled || this.data.wechatReminderEnabled || !config?.configured || !config.templateId)return false
-    try {
-      const result=await wx.requestSubscribeMessage({ tmplIds:[config.templateId] })
-      return ['accept','acceptWithAudio'].includes(result[config.templateId])
-    } catch (error) { return false }
-  },
   async save() {
     if (this.data.saving) return
     const name = this.data.name.trim()
@@ -65,10 +50,9 @@ Page({
     }
     this.setData({ saving: true })
     try {
-      const reminderGrantAccepted=await this.requestGoalReminder()
       const result = this.data.editMode
-        ? await api.call('updateLongTermGoal', { goalId: this.data.id, goal, reminderGrantAccepted })
-        : await api.call('createLongTermGoal', { goal, reminderGrantAccepted })
+        ? await api.call('updateLongTermGoal', { goalId: this.data.id, goal })
+        : await api.call('createLongTermGoal', { goal })
       wx.showToast({ title: result.achievedGoals?.length ? '长期目标已达成' : (this.data.editMode ? '目标已更新' : '目标已创建'), icon: 'success' })
       setTimeout(() => wx.navigateBack(), 350)
     } finally { this.setData({ saving: false }) }

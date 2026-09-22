@@ -10,10 +10,7 @@
       <view class="row" wx:if="{{!unlimited}}"><view class="field flex-1"><view class="label">总目标</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="词/页/公里"/></view></view>
       <view class="field" wx:else><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="词/页/公里"/></view>
     </block>
-    <view class="list-item row"><view><view class="value">目标提醒</view><view class="sub">习惯达成，或日期目标剩余200、100、30、7、1天时提醒</view></view><switch checked="{{reminderEnabled}}" bindchange="toggleReminder"/></view>
-    <view class="tip" wx:if="{{reminderEnabled && reminderConfig && !reminderConfig.configured}}">微信模板尚未配置，将只发送消息中心提醒。</view>
-    <view class="tip" wx:elif="{{reminderEnabled && reminderConfig && reminderConfig.subscriptionType === 'ONE_TIME'}}">当前微信模板为一次性订阅，只能保证下一次微信提醒；其他节点仍会发送消息中心提醒。</view>
-    <view class="tip" wx:elif="{{reminderEnabled && wechatReminderEnabled}}">微信目标提醒已授权。</view>
+    <view class="list-item row"><view><view class="value">消息中心提醒</view><view class="sub">习惯达成，或日期目标剩余200、100、30、7、1天时提醒；不会申请微信订阅。</view></view><switch checked="{{reminderEnabled}}" bindchange="toggleReminder"/></view>
     <view class="field"><view class="label">备注（可选）</view><textarea class="input" data-key="description" value="{{description}}" bindinput="input" maxlength="300" placeholder="写一句目标说明即可"/></view>
     <view class="tip">创建后，请在执行任务的“绑定”中选择这个目标。长期目标默认完全私密。</view>
     <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建长期目标'}}</button>
