@@ -1,3 +1,5 @@
+const { presentDailyReview } = require('./daily-review')
+
 function pad(value) { return String(value).padStart(2, '0') }
 
 function parseDate(value) {
@@ -101,7 +103,7 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
     const calorieIntake = round1(meal.energyKcal)
     const expenditure = target && mealTracked ? round1(number(target.baseDailyExpenditure) + number(workout.estimatedCalories)) : null
     const balance = expenditure == null ? null : round1(calorieIntake - expenditure)
-    const dailyReview = reviewMap[date]?.value || null
+    const dailyReview = presentDailyReview(reviewMap[date]?.value || null)
     const noteCount = (noteCounts[date] || 0) + (dailyReview?.note ? 1 : 0)
     const activityScore = Math.min(4,
       (mealTracked ? 1 : 0) + (number(workout.durationMinutes) > 0 ? 1 : 0) +
@@ -124,6 +126,9 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
       checkinCount: Math.round(number(checkin.completed)),
       mood: dailyReview?.mood || '',
       dailyCheckedIn: !!dailyReview,
+      dailyCheckinState: dailyReview?.checkinState || '',
+      allPlansCompleted: dailyReview?.allPlansCompleted || false,
+      checkinMode: dailyReview?.checkinMode || '',
       noteCount,
       activityScore,
       active: activityScore > 0

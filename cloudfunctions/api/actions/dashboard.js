@@ -8,6 +8,7 @@ const { ensureReleaseAnnouncement } = require('../services/release-announcements
 const { ensureDailyReviewAfterCompletion, dailyReviewStreak } = require('../services/daily-reviews')
 const { notificationWindow } = require('../services/notification-retention')
 const { longTermContext } = require('../services/long-term-goals')
+const { presentDailyReview } = require('../domain/daily-review')
 
 async function dashboard({ user, localDate }) {
   await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
@@ -31,6 +32,7 @@ async function dashboard({ user, localDate }) {
     console.warn('[auto-daily-review]', error?.message || error)
     return null
   })
+  dailyReview = presentDailyReview(dailyReview)
   const currentStreak = dailyReview ? await dailyReviewStreak(user._id, localDate).catch(error => {
     console.warn('[daily-review-streak]', error?.message || error)
     return 1

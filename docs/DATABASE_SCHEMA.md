@@ -101,11 +101,11 @@ audit_logs
 - 群成员日历只组合 `plan_group_bindings`、`plans` 和 `checkins` 的群组任务状态；显示计划名称、逐项完成状态和 `完成数 / 总数`，当天所有群绑定计划完成后才显示绿色对号，不读取 `daily_reviews`、`notes` 或任务备注字段。
 - 好友日历只组合经过好友隐私规则过滤后的 `plans` 与 `checkins`；显示获准公开的计划名称、逐项完成状态和 `完成数 / 总数`，当天所有可见计划完成后才显示绿色对号，不返回心情、小记、任务描述、任务备注和计时详情。
 - `checkins.completionVersion`: 同一任务撤回后再次完成时递增，用于动态与消息去重。
-- `daily_reviews.status`: `ACTIVE` / `REVOKED`；撤回时保留原心情与小记，重新完成全部任务后恢复。
+- `daily_reviews.status`: `ACTIVE` / `REVOKED`；`REVOKED` 仅为旧数据兼容状态。新版自动打卡和点击打卡生成相同的日记录，撤回任务不会删除记录、心情或小记，只把任务完成状态更新为未完成。
 
 ## 整日打卡与进食时间流
 
-- `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`。
+- `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`；`checkinMode=AUTO/MANUAL` 区分创建方式，`allPlansCompleted` 保存打卡对应的任务完成状态。旧记录按自动完成兼容。
 - `meals.recordedAt`: 本次进食的服务端时间戳。
 - `meals.note`: 本次进食的可选文字。
 - `meals.photoFileIds`: 最多三张饮食照片的云文件 ID。

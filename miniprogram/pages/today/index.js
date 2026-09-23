@@ -176,6 +176,7 @@ Page({
     completionEditor: emptyEditor(),
     dailyReviewEditor: emptyDailyReviewEditor(),
     completionSaving: false,
+    manualCheckinSaving: false,
     timerBusyPlanId: '',
     reminderConfig:null,
     reminderRenewalAvailable:false,
@@ -722,6 +723,17 @@ Page({
     const review = this.data.dashboard?.dailyReview
     if (!review) return
     this.setData({ dailyReviewEditor: { visible: true, mood: review?.mood || '', note: review?.note || '' } })
+  },
+  async manualDailyCheckin() {
+    if (this.data.manualCheckinSaving) return
+    this.setData({ manualCheckinSaving: true })
+    try {
+      await api.call('manualDailyCheckin')
+      await this.load()
+      this.openDailyReview()
+    } finally {
+      this.setData({ manualCheckinSaving: false })
+    }
   },
   closeDailyReview() { if (!this.data.completionSaving) this.setData({ dailyReviewEditor: emptyDailyReviewEditor() }) },
   chooseDailyMood(e) { this.setData({ 'dailyReviewEditor.mood': e.currentTarget.dataset.value }) },

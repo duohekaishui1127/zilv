@@ -16,16 +16,16 @@
     <block wx:elif="{{calendar}}">
       <view class="weekday-grid"><view wx:for="{{weekdayLabels}}" wx:key="*this" class="weekday">{{item}}</view></view>
       <view class="calendar-grid">
-        <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}}">
+        <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}} {{item.checkinClass}}">
           <block wx:if="{{!item.blank}}">
             <view class="day-number">{{item.day}}</view>
-            <image wx:if="{{item.moodIcon}}" class="calendar-mood" src="{{item.moodIcon}}" mode="aspectFit"/>
+            <image wx:if="{{item.moodIcon}}" class="calendar-mood {{item.checkinClass}}" src="{{item.moodIcon}}" mode="aspectFit"/>
             <view wx:elif="{{item.noteCount}}" class="note-mark"></view>
           </block>
         </view>
       </view>
       <view class="calendar-summary">本月活跃 {{calendar.summary.activeDays}} 天 · 完成 {{calendar.summary.checkinCount}} 项 · 小记 {{calendar.summary.noteDays || 0}} 天</view>
-      <view class="calendar-hint">点击日期查看当天内容</view>
+      <view class="calendar-hint">绿色心情为任务完成打卡，红色心情为任务未完成打卡</view>
     </block>
   </view>
 </view>
@@ -35,8 +35,8 @@
     <view class="sheet-handle"></view>
     <view class="row review-header">
       <view class="row-start">
-        <image wx:if="{{selectedDay.moodIcon}}" class="review-mood" src="{{selectedDay.moodIcon}}" mode="aspectFit"/>
-        <view><view class="h2">{{selectedDay.title}}</view><view class="sub">{{selectedDay.moodLabel || '平静的一天'}}</view></view>
+        <image wx:if="{{selectedDay.moodIcon}}" class="review-mood {{selectedDay.checkinClass}}" src="{{selectedDay.moodIcon}}" mode="aspectFit"/>
+        <view><view class="h2">{{selectedDay.title}}</view><view class="sub">{{selectedDay.moodLabel || '平静的一天'}}{{dayReview.dailyReview ? ' · ' + dayReview.dailyReview.checkinLabel : ''}}</view></view>
       </view>
       <view class="sheet-close" bindtap="closeReview">×</view>
     </view>
@@ -66,17 +66,17 @@
 
       <view class="review-section task-section">
         <view class="row task-toggle" bindtap="toggleTasks">
-          <view><view class="section-title review-title">完成任务</view><view class="sub">共 {{dayReview.tasks.length}} 项</view></view>
+          <view><view class="section-title review-title">当天任务进度</view><view class="sub">已完成 {{dayReview.taskProgress.completed}}/{{dayReview.taskProgress.total}}</view></view>
           <view class="task-chevron">{{tasksExpanded ? '⌃' : '⌄'}}</view>
         </view>
         <view wx:if="{{tasksExpanded}}" class="task-list">
-          <view wx:for="{{dayReview.tasks}}" wx:key="_id" class="task-item">
-            <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.completedTime ? ' · ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view></view>
+          <view wx:for="{{dayReview.tasks}}" wx:key="_id" class="task-item {{item.completed ? 'task-item-completed' : 'task-item-incomplete'}}">
+            <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.targetLabel ? ' · 目标 ' + item.targetLabel : ''}}{{item.executionTime ? ' · ' + item.executionTime : ''}}{{item.completedTime ? ' · 完成于 ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view><view class="task-status {{item.completed ? 'task-status-complete' : 'task-status-incomplete'}}">{{item.completed ? '已完成' : '未完成'}}</view></view>
             <view class="task-description" wx:if="{{item.description}}">{{item.description}}</view>
-            <view class="task-timer" wx:if="{{item.timerSummary}}">{{item.timerSummary}}</view>
-            <view class="task-note" wx:if="{{item.note}}">{{item.note}}</view>
+            <view class="task-timer" wx:if="{{item.completed && item.timerSummary}}">{{item.timerSummary}}</view>
+            <view class="task-note" wx:if="{{item.completed && item.note}}">{{item.note}}</view>
           </view>
-          <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">当天没有完成任务</view>
+          <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">当天没有任务</view>
         </view>
       </view>
     </block>

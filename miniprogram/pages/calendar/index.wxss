@@ -13,6 +13,10 @@
 .calendar-blank { border-color:transparent; background:transparent; }
 .day-number { position:absolute; top:5rpx; left:7rpx; z-index:1; color:#5f6670; font-size:19rpx; font-weight:700; }
 .calendar-mood { position:absolute; left:50%; top:50%; width:48rpx; height:48rpx; transform:translate(-50%,-42%); image-rendering:pixelated; }
+.calendar-mood.checkin-complete,.review-mood.checkin-complete { opacity:.68; filter:invert(47%) sepia(83%) saturate(514%) hue-rotate(83deg) brightness(91%) contrast(91%); }
+.calendar-mood.checkin-incomplete,.review-mood.checkin-incomplete { opacity:.68; filter:invert(31%) sepia(89%) saturate(1749%) hue-rotate(342deg) brightness(91%) contrast(91%); }
+.calendar-day.checkin-complete { box-shadow:inset 0 0 0 2rpx rgba(22,163,74,.22); }
+.calendar-day.checkin-incomplete { box-shadow:inset 0 0 0 2rpx rgba(220,38,38,.22); }
 .note-mark { position:absolute; left:50%; top:54%; width:12rpx; height:12rpx; transform:translate(-50%,-50%); background:#111827; }
 .calendar-today { outline:3rpx solid #111827; outline-offset:-2rpx; }
 .activity-0 { background:#fafafa; }
@@ -49,6 +53,10 @@
 .task-item { padding:22rpx 0; border-bottom:1rpx solid #e7e9ec; }
 .task-item:last-child { border-bottom:0; }
 .task-main { align-items:flex-start; }
+.task-status { flex:0 0 auto; margin-left:14rpx; padding:5rpx 10rpx; border-radius:999rpx; font-size:20rpx; font-weight:700; }
+.task-status-complete { color:#267044; background:rgba(34,197,94,.11); }
+.task-status-incomplete { color:#a74a45; background:rgba(239,68,68,.09); }
+.task-item-incomplete .value { color:#6b7280; }
 .task-mood { width:48rpx; height:48rpx; image-rendering:pixelated; }
 .task-description,.task-timer,.task-note { margin-top:10rpx; color:#68707c; font-size:23rpx; line-height:1.55; }
 .task-note { padding:12rpx 14rpx; background:#f5f6f7; color:#343b46; }

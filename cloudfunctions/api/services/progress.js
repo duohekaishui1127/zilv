@@ -1,6 +1,8 @@
 const { db, _, C } = require('../lib/db')
 const { dateRange, monthRange, buildProgressReport, buildActivityCalendar } = require('../domain/progress-report')
 const { attachmentsForNotes } = require('./notes')
+const { presentDailyReview } = require('../domain/daily-review')
+const { getTodayPlans } = require('./plans')
 
 async function fetchAll(collection, where, orderField) {
   const rows = []
@@ -49,37 +51,50 @@ async function loadActivityCalendar(userId, month) {
 }
 
 async function loadDayReview(userId, date) {
-  const [checkins, notes, plans, dailyReviewResult] = await Promise.all([
+  const [checkins, notes, plans, scheduledPlans, dailyReviewResult] = await Promise.all([
     fetchAll(C.CHECKINS, { userId, date, completed: true }, 'completedAt'),
     fetchAll(C.NOTES, { userId, recordDate: date, status: 'ACTIVE' }, 'createdAt'),
     fetchAll(C.PLANS, { userId }, 'createdAt'),
+    getTodayPlans(userId, date),
     db.collection(C.DAILY_REVIEWS).where({ userId, date }).limit(1).get()
   ])
   const attachmentMap = await attachmentsForNotes(notes.map(note => note._id))
   const planMap = Object.fromEntries(plans.map(plan => [plan._id, plan]))
-  const tasks = checkins.map(checkin => {
-    const plan = planMap[checkin.planId] || {}
+  const presentTask = (plan, checkin) => {
     return {
-      _id: checkin._id,
-      planId: checkin.planId,
+      _id: checkin?._id || `plan:${plan._id}:${date}`,
+      planId: plan._id,
       name: plan.name || '已完成计划',
       description: plan.description || '',
       category: plan.category || 'CUSTOM',
-      actualValue: checkin.actualValue,
+      executionTime: plan.executionTime || '',
+      targetType: plan.targetType || 'BOOLEAN',
+      targetValue: plan.targetValue,
+      actualValue: checkin?.actualValue,
       unit: plan.unit || '',
-      durationMinutes: checkin.durationMinutes,
-      mood: checkin.mood || '',
-      note: checkin.note || '',
-      completedAt: checkin.completedAt,
-      timerMode: checkin.timerMode || '',
-      timerEffectiveSeconds: Number(checkin.timerEffectiveSeconds || 0),
-      timerTotalSeconds: Number(checkin.timerTotalSeconds || 0),
-      timerPausedSeconds: Number(checkin.timerPausedSeconds || 0)
+      completed: !!checkin?.completed,
+      durationMinutes: checkin?.durationMinutes,
+      mood: checkin?.mood || '',
+      note: checkin?.note || '',
+      completedAt: checkin?.completedAt,
+      timerMode: checkin?.timerMode || '',
+      timerEffectiveSeconds: Number(checkin?.timerEffectiveSeconds || 0),
+      timerTotalSeconds: Number(checkin?.timerTotalSeconds || 0),
+      timerPausedSeconds: Number(checkin?.timerPausedSeconds || 0)
     }
-  }).sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0))
+  }
+  const tasks = scheduledPlans.map(plan => presentTask(plan, plan.checkin))
+  const includedPlanIds = new Set(tasks.map(task => task.planId))
+  checkins.forEach(checkin => {
+    if (includedPlanIds.has(checkin.planId)) return
+    tasks.push(presentTask(planMap[checkin.planId] || { _id: checkin.planId }, checkin))
+    includedPlanIds.add(checkin.planId)
+  })
+  const completedTaskCount = tasks.filter(task => task.completed).length
   return {
     date,
-    dailyReview: dailyReviewResult.data.find(item => item.status !== 'REVOKED') || null,
+    dailyReview: presentDailyReview(dailyReviewResult.data.find(item => item.status !== 'REVOKED') || null),
+    taskProgress: { completed: completedTaskCount, total: tasks.length },
     tasks,
     notes: notes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(note => ({
       _id: note._id,

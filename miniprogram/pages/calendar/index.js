@@ -41,29 +41,40 @@ function decorateCalendar(calendar, currentDate) {
     activityClass: `activity-${day.activityScore}`,
     moodIcon: MOOD_ICONS[day.mood] || '',
     moodLabel: MOOD_LABELS[day.mood] || '',
+    checkinClass: day.dailyCheckedIn
+      ? (day.dailyCheckinState === 'COMPLETE' ? 'checkin-complete' : 'checkin-incomplete')
+      : '',
     hasRecords: day.active || day.noteCount > 0
   }))
   return { ...calendar, cells: [...blanks, ...days] }
 }
 
 function presentReview(review) {
+  const tasks = (review.tasks || []).map(task => ({
+    ...task,
+    categoryLabel: CATEGORY_LABELS[task.category] || '计划',
+    completedTime: clockText(task.completedAt),
+    targetLabel: task.targetType === 'BOOLEAN' || task.targetValue == null ? '' : `${task.targetValue}${task.unit || ''}`,
+    timerSummary: task.timerMode
+      ? `有效 ${timerText(task.timerEffectiveSeconds)} · 总用时 ${timerText(task.timerTotalSeconds)} · 暂停 ${timerText(task.timerPausedSeconds)}`
+      : '',
+    durationLabel: task.durationMinutes == null ? '' : `${task.durationMinutes}分钟`
+  }))
   return {
     ...review,
     dailyReview: review.dailyReview ? {
       ...review.dailyReview,
       moodIcon: MOOD_ICONS[review.dailyReview.mood] || '',
-      moodLabel: MOOD_LABELS[review.dailyReview.mood] || ''
+      moodLabel: MOOD_LABELS[review.dailyReview.mood] || '',
+      checkinClass: review.dailyReview.allPlansCompleted ? 'checkin-complete' : 'checkin-incomplete',
+      checkinLabel: review.dailyReview.allPlansCompleted ? '任务完成打卡' : '任务未完成打卡'
     } : null,
     notes: (review.notes || []).map(note => ({ ...note, typeLabel: NOTE_LABELS[note.type] || '小记' })),
-    tasks: (review.tasks || []).map(task => ({
-      ...task,
-      categoryLabel: CATEGORY_LABELS[task.category] || '计划',
-      completedTime: clockText(task.completedAt),
-      timerSummary: task.timerMode
-        ? `有效 ${timerText(task.timerEffectiveSeconds)} · 总用时 ${timerText(task.timerTotalSeconds)} · 暂停 ${timerText(task.timerPausedSeconds)}`
-        : '',
-      durationLabel: task.durationMinutes == null ? '' : `${task.durationMinutes}分钟`
-    }))
+    taskProgress: review.taskProgress || {
+      completed: tasks.filter(task => task.completed).length,
+      total: tasks.length
+    },
+    tasks
   }
 }
 
@@ -78,7 +89,7 @@ Page({
     reviewVisible: false,
     reviewLoading: false,
     selectedDay: null,
-    dayReview: { dailyReview: null, notes: [], tasks: [] },
+    dayReview: { dailyReview: null, taskProgress: { completed: 0, total: 0 }, notes: [], tasks: [] },
     tasksExpanded: false
   },
   onShow() { this.loadCalendar() },
@@ -108,7 +119,7 @@ Page({
       reviewVisible: true,
       reviewLoading: true,
       selectedDay: { ...day, title: dateTitle(day.date) },
-      dayReview: { date: day.date, dailyReview: null, notes: [], tasks: [] },
+      dayReview: { date: day.date, dailyReview: null, taskProgress: { completed: 0, total: 0 }, notes: [], tasks: [] },
       tasksExpanded: false
     })
     try {

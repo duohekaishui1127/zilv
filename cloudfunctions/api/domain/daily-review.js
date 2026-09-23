@@ -17,4 +17,26 @@ function streakFromDates(dates, endDate) {
   return streak
 }
 
-module.exports = { previousDate, streakFromDates }
+function allPlansCompleted(review) {
+  if (!review || review.status === 'REVOKED') return false
+  if (typeof review.allPlansCompleted === 'boolean') return review.allPlansCompleted
+  const total = Number(review.totalPlanCount || 0)
+  const completed = Number(review.completedPlanCount || 0)
+  if (total > 0) return completed >= total
+  if (review.checkinMode === 'MANUAL' || review.autoCompleted === false) return false
+  // Historical daily reviews were only created after every task was complete.
+  return true
+}
+
+function presentDailyReview(review) {
+  if (!review) return null
+  const completed = allPlansCompleted(review)
+  return {
+    ...review,
+    checkinMode: review.checkinMode || (review.autoCompleted === false ? 'MANUAL' : 'AUTO'),
+    allPlansCompleted: completed,
+    checkinState: completed ? 'COMPLETE' : 'INCOMPLETE'
+  }
+}
+
+module.exports = { previousDate, streakFromDates, allPlansCompleted, presentDailyReview }

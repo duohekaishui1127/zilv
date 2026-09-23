@@ -33,11 +33,14 @@
         <view class="row compact-row"><view class="big">{{dashboard.completion.completed}}/{{dashboard.completion.total}}</view><view class="chevron">{{plansExpanded ? '⌃' : '⌄'}}</view></view>
       </view>
       <view class="progress"><view class="progress-inner" style="width: {{completionPct}}%;"></view></view>
-      <view wx:if="{{dashboard.dailyReview}}" class="streak-row" bindtap="openDailyReview">
-        <text>✓ 今日已自动打卡 · 已连续打卡 {{dashboard.currentStreak}} 天</text>
+      <view wx:if="{{dashboard.dailyReview}}" class="streak-row {{dashboard.dailyReview.allPlansCompleted ? 'streak-row-complete' : 'streak-row-incomplete'}}" bindtap="openDailyReview">
+        <text>{{dashboard.dailyReview.allPlansCompleted ? '✓ 今日任务完成并打卡' : '● 今日已打卡 · 任务 ' + dashboard.completion.completed + '/' + dashboard.completion.total}} · 连续 {{dashboard.currentStreak}} 天</text>
         <text class="streak-action">{{dashboard.dailyReview.mood ? dashboard.dailyReview.moodLabel + ' ›' : '记录心情 ›'}}</text>
       </view>
-      <view wx:elif="{{dashboard.completion.total}}" class="sub auto-checkin-hint">完成全部计划后自动打卡</view>
+      <view wx:else class="manual-checkin-row">
+        <view class="sub">{{dashboard.completion.total ? '完成全部任务后自动打卡' : '今天没有任务，也可以留下一条记录'}}</view>
+        <button class="btn btn-small btn-light manual-checkin-button" loading="{{manualCheckinSaving}}" catchtap="manualDailyCheckin">打卡</button>
+      </view>
       <view wx:if="{{reminderRenewalAvailable}}" class="reminder-renew-row row">
         <view><view class="value">补充下一次打卡提醒</view><view class="sub">已完成今日全部任务，可补充下一次提醒机会</view></view>
         <button class="btn btn-small btn-light" loading="{{renewingReminder}}" bindtap="renewReminderFromButton">续订</button>
@@ -133,7 +136,7 @@
 <view wx:if="{{dailyReviewEditor.visible}}" class="sheet-mask" bindtap="closeDailyReview">
   <view class="completion-sheet" catchtap="noop">
     <view class="sheet-handle"></view>
-    <view class="row"><view><view class="h2">记录今日心情</view><view class="sub">已自动打卡 · 连续 {{dashboard.currentStreak}} 天</view></view><view class="sheet-close" bindtap="closeDailyReview">×</view></view>
+    <view class="row"><view><view class="h2">记录今日心情</view><view class="sub">{{dashboard.dailyReview.allPlansCompleted ? '今日任务已全部完成' : '今日已打卡 · 任务 ' + dashboard.completion.completed + '/' + dashboard.completion.total}} · 连续 {{dashboard.currentStreak}} 天</view></view><view class="sheet-close" bindtap="closeDailyReview">×</view></view>
     <view class="field completion-field">
       <view class="label">今天整体感觉如何？</view>
       <view class="mood-row">

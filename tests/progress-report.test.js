@@ -58,8 +58,22 @@ test('日历只使用整日打卡心情作为当天印记', () => {
     dailyReviews: [{ date: '2026-09-17', mood: 'GREAT', note: '充实的一天', updatedAt: '2026-09-17T10:00:00Z' }]
   })
   assert.equal(calendar.days[0].mood, 'GREAT')
+  assert.equal(calendar.days[0].dailyCheckinState, 'COMPLETE')
   assert.equal(calendar.days[0].noteCount, 1)
   assert.equal(calendar.days[1].mood, '')
+})
+
+test('日历将任务未完成时的打卡标记为未完成', () => {
+  const calendar = buildActivityCalendar({
+    dates: ['2026-09-18'],
+    dailyReviews: [{
+      date: '2026-09-18', mood: 'TIRED', checkinMode: 'MANUAL', autoCompleted: false,
+      completedPlanCount: 1, totalPlanCount: 3, allPlansCompleted: false
+    }]
+  })
+  assert.equal(calendar.days[0].dailyCheckedIn, true)
+  assert.equal(calendar.days[0].dailyCheckinState, 'INCOMPLETE')
+  assert.equal(calendar.days[0].allPlansCompleted, false)
 })
 
 test('撤回任务后同步取消当日打卡印记', () => {
