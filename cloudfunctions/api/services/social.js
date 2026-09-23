@@ -1,10 +1,9 @@
 const crypto = require('crypto')
-const { cloud, db, C } = require('../lib/db')
+const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
-const { getUserById } = require('./users')
 const { visibilityFor, canSharePlanWithFriend } = require('./friend-visibility')
 const { trimNotificationHistory } = require('./notification-retention')
-const { normalizeSocialSubscriptionType, shouldConsumeSocialSubscription } = require('../domain/social-subscription')
+const { normalizeSocialSubscriptionType } = require('../domain/social-subscription')
 const { preferredFriendship } = require('../domain/friendship-dedup')
 
 function text(value, max = 20) { return String(value || '').trim().slice(0, max) }
@@ -36,52 +35,6 @@ function notificationId(recipientId, checkin) {
   return crypto.createHash('sha256')
     .update(`social:${recipientId}:${checkin._id}:${Number(checkin.completionVersion || 1)}`)
     .digest('hex').slice(0, 32)
-}
-
-function socialTemplateData(actor, plan, checkin) {
-  const timeKey = process.env.SOCIAL_TEMPLATE_TIME_KEY || 'time30'
-  const contentKey = process.env.SOCIAL_TEMPLATE_CONTENT_KEY || 'thing2'
-  const completedAt = checkin.completedAt instanceof Date ? checkin.completedAt : new Date(checkin.completedAt || Date.now())
-  const hh = String(completedAt.getHours()).padStart(2, '0')
-  const mm = String(completedAt.getMinutes()).padStart(2, '0')
-  return {
-    [timeKey]: { value: `${hh}:${mm}` },
-    [contentKey]: { value: text(`${actor.nickname || '成员'}完成“${plan.name}”打卡`, 20) }
-  }
-}
-
-async function clearWechatSources(sources) {
-  await Promise.all(sources.map(source => db.collection(source.collection).doc(source.id).update({
-    data: { [source.field]: false, updatedAt: now() }
-  }).catch(() => null)))
-}
-
-async function sendSocialWechat(notification, recipient, actor, plan, checkin, sources) {
-  if (!sources.length) return
-  const config = socialNotificationConfig()
-  if (!config.configured) {
-    await db.collection(C.NOTIFICATIONS).doc(notification._id).update({ data: { pushStatus: 'NOT_CONFIGURED', updatedAt: now() } })
-    return
-  }
-  if (!recipient?.openid) return
-  try {
-    const result = await cloud.openapi.subscribeMessage.send({
-      touser: recipient.openid, templateId: config.templateId, page: notification.page.replace(/^\//, ''),
-      miniprogramState: process.env.SOCIAL_MINIPROGRAM_STATE || 'formal', lang: 'zh_CN',
-      data: socialTemplateData(actor, plan, checkin)
-    })
-    const code = Number(result.errCode ?? result.errcode ?? 0)
-    if (code !== 0) throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'), result)
-    await db.collection(C.NOTIFICATIONS).doc(notification._id).update({ data: { pushStatus: 'SENT', pushedAt: now(), updatedAt: now() } })
-    if (shouldConsumeSocialSubscription(config.subscriptionType)) await clearWechatSources(sources)
-  } catch (error) {
-    const code = Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
-    await db.collection(C.NOTIFICATIONS).doc(notification._id).update({ data: {
-      pushStatus: code === 43101 ? 'NOT_SUBSCRIBED' : 'FAILED', pushErrorCode: code,
-      pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120), updatedAt: now()
-    } })
-    if (shouldConsumeSocialSubscription(config.subscriptionType, code) && code === 43101) await clearWechatSources(sources)
-  }
 }
 
 function recipientEntry(recipients, userId) {
@@ -137,13 +90,13 @@ async function notifyRecipients(recipients, actor, plan, checkin) {
         checkinId: checkin._id, completionVersion: Number(checkin.completionVersion || 1),
         groupIds: entry.groupIds, specialCare: entry.specialCare, page,
         status: 'UNREAD', pushStatus: entry.sources.length ? 'PENDING' : 'NOT_SUBSCRIBED',
+        pushSources:entry.sources,
         createdAt: now(), updatedAt: now()
       }
       await db.collection(C.NOTIFICATIONS).doc(id).set({ data })
       notification = { _id: id, ...data }
       await trimNotificationHistory(entry.userId)
     }
-    await sendSocialWechat(notification, await getUserById(entry.userId), actor, plan, checkin, entry.sources)
   }))
 }
 

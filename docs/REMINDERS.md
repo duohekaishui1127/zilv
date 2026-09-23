@@ -60,6 +60,8 @@ SOCIAL_TEMPLATE_CONTENT_KEY=thing2
 SOCIAL_MINIPROGRAM_STATE=trial
 ```
 
+以上 `SOCIAL_*` 配置需要同时设置到 `api` 和 `reminder-dispatch`。任务完成时群动态和消息中心立即写入，微信订阅消息进入后台投递，通常在下一次每分钟调度时发送；临时失败最多自动重试三次，任务在发送前撤回则取消推送。
+
 `reminder-dispatch`：
 
 ```text

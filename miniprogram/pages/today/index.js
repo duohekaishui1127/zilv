@@ -88,6 +88,7 @@ function dragOffsets(items,sourceIndex,targetIndex,activeOffset) {
 }
 
 function emptyDailyReviewEditor() { return { visible: false, mood: '', note: '' } }
+function emptyUndoCompletion() { return { visible:false,planId:'',planName:'',message:'',syncing:false } }
 
 function timeMs(value) {
   if (!value) return null
@@ -177,14 +178,15 @@ Page({
     dailyReviewEditor: emptyDailyReviewEditor(),
     completionSaving: false,
     manualCheckinSaving: false,
+    undoCompletion: emptyUndoCompletion(),
     timerBusyPlanId: '',
     reminderConfig:null,
     reminderRenewalAvailable:false,
     renewingReminder:false
   },
   onShow() { this._visible = true; this.loadReminderConfig(); this.load() },
-  onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag() },
-  onUnload() { this._visible = false; this.stopTicker(); this.cancelCardDrag() },
+  onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.hideCompletionUndo() },
+  onUnload() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.clearUndoTimer() },
   onPageScroll(e) {
     this._pageScrollTop=Number(e.scrollTop || 0)
     if(this.data.cardDrag.active && !this.data.cardDrag.settling && this._cardDragState?.lastClientY != null) {
@@ -210,14 +212,25 @@ Page({
     })
   },
   async load() {
+    const loadId = Number(this._dashboardLoadId || 0) + 1
+    this._dashboardLoadId = loadId
     this.setData({ loading: true, error: '' })
     try {
       const d = await api.call('dashboard', {}, { silent: true })
+      if (loadId !== this._dashboardLoadId) return
       const serverMs = timeMs(d.serverTime)
       this._clockOffset = serverMs == null ? 0 : serverMs - Date.now()
       const target = d.nutritionTarget || {}
       d.homePreferences = { showEnergy:true,showLongTermGoals:true,cardOrder:HOME_CARDS, ...(d.homePreferences || {}) }
-      d.plans = (d.plans || []).map(plan => decoratePlan(plan, this.serverNow()))
+      d.plans = (d.plans || []).map(plan => {
+        const local = this.data.dashboard?.plans?.find(item => item._id === plan._id)
+        if (this._optimisticPlanIds?.has(plan._id) && !plan.completed && local?.completed) {
+          return decoratePlan({ ...plan, completed: true, checkin: local.checkin, syncing:true }, this.serverNow())
+        }
+        if (plan.completed && !this._quickCompletingIds?.has(plan._id)) this._optimisticPlanIds?.delete(plan._id)
+        return decoratePlan({ ...plan,syncing:Boolean(this._quickCompletingIds?.has(plan._id)) }, this.serverNow())
+      })
+      d.completion = { total: d.plans.length, completed: d.plans.filter(plan => plan.completed).length }
       d.longTermGoals = (d.longTermGoals || []).map(presentGoal).slice(0, 3)
       if (d.dailyReview) d.dailyReview = {
         ...d.dailyReview,
@@ -238,9 +251,9 @@ Page({
       this.finishExpiredCountdown()
       this.notifyCountUpRest()
     } catch (error) {
-      this.setData({ error: api.messageOf(error) })
+      if (loadId === this._dashboardLoadId) this.setData({ error: api.messageOf(error) })
     } finally {
-      this.setData({ loading: false })
+      if (loadId === this._dashboardLoadId) this.setData({ loading: false })
     }
   },
   startTicker() {
@@ -505,6 +518,84 @@ Page({
     } catch (error) {}
   },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
+  optimisticComplete(plan, index) {
+    if (!this._optimisticPlanIds) this._optimisticPlanIds = new Set()
+    if (!this._quickCompletingIds) this._quickCompletingIds = new Set()
+    this._optimisticPlanIds.add(plan._id)
+    this._quickCompletingIds.add(plan._id)
+    const completion = { ...this.data.dashboard.completion }
+    const snapshot = { index, plan, completion, completionPct: this.data.completionPct }
+    const checkin = {
+      ...(plan.checkin || {}), completed: true, actualValue: Number(plan.targetValue),
+      date: api.localDate(), completedAt: new Date(this.serverNow()).toISOString(), optimistic: true
+    }
+    const nextPlan = decoratePlan({ ...plan, completed: true, checkin, syncing:true }, this.serverNow())
+    const completed = Math.min(completion.total, completion.completed + 1)
+    this.setData({
+      [`dashboard.plans[${index}]`]: nextPlan,
+      'dashboard.completion.completed': completed,
+      completionPct: fmt.pct(completed, completion.total)
+    })
+    return snapshot
+  },
+  rollbackOptimisticCompletion(snapshot) {
+    if (!snapshot) return
+    this._optimisticPlanIds?.delete(snapshot.plan._id)
+    this.setData({
+      [`dashboard.plans[${snapshot.index}]`]: snapshot.plan,
+      'dashboard.completion.completed': snapshot.completion.completed,
+      completionPct: snapshot.completionPct
+    })
+  },
+  applyCompletionResult(result) {
+    if (!Array.isArray(result?.plans)) return
+    const plans = result.plans.map(plan => {
+      const local = this.data.dashboard?.plans?.find(item => item._id === plan._id)
+      if (this._optimisticPlanIds?.has(plan._id) && !plan.completed && local?.completed) {
+        return decoratePlan({ ...plan,completed:true,checkin:local.checkin,syncing:true },this.serverNow())
+      }
+      return decoratePlan({ ...plan,syncing:Boolean(this._quickCompletingIds?.has(plan._id)) }, this.serverNow())
+    })
+    const completion = { total:plans.length,completed:plans.filter(plan => plan.completed).length }
+    const updates = {
+      'dashboard.plans': plans,
+      'dashboard.completion': completion,
+      completionPct: fmt.pct(completion.completed, completion.total)
+    }
+    if (result.dailyReview && this.data.dashboard?.dailyReview) updates['dashboard.dailyReview'] = {
+      ...result.dailyReview,
+      moodIcon: MOOD_ICONS[result.dailyReview.mood] || '',
+      moodLabel: MOOD_LABELS[result.dailyReview.mood] || ''
+    }
+    this.setData(updates)
+  },
+  finishQuickSync(planId) {
+    this._quickCompletingIds?.delete(planId)
+    const index=this.data.dashboard?.plans?.findIndex(item => item._id === planId) ?? -1
+    if(index >= 0)this.setData({ [`dashboard.plans[${index}].syncing`]:false })
+  },
+  clearUndoTimer() {
+    if(this._undoTimer)clearTimeout(this._undoTimer)
+    this._undoTimer=null
+  },
+  showCompletionUndo(plan,message,sequence) {
+    if(Number(sequence || 0) < Number(this._latestUndoSequence || 0))return
+    this._latestUndoSequence=Number(sequence || 0)
+    this.clearUndoTimer()
+    const token=Date.now()
+    this._undoToken=token
+    this.setData({ undoCompletion:{
+      visible:true,planId:plan._id,planName:plan.name || '任务',message,syncing:false
+    } })
+    this._undoTimer=setTimeout(() => {
+      if(this._undoToken === token)this.setData({ undoCompletion:emptyUndoCompletion() })
+    },5000)
+  },
+  hideCompletionUndo() {
+    this.clearUndoTimer()
+    this._undoToken=0
+    this.setData({ undoCompletion:emptyUndoCompletion() })
+  },
   completesAllTasks(plan) { return reminderRenewal.completesAllTasks(this.data.dashboard,plan) },
   shouldRenewAfter(plan) {
     return reminderRenewal.shouldRequestReminderRenewal({
@@ -554,16 +645,34 @@ Page({
     wx.showToast({ title: plan.timerEnabled ? '请使用计时按钮完成' : '点击右侧圆圈即可完成', icon: 'none' })
   },
   async revokeCompletion(plan) {
-    this._quickCompleting = true
+    if(!plan || this._quickCompletingIds?.has(plan._id))return false
+    if(!this._quickCompletingIds)this._quickCompletingIds=new Set()
+    this._quickCompletingIds.add(plan._id)
     try {
       await api.call('revokePlanCompletion', { planId: plan._id })
       this._promptedDailyReviewDate = ''
       this._dailyPromptScheduledDate = ''
       wx.showToast({ title: '已撤回', icon: 'success', duration: 1000 })
       await this.load()
+      return true
     } finally {
-      this._quickCompleting = false
+      this.finishQuickSync(plan._id)
     }
+  },
+  async undoLastCompletion() {
+    const undo=this.data.undoCompletion
+    if(!undo.visible || undo.syncing)return
+    const plan=this.data.dashboard?.plans?.find(item => item._id === undo.planId)
+    if(!plan)return this.hideCompletionUndo()
+    this.clearUndoTimer()
+    this.setData({ 'undoCompletion.syncing':true })
+    try { await this.revokeCompletion(plan) } finally { this.hideCompletionUndo() }
+  },
+  async revokeFromCompletion() {
+    const plan=this.data.dashboard?.plans?.find(item => item._id === this.data.completionEditor.planId)
+    if(!plan || !await api.confirm('撤回后任务会恢复为未完成，今日打卡状态也会同步更新。','撤回完成'))return
+    this.setData({ completionEditor:emptyEditor() })
+    await this.revokeCompletion(plan)
   },
   showCompletion(plan) {
     const checkin = plan.checkin || {}
@@ -584,25 +693,35 @@ Page({
     })
   },
   async quickComplete(e) {
+    const index = Number(e.currentTarget.dataset.index)
     const plan = this.planFromEvent(e)
-    if (!plan || this._quickCompleting) return
-    if (plan.completed) return this.revokeCompletion(plan)
+    if (!plan || this._quickCompletingIds?.has(plan._id)) return
+    if (plan.completed) return this.showCompletion(plan)
     if (plan.timerEnabled) {
       if (plan.timerStatus === 'FINISHED') return this.completeFinishedTimer(plan)
       return wx.showToast({ title: plan.timerStatus ? '请先结束计时' : '请使用计时按钮开始', icon: 'none' })
     }
-    this._quickCompleting = true
+    const completesToday=this.completesAllTasks(plan)
+    const interactionSequence=Number(this._completionInteractionSequence || 0) + 1
+    this._completionInteractionSequence=interactionSequence
+    const snapshot = this.optimisticComplete(plan, index)
+    let completed = false
+    let result = null
     try {
-      const completesToday=this.completesAllTasks(plan)
-      const reminderAccepted=await this.requestNextReminder(plan)
       const payload = { planId: plan._id, actualValue: Number(plan.targetValue) }
-      const result=await api.call('completePlan', payload)
-      await this.saveReminderRenewal(reminderAccepted)
-      wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'), icon:'success' })
-      await this.load()
+      result=await api.call('completePlan', payload)
+      this._optimisticPlanIds?.delete(plan._id)
+      this.applyCompletionResult(result)
+      completed = true
+      this.showCompletionUndo(plan,result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),interactionSequence)
+    } catch (error) {
+      this.rollbackOptimisticCompletion(snapshot)
     } finally {
-      this._quickCompleting = false
+      this.finishQuickSync(plan._id)
     }
+    const linkedToGoal = Boolean(plan.managedByGoalId || plan.longTermGoalIds?.length)
+    const needsCompatibilityRefresh = !Array.isArray(result?.plans)
+    if (completed && (needsCompatibilityRefresh || completesToday || linkedToGoal || result?.achievedGoals?.length)) this.load()
   },
   async timerAction(action, e) {
     const plan = this.planFromEvent(e)

@@ -17,7 +17,8 @@ const COLLECTIONS = Object.freeze({
   GROUPS: 'groups',
   GROUP_MEMBERS: 'group_members',
   PLAN_GROUPS: 'plan_group_bindings',
-  GROUP_PLAN_CHANGES: 'group_plan_change_requests'
+  GROUP_PLAN_CHANGES: 'group_plan_change_requests',
+  SPECIAL_CARES: 'special_cares'
 })
 const NOTIFICATION_LIMIT = 20
 
@@ -217,6 +218,82 @@ async function sendTimerWechatReminder(user, checkin, plan, notification) {
       pushErrorMessage: text(error?.errMsg || error?.message || '发送失败', 120)
     })
     return 'failed'
+  }
+}
+
+function socialTemplateData(actor, plan, checkin) {
+  const timeKey = process.env.SOCIAL_TEMPLATE_TIME_KEY || 'time30'
+  const contentKey = process.env.SOCIAL_TEMPLATE_CONTENT_KEY || 'thing2'
+  return {
+    [timeKey]: { value: localTime(new Date(checkin.completedAt || Date.now())) },
+    [contentKey]: { value: text(`${actor.nickname || '成员'}完成“${plan.name || '任务'}”打卡`, 20) }
+  }
+}
+
+async function activeSocialSources(notification) {
+  const sources=(Array.isArray(notification.pushSources) ? notification.pushSources : [])
+    .filter(source => source.collection === COLLECTIONS.SPECIAL_CARES && source.id && source.field === 'wechatEnabled')
+  const records=await Promise.all(sources.map(source => document(source.collection,source.id)))
+  return sources.filter((source,index) => records[index]?.enabled !== false && records[index]?.[source.field] === true)
+}
+
+async function clearSocialSources(sources) {
+  await Promise.all(sources.map(source => db.collection(source.collection).doc(source.id).update({ data:{
+    [source.field]:false,updatedAt:new Date()
+  } }).catch(() => null)))
+}
+
+async function processSocialNotification(notification) {
+  const latest=await document(COLLECTIONS.NOTIFICATIONS,notification._id)
+  if(!latest || latest.pushStatus !== 'PENDING')return 'skipped'
+  if(latest.socialStatus === 'REVOKED') {
+    await updateNotification(latest._id,{ pushStatus:'CANCELLED' })
+    return 'skipped'
+  }
+  const sources=await activeSocialSources(latest)
+  if(!sources.length) {
+    await updateNotification(latest._id,{ pushStatus:'NOT_SUBSCRIBED' })
+    return 'internal-only'
+  }
+  const templateId=String(process.env.SOCIAL_CHECKIN_TEMPLATE_ID || '').trim()
+  if(!templateId) {
+    await updateNotification(latest._id,{ pushStatus:'NOT_CONFIGURED' })
+    return 'not-configured'
+  }
+  const [recipient,actor,plan,checkin]=await Promise.all([
+    document(COLLECTIONS.USERS,latest.userId),
+    document(COLLECTIONS.USERS,latest.actorUserId),
+    document(COLLECTIONS.PLANS,latest.planId),
+    document(COLLECTIONS.CHECKINS,latest.checkinId)
+  ])
+  if(!recipient?.openid || !actor || !plan || !checkin) {
+    await updateNotification(latest._id,{ pushStatus:'FAILED',pushErrorCode:'SOURCE_NOT_FOUND' })
+    return 'failed'
+  }
+  const subscriptionType=normalizeReminderSubscriptionType(process.env.SOCIAL_CHECKIN_SUBSCRIPTION_TYPE)
+  try {
+    const result=await cloud.openapi.subscribeMessage.send({
+      touser:recipient.openid,templateId,page:String(latest.page || '/pages/circle/index').replace(/^\//,''),
+      miniprogramState:process.env.SOCIAL_MINIPROGRAM_STATE || 'formal',lang:'zh_CN',
+      data:socialTemplateData(actor,plan,checkin)
+    })
+    const code=Number(result.errCode ?? result.errcode ?? 0)
+    if(code !== 0)throw Object.assign(new Error(result.errMsg || result.errmsg || '订阅消息发送失败'),result)
+    await updateNotification(latest._id,{ pushStatus:'SENT',pushedAt:new Date(),pushAttempts:Number(latest.pushAttempts || 0) + 1 })
+    if(subscriptionType !== 'LONG_TERM')await clearSocialSources(sources)
+    await trimNotificationHistory(latest.userId)
+    return 'sent'
+  } catch(error) {
+    const code=Number(error?.errCode ?? error?.errcode ?? error?.code) || 'SEND_FAILED'
+    const attempts=Number(latest.pushAttempts || 0) + 1
+    const denied=code === 43101
+    await updateNotification(latest._id,{
+      pushStatus:denied ? 'NOT_SUBSCRIBED' : (attempts < 3 ? 'PENDING' : 'FAILED'),
+      pushAttempts:attempts,pushErrorCode:code,
+      pushErrorMessage:text(error?.errMsg || error?.message || '发送失败',120)
+    })
+    if(denied)await clearSocialSources(sources)
+    return denied ? 'internal-only' : (attempts < 3 ? 'retry' : 'failed')
   }
 }
 
@@ -432,11 +509,12 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [users, groups, runningTimers, longTermGoals] = await Promise.all([
+  const [users, groups, runningTimers, longTermGoals, socialNotifications] = await Promise.all([
     allMatches(COLLECTIONS.USERS,{ checkinReminderEnabled:true }),
     allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) }),
     allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' }),
-    allMatches(COLLECTIONS.PLANS,{ planType:'LONG_TERM' })
+    allMatches(COLLECTIONS.PLANS,{ planType:'LONG_TERM' }),
+    allMatches(COLLECTIONS.NOTIFICATIONS,{ type:'SOCIAL_CHECKIN',pushStatus:'PENDING' })
   ])
   const countdowns = runningTimers.filter(item => item.timerMode === 'COUNT_DOWN')
   const countUps = runningTimers.filter(item => item.timerMode === 'COUNT_UP')
@@ -444,7 +522,15 @@ exports.main = async () => {
     scanned: users.length, sent: 0, internalOnly: 0, failed: 0, skipped: 0, duplicate: 0, autoRemoved: 0,
     timersScanned: runningTimers.length, timerSent: 0, timerInternalOnly: 0, timerFailed: 0, timerFinished: 0,
     restReminders: 0, goalsScanned:longTermGoals.length,goalSent:0,goalInternalOnly:0,goalFailed:0,goalDuplicate:0,
-    examsArchived:0,examResultReminders:0
+    examsArchived:0,examResultReminders:0,
+    socialScanned:socialNotifications.length,socialSent:0,socialInternalOnly:0,socialFailed:0,socialRetry:0
+  }
+  for(const notification of socialNotifications) {
+    const status=await processSocialNotification(notification)
+    if(status === 'sent')summary.socialSent++
+    else if(status === 'internal-only' || status === 'not-configured')summary.socialInternalOnly++
+    else if(status === 'failed')summary.socialFailed++
+    else if(status === 'retry')summary.socialRetry++
   }
   for (const user of users) {
     const status = await processUser(user, startedAt)

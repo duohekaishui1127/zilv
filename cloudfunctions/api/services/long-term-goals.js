@@ -49,6 +49,37 @@ async function longTermContext(userId, localDate) {
   return context
 }
 
+function goalIdsForPlan(plan) {
+  return [...new Set([
+    ...(Array.isArray(plan?.longTermGoalIds) ? plan.longTermGoalIds : []),
+    plan?.managedByGoalId || ''
+  ].filter(Boolean))]
+}
+
+async function longTermContextForPlan(userId, localDate, plan) {
+  const goalIds = goalIdsForPlan(plan)
+  if (!goalIds.length) return { plans: [], allExecutionPlans: [], goals: [], checkins: [] }
+  const plans = await allMatches(C.PLANS, { userId })
+  const active = plans.filter(item => !item.deletedAt)
+  const goals = active.filter(item => isLongTermGoal(item) && goalIds.includes(item._id))
+  if (!goals.length) return { plans: [], allExecutionPlans: plans.filter(isExecutionPlan), goals: [], checkins: [] }
+  const allExecutionPlans = plans.filter(isExecutionPlan)
+  const linkedPlans = allExecutionPlans.filter(item => Array.isArray(item.longTermGoalIds)
+    && item.longTermGoalIds.some(id => goalIds.includes(id)))
+  const checkinPages = await Promise.all(linkedPlans.map(item => allMatches(C.CHECKINS, {
+    userId, planId: item._id, completed: true
+  })))
+  const checkins = checkinPages.flat()
+  const context = {
+    plans: active.filter(isExecutionPlan),
+    allExecutionPlans,
+    goals: decorateGoals(goals, allExecutionPlans, checkins, localDate),
+    checkins
+  }
+  await syncManagedAccumulationTargets(context, localDate)
+  return context
+}
+
 function achievementSatisfied(goal) {
   if (goal.goalType === 'HABIT') return Number(goal.currentValue) >= Number(goal.targetValue)
   return goal.goalType === 'ACCUMULATION' && !goal.unlimited
@@ -56,7 +87,9 @@ function achievementSatisfied(goal) {
 }
 
 async function syncLongTermGoalAchievements(userId, localDate, options = {}) {
-  const context = await longTermContext(userId, localDate)
+  const context = options.plan
+    ? await longTermContextForPlan(userId, localDate, options.plan)
+    : await longTermContext(userId, localDate)
   const achieved = context.goals.filter(goal => goal.goalStatus === 'ACTIVE' && achievementSatisfied(goal))
   const reopened = options.allowReopen ? context.goals.filter(goal => goal.goalStatus === 'COMPLETED'
     && goal.completionMode === 'AUTOMATIC' && !achievementSatisfied(goal)) : []
@@ -99,4 +132,6 @@ async function archiveAccumulationGoal(userId,goalId,localDate) {
   return { goal:{ ...goal,goalStatus:'COMPLETED',completionMode:'TERMINATED',archiveSnapshot } }
 }
 
-module.exports={ allMatches,longTermContext,syncLongTermGoalAchievements,archiveAccumulationGoal }
+module.exports={
+  allMatches,longTermContext,longTermContextForPlan,syncLongTermGoalAchievements,archiveAccumulationGoal
+}

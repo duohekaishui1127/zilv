@@ -72,7 +72,7 @@
                 <text wx:if="{{item.checkin.note}}">{{item.checkin.timerStatus || item.checkin.durationMinutes ? ' · ' : ''}}{{item.checkin.note}}</text>
               </view>
             </view>
-            <view class="check-circle {{item.completed ? 'check-circle-done' : ''}}" data-index="{{index}}" catchtap="quickComplete">{{item.completed ? '✓' : ''}}</view>
+            <view class="check-circle {{item.completed ? 'check-circle-done' : ''}} {{item.syncing ? 'check-circle-syncing' : ''}}" data-index="{{index}}" catchtap="quickComplete">{{item.completed ? '✓' : ''}}</view>
           </view>
         </view>
         <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
@@ -130,7 +130,13 @@
     </view>
     <view class="field" wx:if="{{completionEditor.quantitative}}"><view class="label">本次完成量</view><view class="row"><input class="input flex-1" type="digit" data-key="actualValue" value="{{completionEditor.actualValue}}" bindinput="editorInput"/><view class="completion-unit">{{completionEditor.unit}}</view></view><view class="sub">已按任务目标自动填写，仅在实际完成量不同时修改。</view></view>
     <button class="btn" loading="{{completionSaving}}" bindtap="saveCompletion">保存备注</button>
+    <button class="btn btn-light completion-revoke-button" bindtap="revokeFromCompletion">撤回完成状态</button>
   </view>
+</view>
+
+<view wx:if="{{undoCompletion.visible}}" class="completion-undo">
+  <view class="completion-undo-copy"><view class="completion-undo-title">{{undoCompletion.message}}</view><view class="completion-undo-sub">{{undoCompletion.planName}}</view></view>
+  <button class="completion-undo-action" loading="{{undoCompletion.syncing}}" bindtap="undoLastCompletion">撤销</button>
 </view>
 
 <view wx:if="{{dailyReviewEditor.visible}}" class="sheet-mask" bindtap="closeDailyReview">

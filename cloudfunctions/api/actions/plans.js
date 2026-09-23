@@ -1,6 +1,6 @@
 const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
-const { isBasePlanDue } = require('../services/plans')
+const { isBasePlanDue, getTodayPlans } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
 const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
@@ -114,19 +114,39 @@ async function completePlan({ user, event, localDate }) {
     const add = await db.collection(C.CHECKINS).add({ data: base })
     checkin = { _id: add._id, ...base }
   }
-  await syncPlanCategoryRecord({ user, plan, checkin, localDate })
-  if (shouldEmitGroupEvent) await emitGroupEventsForCheckin(user, plan, checkin).catch(error => {
+  const categoryRecordPromise = syncPlanCategoryRecord({ user, plan, checkin, localDate }).catch(error => {
+    console.warn('[plan-category-record]', error?.message || error)
+  })
+  const socialPromise = shouldEmitGroupEvent ? emitGroupEventsForCheckin(user, plan, checkin).catch(error => {
     console.warn('[social-checkin]', error?.message || error)
+  }) : Promise.resolve()
+  const dailyStatePromise = getTodayPlans(user._id, localDate).then(async plans => ({
+    plans,
+    dailyReview: await ensureDailyReviewAfterCompletion(user._id, localDate, plans).catch(error => {
+      console.warn('[auto-daily-review]', error?.message || error)
+      return null
+    })
+  })).catch(error => {
+    console.warn('[today-plan-refresh]', error?.message || error)
+    return { plans: null, dailyReview: null }
   })
-  const dailyReview = await ensureDailyReviewAfterCompletion(user._id, localDate).catch(error => {
-    console.warn('[auto-daily-review]', error?.message || error)
-    return null
-  })
-  const goalSync = await syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true }).catch(error => {
+  const goalSyncPromise = syncLongTermGoalAchievements(user._id, localDate, { allowReopen: true, plan }).catch(error => {
     console.warn('[long-term-goal-sync]', error?.message || error)
     return { achievedGoals: [] }
   })
-  return { checkin, dailyReview, achievedGoals: goalSync.achievedGoals }
+  const [, , dailyState, goalSync] = await Promise.all([
+    categoryRecordPromise, socialPromise, dailyStatePromise, goalSyncPromise
+  ])
+  return {
+    checkin,
+    dailyReview: dailyState.dailyReview,
+    plans: dailyState.plans,
+    completion: Array.isArray(dailyState.plans) ? {
+      total: dailyState.plans.length,
+      completed: dailyState.plans.filter(item => item.completed).length
+    } : null,
+    achievedGoals: goalSync.achievedGoals
+  }
 }
 function roundTimerMinutes(seconds) { const value = Number(seconds); return Number.isFinite(value) && value >= 0 ? Math.round(value / 6) / 10 : null }
 module.exports = { createPlan, getPlan, updatePlan, setPlanEnabled, deletePlan, getPlans, completePlan }
