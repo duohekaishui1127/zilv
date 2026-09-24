@@ -1,8 +1,9 @@
-const { db, C } = require('../lib/db')
+const { db, _, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { getUserById } = require('../services/users')
 const { friendshipBetween, isGroupMember, socialNotificationConfig } = require('../services/social')
 const { friendSettingsOf, visibilityFor, canSharePlanWithFriend } = require('../services/friend-visibility')
+const { todayWindowForUser } = require('../domain/special-care-feed')
 
 async function toggleGroupEventLike({ user, event }) {
   const groupEvent = await db.collection(C.GROUP_EVENTS).doc(event.eventId).get().then(x => x.data).catch(() => null)
@@ -62,6 +63,8 @@ async function getSocialNotificationConfig() {
 }
 
 async function getSpecialCareFeed({ user }) {
+  const requestedAt = now()
+  const { start, end } = todayWindowForUser(user, requestedAt)
   const [cares, requestsA, requestsB] = await Promise.all([
     db.collection(C.SPECIAL_CARES).where({ userId: user._id, enabled: true }).get(),
     db.collection(C.FRIENDSHIPS).where({ userA: user._id, status: 'PENDING' }).get(),
@@ -74,7 +77,10 @@ async function getSpecialCareFeed({ user }) {
     const [target, settings, checkins, plans] = await Promise.all([
       getUserById(care.targetUserId),
       friendSettingsOf(user._id, care.targetUserId),
-      db.collection(C.CHECKINS).where({ userId: care.targetUserId, completed: true }).limit(100).get(),
+      db.collection(C.CHECKINS).where({
+        userId: care.targetUserId, completed: true,
+        completedAt: _.gte(start).and(_.lt(end))
+      }).orderBy('completedAt', 'desc').limit(50).get(),
       db.collection(C.PLANS).where({ userId: care.targetUserId }).limit(100).get()
     ])
     if (!target) return []
@@ -91,7 +97,7 @@ async function getSpecialCareFeed({ user }) {
   const feed = batches.flat().sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0)).slice(0, 50)
   const pendingFriendRequestCount = [...requestsA.data, ...requestsB.data]
     .filter(item => item.requestedBy !== user._id).length
-  return { feed, pendingFriendRequestCount }
+  return { feed, pendingFriendRequestCount, refreshAfterMs: Math.max(1000, end.getTime() - requestedAt.getTime()) }
 }
 
 module.exports = {

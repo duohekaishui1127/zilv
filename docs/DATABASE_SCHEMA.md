@@ -88,6 +88,7 @@ audit_logs
 - `group_events`: 增加 `completionVersion`、`status`、`likeCount`，撤回后原完成动态标记为 `REVOKED`。
 - `group_event_likes`: `eventId`、`groupId`、`userId`、`createdAt`，每名群成员对每条有效完成动态最多一条。
 - `special_cares`: `userId`、`targetUserId`、`enabled`、`wechatEnabled`、授权时间；解除好友后自动停用。
+- 圈子首页特别关心动态按查看者当地当天的 `checkins.completedAt` 范围查询，每位好友最多读取 50 条；不删除历史打卡，好友日历与消息中心保持原有记录。
 - `groups.joinApprovalRequired`、`autoRemoveInactiveDays`、`blockRejoinAfterAutoRemove`: 分别控制入群审批、连续未打卡自动移出天数和自动移出后的重新加入限制。
 - `groups.status`: 新群为 `ACTIVE`；群主解散后为 `DISBANDED`，并记录 `disbandedAt` 与 `disbandedBy`。解散群会从所有成员列表消失，拒绝再次加入。
 - `group_members.status`: 支持 `PENDING`、`ACTIVE`、`LEFT`、`REJECTED`、`AUTO_REMOVED`、`KICKED`、`DISBANDED`；自动移出记录 `autoRemovedAt`、`autoRemovedDate` 与 `removalReason`，群主手动移出记录 `kickedAt`、`kickedBy` 与 `rejoinBlocked`。
