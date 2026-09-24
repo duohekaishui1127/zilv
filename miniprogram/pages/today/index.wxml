@@ -19,11 +19,11 @@
 
     <view wx:if="{{crossDayTimer}}" id="cross-day-timer" class="card cross-day-timer">
       <view class="row"><view class="flex-1"><view class="h2">{{crossDayTimer.planName}}</view><view class="sub">跨天计时 · 始于 {{crossDayTimer.date}}</view></view><view class="cross-day-clock">{{crossDayTimer.timerDisplay}}</view></view>
-      <view class="sub cross-day-note">结束后时长和完成记录计入 {{crossDayTimer.date}}</view>
+      <view class="sub cross-day-note">计时归入 {{crossDayTimer.date}}；仅昨天的任务可到日历补签</view>
       <view class="timer-actions">
         <button wx:if="{{crossDayTimer.status === 'RUNNING'}}" class="btn btn-small btn-light" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="pauseCrossDayTimer">暂停</button>
         <button wx:if="{{crossDayTimer.status === 'PAUSED'}}" class="btn btn-small btn-light" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="resumeCrossDayTimer">继续</button>
-        <button class="btn btn-small timer-primary" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="finishCrossDayTimer">{{crossDayTimer.status === 'FINISHED' ? '完成任务' : '结束并完成'}}</button>
+        <button class="btn btn-small timer-primary" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="finishCrossDayTimer">{{crossDayTimer.status === 'FINISHED' ? '去日历查看' : '结束计时'}}</button>
       </view>
     </view>
 

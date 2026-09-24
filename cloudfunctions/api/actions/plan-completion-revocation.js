@@ -4,8 +4,10 @@ const { revokePlanCategoryRecord } = require('../services/plan-records')
 const { revokeDailyReview } = require('../services/daily-reviews')
 const { emitGroupEventsForRevocation } = require('../services/social')
 const { syncLongTermGoalAchievements } = require('../services/long-term-goals')
+const { todayForUser } = require('../domain/makeup-cards')
 
 async function revokePlanCompletion({ user, event, localDate }) {
+  if (localDate !== todayForUser(user)) throw fail('MAKEUP_REQUIRED', '历史打卡不能在今日页撤回')
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
   const result = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: localDate }).limit(1).get()

@@ -21,7 +21,7 @@ async function getTodayPlans(userId, dateStr) {
       date: _.gte(startDate).and(_.lte(endDate)),
       completed: true
     }).get()
-    weeklyCounts = r.data.reduce((acc, c) => {
+    weeklyCounts = r.data.filter(c => c.date <= dateStr).reduce((acc, c) => {
       acc[c.planId] = (acc[c.planId] || 0) + 1
       return acc
     }, {})

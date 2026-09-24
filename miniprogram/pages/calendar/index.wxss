@@ -60,3 +60,32 @@
 .task-mood { width:48rpx; height:48rpx; image-rendering:pixelated; }
 .task-description,.task-timer,.task-note { margin-top:10rpx; color:#68707c; font-size:23rpx; line-height:1.55; }
 .task-note { padding:12rpx 14rpx; background:#f5f6f7; color:#343b46; }
+.calendar-hero { align-items:center; }
+.makeup-wallet { display:flex; align-items:center; gap:10rpx; flex:0 0 auto; padding:10rpx 12rpx; border:1rpx solid #d8c9ef; border-radius:14rpx; background:#f4effb; }
+.makeup-ticket-icon { position:relative; display:flex; align-items:center; justify-content:center; width:44rpx; height:52rpx; border:2rpx dashed #795aa3; border-radius:7rpx; background:#e3d5f4; color:#69458f; font-size:25rpx; font-weight:800; transform:rotate(-9deg); }
+.makeup-ticket-icon::before,.makeup-ticket-icon::after { position:absolute; left:-5rpx; width:9rpx; height:9rpx; border-radius:50%; background:#f4effb; content:''; }
+.makeup-ticket-icon::before { top:10rpx; }
+.makeup-ticket-icon::after { bottom:10rpx; }
+.makeup-wallet-label { color:#6f5988; font-size:19rpx; font-weight:700; }
+.makeup-wallet-count { color:#4e366e; font-size:27rpx; font-weight:800; }
+.makeup-day-label { position:absolute; right:4rpx; bottom:4rpx; padding:1rpx 4rpx; border-radius:4rpx; background:rgba(109,76,143,.13); color:#75519b; font-size:17rpx; font-weight:700; }
+.makeup-entry { margin:8rpx 0 22rpx; padding:18rpx; border:1rpx solid #decff1; border-radius:12rpx; background:#f8f4fc; }
+.makeup-entry-button { margin:16rpx 0 0; background:#6b4d8e; }
+.makeup-mask { z-index:140; }
+.makeup-sheet { max-height:85vh; }
+.makeup-task-list { max-height:47vh; overflow-y:auto; padding:10rpx 0; }
+.makeup-task { display:flex; align-items:center; gap:16rpx; padding:20rpx 4rpx; border-bottom:1rpx solid #e8e2ee; }
+.makeup-task-selected .value { color:#65488a; }
+.makeup-checkbox { display:flex; align-items:center; justify-content:center; flex:0 0 auto; width:38rpx; height:38rpx; border:2rpx solid #b9a6cc; border-radius:8rpx; color:#fff; font-size:27rpx; }
+.makeup-task-selected .makeup-checkbox { border-color:#76559d; background:#76559d; }
+.makeup-main-button { width:100%; margin-top:18rpx; background:#67498b; }
+.makeup-optional-note { margin:22rpx 0 12rpx; }
+.makeup-mood-list { display:flex; justify-content:space-between; gap:6rpx; }
+.makeup-mood { display:flex; flex-direction:column; align-items:center; flex:1; gap:6rpx; padding:12rpx 4rpx; border:1rpx solid transparent; border-radius:10rpx; color:#68707c; font-size:20rpx; }
+.makeup-mood image { width:48rpx; height:48rpx; image-rendering:pixelated; }
+.makeup-mood-selected { border-color:#b79bdb; background:#f2eafa; color:#684a8e; }
+.makeup-note-input { min-height:150rpx; margin:18rpx 0 0; }
+.makeup-actions { display:flex; gap:12rpx; margin-top:18rpx; }
+.makeup-actions .btn { flex:1; padding:16rpx 8rpx; font-size:23rpx; }
+.review-edit-button { padding:8rpx 14rpx; font-size:21rpx; }
+.makeup-month-hint { margin-top:16rpx; color:#6d4b90; font-size:22rpx; text-align:center; text-decoration:underline; }

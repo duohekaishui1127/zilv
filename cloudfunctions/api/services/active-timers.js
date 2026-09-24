@@ -1,6 +1,7 @@
 const { db, _, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { isBasePlanDue } = require('./plans')
+const { todayForUser, previousDate } = require('../domain/makeup-cards')
 
 async function activeCheckins(userId) {
   const result = await db.collection(C.CHECKINS)
@@ -21,12 +22,10 @@ async function getActiveTimer({ user, localDate }) {
     const plan = await db.collection(C.PLANS).doc(checkin.planId).get().then(result => result.data).catch(() => null)
     if (plan && plan.userId === user._id) return { timer: timerPayload(checkin, plan), serverTime }
   }
-  const previous = new Date(`${localDate}T12:00:00`)
-  previous.setDate(previous.getDate() - 7)
-  const earliestDate = `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}-${String(previous.getDate()).padStart(2, '0')}`
+  const yesterday = previousDate(todayForUser(user, serverTime))
   const pending = await db.collection(C.CHECKINS).where({
     userId: user._id, timerStatus: 'FINISHED', completed: false,
-    date: _.gte(earliestDate).and(_.lt(localDate))
+    date: yesterday
   }).limit(100).get()
   const newest = pending.data.sort((a, b) => new Date(b.timerEndedAt || 0) - new Date(a.timerEndedAt || 0))
   for (const checkin of newest) {

@@ -1,6 +1,6 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 15）
+# 云数据库集合设计（应用 1.6.0 / Schema 16）
 
-> Schema 15 增加数量积累目标的托管执行任务、动态建议量和统一归档生命周期。
+> Schema 16 增加昨日补签卡、月度赠送和补签来源字段；不新增集合。
 
 ## 执行任务与长期目标
 
@@ -105,7 +105,10 @@ audit_logs
 
 ## 整日打卡与进食时间流
 
-- `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`；`checkinMode=AUTO/MANUAL` 区分创建方式，`allPlansCompleted` 保存打卡对应的任务完成状态。旧记录按自动完成兼容。
+- `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`；`checkinMode=AUTO/MANUAL/MAKEUP` 区分创建方式，`allPlansCompleted` 保存打卡对应的任务完成状态。旧记录按自动完成兼容。
+- `users.makeupCardBalance` 与 `makeupCardGrantMonth` 保存补签卡余额和上次月度赠送月份；新用户初始 3 张，每月补充 1 张，最多保留 3 张。`makeupCardInitialGrantVersion` 标记旧用户一次性补足，避免重复加卡。
+- 昨日补签的 `daily_reviews.makeupAt`、`makeupCardSpent=1` 与任务 `checkins.completionSource=MAKEUP`、`makeupAt` 保留实际操作时间和补签来源；服务端事务同步扣卡、写入任务及整日记录。
+- 仅服务器认定的昨天可补签。已打卡日期不能再消耗补签卡；跨天计时可以继续和结束，但完成昨天任务须从日历补签。
 - `meals.recordedAt`: 本次进食的服务端时间戳。
 - `meals.note`: 本次进食的可选文字。
 - `meals.photoFileIds`: 最多三张饮食照片的云文件 ID。

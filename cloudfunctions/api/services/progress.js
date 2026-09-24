@@ -78,6 +78,7 @@ async function loadDayReview(userId, date) {
       note: checkin?.note || '',
       completedAt: checkin?.completedAt,
       timerMode: checkin?.timerMode || '',
+      timerStatus: checkin?.timerStatus || '',
       timerEffectiveSeconds: Number(checkin?.timerEffectiveSeconds || 0),
       timerTotalSeconds: Number(checkin?.timerTotalSeconds || 0),
       timerPausedSeconds: Number(checkin?.timerPausedSeconds || 0)

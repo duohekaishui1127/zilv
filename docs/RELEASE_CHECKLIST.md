@@ -13,7 +13,7 @@
 ## 数据库
 
 - [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 13`
+- [ ] 确认 `system_meta.schemaVersion = 16`
 - [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
 - [ ] 确认 `release:sync` 生成的版本公告与 `VERSION` 一致
 - [ ] 确认 `004_plan_reminders` migration 已记录

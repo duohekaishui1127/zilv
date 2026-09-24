@@ -10,6 +10,7 @@ const { longTermContext, syncLongTermGoalAchievements } = require('../services/l
 const { requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
 const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
 const { prepareManagedAccumulationPlanUpdate } = require('../services/managed-accumulation')
+const { todayForUser } = require('../domain/makeup-cards')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
   const add = await db.collection(C.PLANS).add({ data })
@@ -62,6 +63,7 @@ async function getPlans({ user, localDate }) {
   return { plans: newestFirst(context.plans), goals: newestFirst(context.goals) }
 }
 async function completePlan({ user, event, localDate }) {
+  if (localDate !== todayForUser(user)) throw fail('MAKEUP_REQUIRED', '过了零点请到日历使用补签卡')
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (isLongTermGoal(plan)) throw fail('INVALID_PARAMETER', '长期目标不能直接打卡')

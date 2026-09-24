@@ -2,6 +2,7 @@ const { db, C } = require('../lib/db')
 const { DEFAULT_PRIVACY } = require('../lib/constants')
 const { now, randomCode } = require('../lib/utils')
 const { ensureDefaultAdminFriendship } = require('./default-admin-friend')
+const { INITIAL_CARDS, INITIAL_GRANT_VERSION, todayForUser } = require('../domain/makeup-cards')
 
 async function uniqueCode(collection, field, len = 6) {
   for (let i = 0; i < 8; i++) {
@@ -24,6 +25,9 @@ async function ensureUser(openid) {
   const data = {
     openid,
     nickname: '自律用户',
+    makeupCardBalance: INITIAL_CARDS,
+    makeupCardGrantMonth: todayForUser().slice(0, 7),
+    makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION,
     avatar: '',
     shareCode,
     status: 'ACTIVE',

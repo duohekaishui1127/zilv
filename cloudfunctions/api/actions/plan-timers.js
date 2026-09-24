@@ -5,6 +5,7 @@ const { completePlan } = require('./plans')
 const { recordCountdownFinished } = require('../services/timer-notifications')
 const { activeCheckins, getActiveTimer, timerContext } = require('../services/active-timers')
 
+const { todayForUser } = require('../domain/makeup-cards')
 function timerResult(checkin, plan, serverTime = now()) {
   const snapshot = timerSnapshot(checkin, plan, serverTime)
   return { checkin, snapshot: {
@@ -17,6 +18,7 @@ function timerResult(checkin, plan, serverTime = now()) {
 }
 
 async function startPlanTimer({ user, event, localDate }) {
+  if (localDate !== todayForUser(user)) throw fail('MAKEUP_REQUIRED', '不能为过去的日期新开计时')
   const { plan, checkin } = await timerContext(user, event, localDate)
   if (!['COUNT_UP', 'COUNT_DOWN'].includes(plan.timerMode)) throw fail('TIMER_NOT_ENABLED', '该计划未开启计时')
   if (checkin?.completed) throw fail('PLAN_ALREADY_COMPLETED', '该计划今天已完成')
@@ -143,6 +145,8 @@ async function finishPlanTimer({ user, event, localDate }) {
 }
 
 async function finishAndCompletePlanTimer(context) {
+  const { checkin } = await timerContext(context.user, context.event, context.localDate)
+  if (checkin && checkin.date !== todayForUser(context.user)) throw fail('MAKEUP_REQUIRED', '跨天任务请先结束计时，再到日历使用补签卡')
   const timer = await finishPlanTimer(context)
   const completed = await completePlan({
     ...context,

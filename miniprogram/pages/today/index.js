@@ -849,15 +849,16 @@ Page({
   async finishCrossDayTimer() {
     const timer=this.data.crossDayTimer
     if (!timer || this.data.timerBusyPlanId) return
-    if (timer.status !== 'FINISHED' && !await api.confirm(`结束后将停止计时，并完成 ${timer.date} 的这项任务。专注时长会计入那一天。`,'结束跨天计时')) return
+    if (timer.status === 'FINISHED') return wx.switchTab({ url:'/pages/calendar/index' })
+    if (!await api.confirm(`结束计时后，专注时长保留在 ${timer.date}。仅始于昨天的任务可到日历用补签卡完成。`,'结束跨天计时')) return
     this.setData({ timerBusyPlanId:timer.planId })
     try {
       const timerReminderAuthorized=timer.mode === 'COUNT_UP' && this.shouldRenewCountUpReminder({ timerMode:timer.mode,checkin:timer.checkin })
         ? await this.requestTimerReminder() : false
-      await api.call('finishAndCompletePlanTimer',{
+      await api.call('finishPlanTimer',{
         planId:timer.planId,checkinId:timer.checkinId,timerReminderAuthorized
       })
-      wx.showToast({ title:'已计入开始当天',icon:'success' })
+      wx.showToast({ title:'计时已结束，请到日历查看',icon:'none' })
       this.refreshActiveTimerBar()
       await this.load()
     } finally {

@@ -1,9 +1,11 @@
 <active-timer id="activeTimerBar"/>
 <view class="container calendar-page">
-  <view class="hero calendar-hero">
-    <view class="pixel-kicker">MY DAYS</view>
-    <view class="h1">自律日历</view>
-    <view class="sub">让每一天，都留下真实的心情和进步</view>
+  <view class="hero calendar-hero row">
+    <view><view class="pixel-kicker">MY DAYS</view><view class="h1">自律日历</view><view class="sub">让每一天，都留下真实的心情和进步</view></view>
+    <view class="makeup-wallet" bindtap="showMakeupInfo" aria-label="补签卡余额">
+      <view class="makeup-ticket-icon"><text>✓</text></view>
+      <view><view class="makeup-wallet-label">补签卡</view><view class="makeup-wallet-count">×{{calendar.makeup.balance || 0}}</view></view>
+    </view>
   </view>
 
   <view class="card calendar-card">
@@ -23,10 +25,12 @@
             <image wx:if="{{item.moodIcon}}" class="calendar-mood {{item.checkinClass}}" src="{{item.moodIcon}}" mode="aspectFit"/>
             <view wx:elif="{{item.noteCount}}" class="note-mark"></view>
           </block>
+          <view wx:if="{{item.makeup}}" class="makeup-day-label">补</view>
         </view>
       </view>
       <view class="calendar-summary">本月活跃 {{calendar.summary.activeDays}} 天 · 完成 {{calendar.summary.checkinCount}} 项 · 小记 {{calendar.summary.noteDays || 0}} 天</view>
       <view class="calendar-hint">绿色心情为任务完成打卡，红色心情为任务未完成打卡</view>
+      <view wx:if="{{calendar.showYesterdayShortcut}}" class="makeup-month-hint" bindtap="openYesterdayMonth">昨天在上个月 · 点此查看 ›</view>
     </block>
   </view>
 </view>
@@ -37,7 +41,7 @@
     <view class="row review-header">
       <view class="row-start">
         <image wx:if="{{selectedDay.moodIcon}}" class="review-mood {{selectedDay.checkinClass}}" src="{{selectedDay.moodIcon}}" mode="aspectFit"/>
-        <view><view class="h2">{{selectedDay.title}}</view><view class="sub">{{selectedDay.moodLabel || '平静的一天'}}{{dayReview.dailyReview ? ' · ' + dayReview.dailyReview.checkinLabel : ''}}</view></view>
+        <view><view class="h2">{{selectedDay.title}}</view><view class="sub">{{dayReview.dailyReview ? (selectedDay.moodLabel || '已打卡') + ' · ' + dayReview.dailyReview.checkinLabel : '尚未打卡'}}</view></view>
       </view>
       <view class="sheet-close" bindtap="closeReview">×</view>
     </view>
@@ -50,10 +54,15 @@
         <view><view class="overview-value">{{selectedDay.workoutMinutes || 0}}</view><view class="label">运动分钟</view></view>
       </view>
 
+      <view wx:if="{{makeupEligible}}" class="makeup-entry">
+        <view><view class="value">昨天还未打卡</view><view class="sub">可选择实际完成的任务，心情和小记可留空</view></view>
+        <button wx:if="{{calendar.makeup.balance}}" class="btn btn-small makeup-entry-button" bindtap="startMakeup">使用补签卡</button>
+        <view wx:else class="sub">补签卡已用完，下月自动获得 1 张</view>
+      </view>
       <view class="review-section">
-        <view class="section-title review-title">备注小记</view>
+        <view class="row"><view class="section-title review-title">备注小记</view><button wx:if="{{dayReview.dailyReview}}" class="btn btn-small btn-light review-edit-button" bindtap="editDayReview">{{dayReview.dailyReview.mood ? '编辑' : '记录心情'}}</button></view>
         <view wx:if="{{dayReview.dailyReview && dayReview.dailyReview.note}}" class="note-block daily-note-block">
-          <view class="row"><view class="value">今日小记</view><view class="note-type">{{dayReview.dailyReview.moodLabel}}</view></view>
+          <view class="row"><view class="value">当天小记</view><view class="note-type">{{dayReview.dailyReview.moodLabel}}</view></view>
           <view class="note-content">{{dayReview.dailyReview.note}}</view>
         </view>
         <view wx:for="{{dayReview.notes}}" wx:for-index="noteIndex" wx:key="_id" class="note-block">
@@ -80,6 +89,36 @@
           <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">当天没有任务</view>
         </view>
       </view>
+    </block>
+  </view>
+</view>
+
+<view wx:if="{{makeupEditor.visible}}" class="review-mask makeup-mask" bindtap="closeMakeup">
+  <view class="review-sheet makeup-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="row review-header">
+      <view><view class="h2">{{makeupEditor.freeEdit ? '记录心情' : '补签'}} {{makeupEditor.date}}</view><view class="sub">{{makeupEditor.step === 'TASKS' ? '选择昨天实际完成的任务' : '心情和小记均可留空'}}</view></view>
+      <view class="sheet-close" bindtap="closeMakeup">×</view>
+    </view>
+    <block wx:if="{{makeupEditor.step === 'TASKS'}}">
+      <view class="makeup-task-list">
+        <view wx:for="{{makeupEditor.tasks}}" wx:key="planId" class="makeup-task {{item.selected ? 'makeup-task-selected' : ''}}" data-index="{{index}}" bindtap="toggleMakeupTask">
+          <view class="makeup-checkbox">{{item.selected ? '✓' : ''}}</view>
+          <view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.targetLabel ? ' · 目标 ' + item.targetLabel : ''}}{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED' ? ' · 请先结束计时' : ''}}</view></view>
+        </view>
+        <view wx:if="{{!makeupEditor.tasks.length}}" class="empty compact">昨天没有未完成任务，也可以补一条整日打卡记录</view>
+      </view>
+      <button class="btn makeup-main-button" bindtap="nextMakeupStep">下一步 · 心情和小记</button>
+    </block>
+    <block wx:else>
+      <view class="sub makeup-optional-note">{{makeupEditor.freeEdit ? '已打卡，修改心情和小记不消耗补签卡。' : '以下内容均可留空，不影响补签。'}}</view>
+      <view class="makeup-mood-list">
+        <view wx:for="{{moods}}" wx:key="value" class="makeup-mood {{makeupEditor.mood === item.value ? 'makeup-mood-selected' : ''}}" data-value="{{item.value}}" bindtap="chooseMakeupMood">
+          <image src="{{item.icon}}" mode="aspectFit"/><text>{{item.label}}</text>
+        </view>
+      </view>
+      <textarea class="input makeup-note-input" value="{{makeupEditor.note}}" maxlength="1000" placeholder="昨天有什么想记录的？（可不填）" bindinput="makeupNoteInput"/>
+      <view class="makeup-actions"><button wx:if="{{!makeupEditor.freeEdit}}" class="btn btn-light" bindtap="previousMakeupStep" disabled="{{makeupEditor.saving}}">返回选任务</button><button class="btn" bindtap="submitMakeup" loading="{{makeupEditor.saving}}" disabled="{{makeupEditor.saving}}">{{makeupEditor.freeEdit ? '保存记录' : '确认补签 · 消耗 1 张'}}</button></view>
     </block>
   </view>
 </view>
