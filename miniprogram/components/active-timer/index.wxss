@@ -1,0 +1,9 @@
+.active-timer-spacer { height:84rpx; }
+.active-timer-strip { position:fixed; top:8rpx; left:28rpx; right:28rpx; z-index:50; display:flex; align-items:center; gap:14rpx; margin:0 0 20rpx; padding:15rpx 18rpx; border:1rpx solid #dbe8e1; border-radius:18rpx; background:rgba(248,253,250,.97); box-shadow:0 6rpx 18rpx rgba(28,75,48,.08); }
+.active-timer-dot { flex:0 0 auto; width:14rpx; height:14rpx; border-radius:50%; background:#28845a; box-shadow:0 0 0 6rpx rgba(40,132,90,.12); }
+.active-timer-dot-paused { background:#a57931; box-shadow:0 0 0 6rpx rgba(165,121,49,.13); }
+.active-timer-copy { flex:1; min-width:0; }
+.active-timer-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#244634; font-size:24rpx; font-weight:700; }
+.active-timer-sub { margin-top:2rpx; color:#778980; font-size:20rpx; }
+.active-timer-clock { flex:0 0 auto; color:#244634; font-size:27rpx; font-weight:700; font-variant-numeric:tabular-nums; }
+.active-timer-arrow { flex:0 0 auto; color:#789383; font-size:31rpx; }

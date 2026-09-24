@@ -72,8 +72,7 @@ async function applyPlanChange(change, localDate) {
   if(plan.managedByGoalId && ['DELETE','SET_ENABLED'].includes(change.type)) {
     throw fail('INVALID_PARAMETER','该任务由数量积累目标管理，不能单独停用或删除')
   }
-  const supervised=Boolean(change.groupIds?.length)
-  if ((change.type === 'UPDATE' && supervised) || change.type === 'DELETE' || (change.type === 'SET_ENABLED' && !change.payload.enabled)) {
+  if (change.type === 'UPDATE' || change.type === 'DELETE' || (change.type === 'SET_ENABLED' && !change.payload.enabled)) {
     await assertNoActiveTimer(plan.userId,plan._id,localDate)
   }
   const timestamp=now()

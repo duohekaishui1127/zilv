@@ -65,9 +65,9 @@ async function completePlan({ user, event, localDate }) {
   const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
   if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
   if (isLongTermGoal(plan)) throw fail('INVALID_PARAMETER', '长期目标不能直接打卡')
-  if (!plan.enabled) throw fail('PLAN_DISABLED', '计划已停用')
-  if (!isBasePlanDue(plan, localDate)) throw fail('PLAN_NOT_DUE', '该计划今天无需执行')
   const cr = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: localDate }).limit(1).get()
+  if (!plan.enabled && !cr.data.length) throw fail('PLAN_DISABLED', '计划已停用')
+  if (!isBasePlanDue(plan, localDate) && !cr.data.length) throw fail('PLAN_NOT_DUE', '该计划今天无需执行')
   if (plan.repeatType === 'WEEKLY_COUNT' && !cr.data.length) {
     const { startDate, endDate } = weekRange(localDate)
     const count = await db.collection(C.CHECKINS).where({

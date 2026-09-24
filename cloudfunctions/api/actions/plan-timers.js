@@ -1,17 +1,9 @@
 const { db, C } = require('../lib/db')
 const { now, fail, round1 } = require('../lib/utils')
-const { isBasePlanDue } = require('../services/plans')
 const { timerSnapshot, secondsOf } = require('../domain/plan-timer')
 const { completePlan } = require('./plans')
-
-async function contextOf(user, event, localDate) {
-  const plan = await db.collection(C.PLANS).doc(event.planId).get().then(x => x.data).catch(() => null)
-  if (!plan || plan.userId !== user._id || plan.deletedAt) throw fail('PLAN_NOT_FOUND', '计划不存在')
-  if (!plan.enabled) throw fail('PLAN_DISABLED', '计划已停用')
-  if (!isBasePlanDue(plan, localDate)) throw fail('PLAN_NOT_DUE', '该计划今天无需执行')
-  const result = await db.collection(C.CHECKINS).where({ userId: user._id, planId: plan._id, date: localDate }).limit(1).get()
-  return { plan, checkin: result.data[0] || null }
-}
+const { recordCountdownFinished } = require('../services/timer-notifications')
+const { activeCheckins, getActiveTimer, timerContext } = require('../services/active-timers')
 
 function timerResult(checkin, plan, serverTime = now()) {
   const snapshot = timerSnapshot(checkin, plan, serverTime)
@@ -25,16 +17,15 @@ function timerResult(checkin, plan, serverTime = now()) {
 }
 
 async function startPlanTimer({ user, event, localDate }) {
-  const { plan, checkin } = await contextOf(user, event, localDate)
+  const { plan, checkin } = await timerContext(user, event, localDate)
   if (!['COUNT_UP', 'COUNT_DOWN'].includes(plan.timerMode)) throw fail('TIMER_NOT_ENABLED', '该计划未开启计时')
   if (checkin?.completed) throw fail('PLAN_ALREADY_COMPLETED', '该计划今天已完成')
   if (checkin?.timerStatus === 'RUNNING') return timerResult(checkin, plan)
   if (checkin?.timerStatus === 'PAUSED') throw fail('TIMER_PAUSED', '计时已暂停，请继续计时')
   if (checkin?.timerStatus === 'FINISHED') throw fail('TIMER_FINISHED', '计时已结束，请完成记录')
 
-  const today = await db.collection(C.CHECKINS).where({ userId: user._id, date: localDate }).get()
-  const active = today.data.find(item => item.planId !== plan._id && ['RUNNING', 'PAUSED'].includes(item.timerStatus))
-  if (active) throw fail('ACTIVE_TIMER_EXISTS', '已有其他计划正在计时或暂停，请先处理后再开始')
+  const active = (await activeCheckins(user._id)).find(item => item._id !== checkin?._id)
+  if (active) throw fail('ACTIVE_TIMER_EXISTS', '已有任务正在计时或暂停，请先处理后再开始')
 
   const timestamp = now()
   const timerTargetSeconds = plan.timerMode === 'COUNT_DOWN' ? Math.round(Number(plan.timerDurationMinutes) * 60) : null
@@ -72,7 +63,7 @@ async function startPlanTimer({ user, event, localDate }) {
 }
 
 async function pausePlanTimer({ user, event, localDate }) {
-  const { plan, checkin } = await contextOf(user, event, localDate)
+  const { plan, checkin } = await timerContext(user, event, localDate)
   if (!checkin) throw fail('TIMER_NOT_STARTED', '计时尚未开始')
   if (checkin.completed) throw fail('PLAN_ALREADY_COMPLETED', '该计划今天已完成')
   if (checkin.timerStatus === 'PAUSED') return timerResult(checkin, plan)
@@ -92,11 +83,14 @@ async function pausePlanTimer({ user, event, localDate }) {
     updatedAt: timestamp
   }
   await db.collection(C.CHECKINS).doc(checkin._id).update({ data })
+  if (snapshot.reachedTarget && plan.timerMode === 'COUNT_DOWN') {
+    await recordCountdownFinished(plan, checkin, data.timerEndedAt).catch(error => console.warn('[timer-notification]', error?.message || error))
+  }
   return timerResult({ ...checkin, ...data }, plan, timestamp)
 }
 
 async function resumePlanTimer({ user, event, localDate }) {
-  const { plan, checkin } = await contextOf(user, event, localDate)
+  const { plan, checkin } = await timerContext(user, event, localDate)
   if (!checkin) throw fail('TIMER_NOT_STARTED', '计时尚未开始')
   if (checkin.completed) throw fail('PLAN_ALREADY_COMPLETED', '该计划今天已完成')
   if (checkin.timerStatus === 'RUNNING') return timerResult(checkin, plan)
@@ -109,7 +103,7 @@ async function resumePlanTimer({ user, event, localDate }) {
 }
 
 async function finishPlanTimer({ user, event, localDate }) {
-  const { plan, checkin } = await contextOf(user, event, localDate)
+  const { plan, checkin } = await timerContext(user, event, localDate)
   if (!checkin) throw fail('TIMER_NOT_STARTED', '计时尚未开始')
   if (checkin.completed || checkin.timerStatus === 'FINISHED') {
     if (plan.timerMode === 'COUNT_UP' && event.timerReminderAuthorized === true) {
@@ -142,6 +136,9 @@ async function finishPlanTimer({ user, event, localDate }) {
       ? db.collection(C.USERS).doc(user._id).update({ data: { countUpReminderPushEnabled: true, updatedAt: timestamp } })
       : Promise.resolve()
   ])
+  if (snapshot.reachedTarget && plan.timerMode === 'COUNT_DOWN') {
+    await recordCountdownFinished(plan, checkin, data.timerEndedAt).catch(error => console.warn('[timer-notification]', error?.message || error))
+  }
   return timerResult({ ...checkin, ...data }, plan, timestamp)
 }
 
@@ -149,9 +146,10 @@ async function finishAndCompletePlanTimer(context) {
   const timer = await finishPlanTimer(context)
   const completed = await completePlan({
     ...context,
+    localDate: timer.checkin.date || context.localDate,
     event: { planId: context.event.planId }
   })
   return { ...timer, checkin:completed.checkin, dailyReview:completed.dailyReview || null, achievedGoals:completed.achievedGoals || [] }
 }
 
-module.exports = { startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer, finishAndCompletePlanTimer }
+module.exports = { getActiveTimer, startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer, finishAndCompletePlanTimer }

@@ -1,6 +1,6 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { expiredCountdownFields, countUpRestReminderDue } = require('../cloudfunctions/reminder-dispatch/timer-rules')
+const { expiredCountdownFields, countUpRestReminderDue, pendingTimerReminderValid } = require('../cloudfunctions/reminder-dispatch/timer-rules')
 
 test('运行中的倒计时到点后只结束计时，不自动完成任务', () => {
   const fields = expiredCountdownFields({
@@ -68,4 +68,22 @@ test('正计时休息提醒不在暂停、结束或已经提醒后重复触发',
   assert.equal(countUpRestReminderDue({ ...checkin, timerStatus: 'PAUSED' }, at), false)
   assert.equal(countUpRestReminderDue({ ...checkin, timerStatus: 'FINISHED' }, at), false)
   assert.equal(countUpRestReminderDue({ ...checkin, timerRestReminderAt: new Date('2026-09-21T04:30:00Z') }, at), false)
+})
+
+test('前台生成的正计时提醒可在后台继续推送，旧计时暂停后仍保留提醒', () => {
+  const notification = { type: 'TIMER_REST_REMINDER' }
+  const checkin = {
+    timerMode: 'COUNT_UP', timerStatus: 'RUNNING',
+    timerRestReminderAt: new Date('2026-09-21T04:30:00Z'), completed: false
+  }
+  assert.equal(pendingTimerReminderValid(notification, checkin), true)
+  assert.equal(pendingTimerReminderValid(notification, { ...checkin, timerStatus: 'PAUSED' }), true)
+  assert.equal(pendingTimerReminderValid(notification, { ...checkin, timerRestReminderAt: null }), false)
+  assert.equal(pendingTimerReminderValid(notification, { ...checkin, completed: true }), false)
+})
+
+test('待发送的倒计时提醒必须已经结束计时', () => {
+  const notification = { type: 'TIMER_REMINDER' }
+  assert.equal(pendingTimerReminderValid(notification, { timerStatus: 'FINISHED', completed: false }), true)
+  assert.equal(pendingTimerReminderValid(notification, { timerStatus: 'RUNNING', completed: false }), false)
 })

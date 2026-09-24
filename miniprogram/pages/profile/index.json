@@ -1,1 +1,6 @@
-{"navigationBarTitleText":"我的"}
+{
+  "navigationBarTitleText": "我的",
+  "usingComponents": {
+    "active-timer": "/components/active-timer/index"
+  }
+}

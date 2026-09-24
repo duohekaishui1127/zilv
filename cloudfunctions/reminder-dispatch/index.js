@@ -1,7 +1,7 @@
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
 const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType, localParts } = require('./reminder-rules')
-const { expiredCountdownFields, countUpRestReminderDue } = require('./timer-rules')
+const { expiredCountdownFields, countUpRestReminderDue, pendingTimerReminderValid } = require('./timer-rules')
 const { deadlineReminderDue,examArchiveDue,examResultReminderDue,reminderTimeReached } = require('./deadline-goal-rules')
 const { examProgressSnapshot } = require('./exam-progress')
 
@@ -180,7 +180,7 @@ async function sendWechatReminder(user, notification) {
 
 async function sendTimerWechatReminder(user, checkin, plan, notification) {
   const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
-  if (!checkin.timerReminderPushEnabled) {
+  if (!(notification.pushAuthorized ?? checkin.timerReminderPushEnabled)) {
     await updateNotification(notification._id, { pushStatus: 'NOT_SUBSCRIBED' })
     return 'internal-only'
   }
@@ -384,7 +384,8 @@ async function processExpiredCountdown(checkin, at) {
     planId: latest.planId,
     checkinId: latest._id,
     timerEndedAt: fields.timerEndedAt,
-    templateContent: `${plan.name || '任务'}倒计时已结束`,
+    templateContent: `${text(plan.name || '任务', 12)}倒计时已结束`,
+    pushAuthorized: Boolean(latest.timerReminderPushEnabled),
     status: 'UNREAD',
     pushStatus: 'PENDING',
     createdAt: at,
@@ -394,6 +395,21 @@ async function processExpiredCountdown(checkin, at) {
   await db.collection(COLLECTIONS.NOTIFICATIONS).doc(id).set({ data: notificationData })
   await trimNotificationHistory(latest.userId)
   return sendTimerWechatReminder(user, latest, plan, notification)
+}
+
+async function processPendingTimerNotification(notification) {
+  const latest = await document(COLLECTIONS.NOTIFICATIONS, notification._id)
+  if (!latest || latest.pushStatus !== 'PENDING') return 'skipped'
+  const [checkin, plan, user] = await Promise.all([
+    document(COLLECTIONS.CHECKINS, latest.checkinId),
+    document(COLLECTIONS.PLANS, latest.planId),
+    document(COLLECTIONS.USERS, latest.userId)
+  ])
+  if (!plan || !user || !pendingTimerReminderValid(latest, checkin)) {
+    await updateNotification(latest._id, { pushStatus: 'CANCELLED' })
+    return 'skipped'
+  }
+  return sendTimerWechatReminder(user, checkin, plan, latest)
 }
 
 async function processCountUpRestReminder(checkin, at) {
@@ -423,6 +439,7 @@ async function processCountUpRestReminder(checkin, at) {
     planId: latest.planId,
     checkinId: latest._id,
     timerEndedAt: at,
+    pushAuthorized: Boolean(latest.timerReminderPushEnabled),
     status: 'UNREAD',
     pushStatus: 'PENDING',
     createdAt: at,
@@ -509,12 +526,13 @@ async function enforceInactiveGroup(group, localDate) {
 
 exports.main = async () => {
   const startedAt = new Date()
-  const [users, groups, runningTimers, longTermGoals, socialNotifications] = await Promise.all([
+  const [users, groups, runningTimers, longTermGoals, socialNotifications, pendingTimerNotifications] = await Promise.all([
     allMatches(COLLECTIONS.USERS,{ checkinReminderEnabled:true }),
     allMatches(COLLECTIONS.GROUPS,{ autoRemoveInactiveDays:_.gt(0) }),
     allMatches(COLLECTIONS.CHECKINS,{ timerStatus:'RUNNING' }),
     allMatches(COLLECTIONS.PLANS,{ planType:'LONG_TERM' }),
-    allMatches(COLLECTIONS.NOTIFICATIONS,{ type:'SOCIAL_CHECKIN',pushStatus:'PENDING' })
+    allMatches(COLLECTIONS.NOTIFICATIONS,{ type:'SOCIAL_CHECKIN',pushStatus:'PENDING' }),
+    allMatches(COLLECTIONS.NOTIFICATIONS,{ type:_.in(['TIMER_REMINDER','TIMER_REST_REMINDER']),pushStatus:'PENDING' })
   ])
   const countdowns = runningTimers.filter(item => item.timerMode === 'COUNT_DOWN')
   const countUps = runningTimers.filter(item => item.timerMode === 'COUNT_UP')
@@ -543,6 +561,12 @@ exports.main = async () => {
   for (const checkin of countdowns) {
     const status = await processExpiredCountdown(checkin, startedAt)
     if (status !== 'skipped') summary.timerFinished++
+    if (status === 'sent') summary.timerSent++
+    else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
+    else if (status === 'failed') summary.timerFailed++
+  }
+  for (const notification of pendingTimerNotifications) {
+    const status = await processPendingTimerNotification(notification)
     if (status === 'sent') summary.timerSent++
     else if (status === 'internal-only' || status === 'not-configured') summary.timerInternalOnly++
     else if (status === 'failed') summary.timerFailed++

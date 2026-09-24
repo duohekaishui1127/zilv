@@ -43,4 +43,12 @@ function countUpRestReminderDue(checkin = {}, at = new Date(), thresholdSeconds 
   return effectiveMs >= Number(thresholdSeconds) * 1000
 }
 
-module.exports = { expiredCountdownFields, countUpRestReminderDue }
+function pendingTimerReminderValid(notification = {}, checkin = {}) {
+  if (!checkin || checkin.completed) return false
+  if (notification.type === 'TIMER_REST_REMINDER') {
+    return checkin.timerMode === 'COUNT_UP' && Boolean(checkin.timerRestReminderAt)
+  }
+  return notification.type === 'TIMER_REMINDER' && checkin.timerStatus === 'FINISHED'
+}
+
+module.exports = { expiredCountdownFields, countUpRestReminderDue, pendingTimerReminderValid }

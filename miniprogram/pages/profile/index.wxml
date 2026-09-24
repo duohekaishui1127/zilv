@@ -1,3 +1,4 @@
+<active-timer id="activeTimerBar"/>
 <view class="container" wx:if="{{profile}}">
   <view class="card profile-card">
     <view class="row"><view class="row-start profile-identity"><button class="avatar-button" open-type="chooseAvatar" bindchooseavatar="chooseAvatar" loading="{{avatarSaving}}"><image wx:if="{{profile.user.avatar}}" class="profile-avatar" src="{{profile.user.avatar}}" mode="aspectFill"/><view wx:else class="profile-avatar avatar-placeholder">＋</view></button><view class="profile-name-wrap"><input class="profile-nickname" type="nickname" maxlength="30" confirm-type="done" value="{{nicknameDraft}}" placeholder="填写微信昵称" placeholder-class="profile-nickname-placeholder" bindinput="nicknameInput" bindblur="nicknameBlur" bindnicknamereview="nicknameReview"/><view class="sub">好友码 {{profile.user.shareCode}}</view><view class="avatar-hint">点击头像或昵称即可修改</view></view></view><button class="btn btn-small btn-light" bindtap="copy">复制好友码</button></view>

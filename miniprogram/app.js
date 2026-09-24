@@ -3,7 +3,7 @@ const { APP_VERSION } = require('./config/version')
 const api = require('./utils/api')
 
 App({
-  globalData: { appVersion: APP_VERSION },
+  globalData: { appVersion: APP_VERSION, focusTimerPlanId: '' },
 
   onLaunch() {
     if (!wx.cloud) {

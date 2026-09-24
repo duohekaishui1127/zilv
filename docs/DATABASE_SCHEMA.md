@@ -140,7 +140,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 - `meal_items`: `userId + recordDate`；`mealId`
 - `workout_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `plans`: `userId + enabled`；`planType`；`managedByGoalId`
-- `checkins`: `userId + planId + date`；`userId + date`；`userId + completed + completedAt desc`
+- `checkins`: `userId + planId + date`；`userId + date`；`userId + completed + completedAt desc`；计时查询建议建立 `userId + timerStatus` 和 `userId + timerStatus + completed + date` 组合索引。
 - `daily_reviews`: `userId + date`
 - `study_sessions`: `userId + recordDate`；`userId + planId + recordDate`
 - `friendships`: `userA + userB`；`userA + status`；`userB + status`

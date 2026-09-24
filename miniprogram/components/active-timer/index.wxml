@@ -1,0 +1,10 @@
+<view wx:if="{{timer}}" class="active-timer-spacer"></view>
+<view wx:if="{{timer}}" class="active-timer-strip" bindtap="openTimer">
+  <view class="active-timer-dot {{timer.status !== 'RUNNING' ? 'active-timer-dot-paused' : ''}}"></view>
+  <view class="active-timer-copy">
+    <view class="active-timer-title">{{timer.status === 'FINISHED' ? '计时已结束 · 待完成' : (timer.status === 'PAUSED' ? '计时已暂停' : '正在计时')}} · {{timer.planName}}</view>
+    <view class="active-timer-sub">{{timer.date === todayDate ? (timer.mode === 'COUNT_DOWN' ? '倒计时' : '正计时') : '跨天计时 · 始于 ' + timer.date}}</view>
+  </view>
+  <view class="active-timer-clock">{{display}}</view>
+  <view class="active-timer-arrow">›</view>
+</view>

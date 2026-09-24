@@ -61,3 +61,16 @@ test('其他记录触发计划完成时会同时结束活动计时', () => {
   assert.equal(fields.timerPausedSeconds, 600)
   assert.equal(fields.durationMinutes, 20)
 })
+test('跨过零点后仍按开始时间累计，并把结果保留在原打卡日期', () => {
+  const checkin = {
+    date: '2026-09-23',
+    timerMode: 'COUNT_UP', timerStatus: 'RUNNING',
+    timerStartedAt: new Date('2026-09-23T15:45:00Z'),
+    timerResumedAt: new Date('2026-09-23T15:45:00Z'),
+    timerAccumulatedMs: 0
+  }
+  const fields = completedTimerFields(checkin, { timerMode: 'COUNT_UP' }, new Date('2026-09-23T16:15:00Z'))
+  assert.equal(fields.timerEffectiveSeconds, 30 * 60)
+  assert.equal(fields.durationMinutes, 30)
+  assert.equal(checkin.date, '2026-09-23')
+})

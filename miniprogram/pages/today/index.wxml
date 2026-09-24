@@ -1,3 +1,4 @@
+<active-timer id="activeTimerBar" bindtimerchange="onActiveTimerChange" bindfocus="focusActiveTimer" bindrestreminder="onCountUpRestReminder"/>
 <page-meta page-style="{{cardDrag.active ? 'overflow: hidden;' : ''}}"></page-meta>
 <view class="container">
   <view wx:if="{{loading && !dashboard}}" class="empty">正在加载今日数据…</view>
@@ -13,6 +14,16 @@
       <view class="message-entry {{dashboard.unreadNotificationCount ? 'message-entry-unread' : ''}}" bindtap="goNotifications" aria-label="消息中心">
         <view class="message-envelope"></view>
         <view wx:if="{{dashboard.unreadNotificationCount}}" class="message-red-dot"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{crossDayTimer}}" id="cross-day-timer" class="card cross-day-timer">
+      <view class="row"><view class="flex-1"><view class="h2">{{crossDayTimer.planName}}</view><view class="sub">跨天计时 · 始于 {{crossDayTimer.date}}</view></view><view class="cross-day-clock">{{crossDayTimer.timerDisplay}}</view></view>
+      <view class="sub cross-day-note">结束后时长和完成记录计入 {{crossDayTimer.date}}</view>
+      <view class="timer-actions">
+        <button wx:if="{{crossDayTimer.status === 'RUNNING'}}" class="btn btn-small btn-light" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="pauseCrossDayTimer">暂停</button>
+        <button wx:if="{{crossDayTimer.status === 'PAUSED'}}" class="btn btn-small btn-light" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="resumeCrossDayTimer">继续</button>
+        <button class="btn btn-small timer-primary" loading="{{timerBusyPlanId === crossDayTimer.planId}}" bindtap="finishCrossDayTimer">{{crossDayTimer.status === 'FINISHED' ? '完成任务' : '结束并完成'}}</button>
       </view>
     </view>
 
@@ -47,7 +58,7 @@
       </view>
 
       <view wx:if="{{plansExpanded}}" class="plan-list">
-        <view class="plan-item {{item.completed ? 'plan-item-completed' : ''}}" wx:for="{{dashboard.plans}}" wx:key="_id" data-index="{{index}}" bindtap="openCompletion">
+        <view id="today-plan-{{item._id}}" class="plan-item {{item.completed ? 'plan-item-completed' : ''}}" wx:for="{{dashboard.plans}}" wx:key="_id" data-index="{{index}}" bindtap="openCompletion">
           <view class="row-start">
             <view class="flex-1">
               <view class="value plan-name">{{item.name}}</view>

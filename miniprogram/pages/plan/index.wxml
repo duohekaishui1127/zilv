@@ -1,3 +1,4 @@
+<active-timer id="activeTimerBar"/>
 <view class="container">
   <view class="hero"><view class="h1">任务</view><view class="sub">长期目标指引方向，执行任务负责每天行动</view></view>
 

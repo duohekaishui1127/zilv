@@ -1,3 +1,4 @@
+<active-timer id="activeTimerBar"/>
 <view class="container calendar-page">
   <view class="hero calendar-hero">
     <view class="pixel-kicker">MY DAYS</view>

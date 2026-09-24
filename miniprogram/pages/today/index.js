@@ -3,8 +3,6 @@ const fmt = require('../../utils/format')
 const reminderRenewal = require('../../utils/reminder-renewal')
 const { CATEGORY_LABELS, MOODS, MOOD_LABELS, MOOD_ICONS } = require('../../utils/constants')
 
-const COUNT_UP_REST_SECONDS = 2.5 * 60 * 60
-
 function emptyEditor() {
   return {
     visible: false, planId: '', planName: '', note: '', timed: false,
@@ -145,8 +143,6 @@ function timerView(plan, nowMs) {
     timerTotalDisplay: formatTimer(Math.floor(totalMs / 1000)),
     timerPausedDisplay: formatTimer(Math.floor(pausedMs / 1000)),
     timerExpired: status === 'RUNNING' && reachedTarget,
-    timerRestDue: timerMode === 'COUNT_UP' && status === 'RUNNING'
-      && effectiveSeconds >= COUNT_UP_REST_SECONDS && !checkin.timerRestReminderAt
   }
 }
 
@@ -180,11 +176,12 @@ Page({
     manualCheckinSaving: false,
     undoCompletion: emptyUndoCompletion(),
     timerBusyPlanId: '',
+    crossDayTimer: null,
     reminderConfig:null,
     reminderRenewalAvailable:false,
     renewingReminder:false
   },
-  onShow() { this._visible = true; this.loadReminderConfig(); this.load() },
+  onShow() { this._visible = true; this._focusTimerOnShow=true; this.loadReminderConfig(); this.load() },
   onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.hideCompletionUndo() },
   onUnload() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.clearUndoTimer() },
   onPageScroll(e) {
@@ -245,11 +242,10 @@ Page({
         fatPct: fmt.pct(d.nutrition.fatIntake, target.fatGram),
         energyState: fmt.energyState(d.energy.estimatedCalorieBalance),
         cardOrders:cardOrders(d.homePreferences)
-      },() => this.updateReminderRenewalState())
+      },() => { this.updateReminderRenewalState(); this.revealActiveTimer() })
       this.startTicker()
       this.maybePromptDailyReview(d)
       this.finishExpiredCountdown()
-      this.notifyCountUpRest()
     } catch (error) {
       if (loadId === this._dashboardLoadId) this.setData({ error: api.messageOf(error) })
     } finally {
@@ -260,7 +256,7 @@ Page({
     this.stopTicker()
     if (!this._visible) return
     const plans = this.data.dashboard?.plans || []
-    if (!plans.some(plan => ['RUNNING', 'PAUSED'].includes(plan.timerStatus))) return
+    if (!plans.some(plan => ['RUNNING', 'PAUSED'].includes(plan.timerStatus)) && !['RUNNING', 'PAUSED'].includes(this.data.crossDayTimer?.status)) return
     this._timerTicker = setInterval(() => this.tickTimers(), 1000)
   },
   stopTicker() {
@@ -270,9 +266,12 @@ Page({
   tickTimers() {
     if (!this.data.dashboard) return
     const plans = this.data.dashboard.plans.map(plan => decoratePlan(plan, this.serverNow()))
-    this.setData({ 'dashboard.plans': plans })
+    const cross=this.data.crossDayTimer
+    this.setData({
+      'dashboard.plans': plans,
+      ...(cross ? { crossDayTimer:{ ...cross,...timerView({ timerMode:cross.mode,checkin:cross.checkin },this.serverNow()) } } : {})
+    })
     this.finishExpiredCountdown()
-    this.notifyCountUpRest()
   },
   async finishExpiredCountdown() {
     const plan = this.data.dashboard?.plans?.find(item => item.timerExpired)
@@ -280,6 +279,7 @@ Page({
     this._autoFinishingTimer = plan._id
     try {
       await api.call('finishPlanTimer', { planId: plan._id }, { silent: true })
+      this.refreshActiveTimerBar()
       await this.load()
       if (this._visible && typeof wx.vibrateLong === 'function') {
         wx.vibrateLong({ fail: () => {} })
@@ -291,24 +291,42 @@ Page({
       this._autoFinishingTimer = ''
     }
   },
-  async notifyCountUpRest() {
-    const plan = this.data.dashboard?.plans?.find(item => item.timerRestDue)
-    if (!plan || this._restReminderNotifying) return
-    this._restReminderNotifying = plan._id
-    try {
-      await api.call('acknowledgeCountUpRestReminder', { planId: plan._id }, { silent: true })
-      await this.load()
-      if (this._visible && typeof wx.vibrateLong === 'function') {
-        wx.vibrateLong({ fail: () => {} })
-      }
-      wx.showToast({ title: '专注很久了，休息一下吧', icon: 'none', duration: 2500 })
-    } catch (error) {
-      wx.showToast({ title: api.messageOf(error), icon: 'none' })
-    } finally {
-      this._restReminderNotifying = ''
-    }
-  },
+  onCountUpRestReminder() { this.load() },
   retry() { this.load() },
+  refreshActiveTimerBar() { this.selectComponent('#activeTimerBar')?.refresh() },
+  onActiveTimerChange(e) {
+    const timer=e.detail?.timer
+    const cross=timer && timer.date !== api.localDate()
+      ? { ...timer,...timerView({ timerMode:timer.mode,checkin:timer.checkin },this.serverNow()) }
+      : null
+    this.setData({ crossDayTimer:cross },() => {
+      this.startTicker()
+      this.revealActiveTimer()
+    })
+  },
+  focusActiveTimer() { this.revealActiveTimer() },
+  revealActiveTimer() {
+    if (!this._visible || !this.data.dashboard) return
+    const pending=getApp().globalData.focusTimerPlanId
+    const running=this.data.dashboard.plans.find(plan => ['RUNNING','PAUSED'].includes(plan.timerStatus))
+    const focusId=pending || (this._focusTimerOnShow ? (running?._id || this.data.crossDayTimer?.planId) : '')
+    if (!focusId) return
+    const inToday=this.data.dashboard.plans.some(plan => plan._id === focusId)
+    const cross=this.data.crossDayTimer?.planId === focusId
+    if (!inToday && !cross) return
+    this._focusTimerOnShow=false
+    getApp().globalData.focusTimerPlanId=''
+    this.setData({ plansExpanded:true },() => {
+      const selector=inToday ? `#today-plan-${focusId}` : '#cross-day-timer'
+      const query=wx.createSelectorQuery().in(this)
+      query.select(selector).boundingClientRect()
+      query.selectViewport().scrollOffset()
+      query.exec(([rect,viewport]) => {
+        if (!rect) return
+        wx.pageScrollTo({ scrollTop:Math.max(0,rect.top + Number(viewport?.scrollTop || 0) - 76),duration:260 })
+      })
+    })
+  },
   maybePromptDailyReview(dashboard) {
     const review = dashboard?.dailyReview
     if (!review || review.mood || !dashboard.completion?.total || dashboard.completion.completed !== dashboard.completion.total) return
@@ -729,6 +747,7 @@ Page({
     this.setData({ timerBusyPlanId: plan._id })
     try {
       await api.call(action, { planId: plan._id })
+      this.refreshActiveTimerBar()
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -768,6 +787,7 @@ Page({
         || (plan.timerMode === 'COUNT_UP' && !this.data.dashboard?.user?.countUpReminderPushEnabled)
       const timerReminderAuthorized = needsTimerReminder ? await this.requestTimerReminder() : false
       await api.call('startPlanTimer', { planId: plan._id, timerReminderAuthorized })
+      this.refreshActiveTimerBar()
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -787,6 +807,7 @@ Page({
       })
       await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
       wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),icon:'success' })
+      this.refreshActiveTimerBar()
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
@@ -806,9 +827,41 @@ Page({
       })
       await this.saveReminderRenewal(authorizations.checkinReminderAuthorized)
       wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),icon:'success' })
+      this.refreshActiveTimerBar()
       await this.load()
     } finally {
       this.setData({ timerBusyPlanId: '' })
+    }
+  },
+  async crossDayTimerAction(action) {
+    const timer=this.data.crossDayTimer
+    if (!timer || this.data.timerBusyPlanId) return
+    this.setData({ timerBusyPlanId:timer.planId })
+    try {
+      await api.call(action,{ planId:timer.planId,checkinId:timer.checkinId })
+      this.refreshActiveTimerBar()
+    } finally {
+      this.setData({ timerBusyPlanId:'' })
+    }
+  },
+  pauseCrossDayTimer() { return this.crossDayTimerAction('pausePlanTimer') },
+  resumeCrossDayTimer() { return this.crossDayTimerAction('resumePlanTimer') },
+  async finishCrossDayTimer() {
+    const timer=this.data.crossDayTimer
+    if (!timer || this.data.timerBusyPlanId) return
+    if (timer.status !== 'FINISHED' && !await api.confirm(`结束后将停止计时，并完成 ${timer.date} 的这项任务。专注时长会计入那一天。`,'结束跨天计时')) return
+    this.setData({ timerBusyPlanId:timer.planId })
+    try {
+      const timerReminderAuthorized=timer.mode === 'COUNT_UP' && this.shouldRenewCountUpReminder({ timerMode:timer.mode,checkin:timer.checkin })
+        ? await this.requestTimerReminder() : false
+      await api.call('finishAndCompletePlanTimer',{
+        planId:timer.planId,checkinId:timer.checkinId,timerReminderAuthorized
+      })
+      wx.showToast({ title:'已计入开始当天',icon:'success' })
+      this.refreshActiveTimerBar()
+      await this.load()
+    } finally {
+      this.setData({ timerBusyPlanId:'' })
     }
   },
   closeCompletion() {

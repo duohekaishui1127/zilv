@@ -1,1 +1,6 @@
-{"navigationBarTitleText":"圈子"}
+{
+  "navigationBarTitleText": "圈子",
+  "usingComponents": {
+    "active-timer": "/components/active-timer/index"
+  }
+}

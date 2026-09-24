@@ -1,1 +1,7 @@
-{"navigationBarTitleText":"今日","enablePullDownRefresh":true}
+{
+  "navigationBarTitleText": "今日",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "active-timer": "/components/active-timer/index"
+  }
+}

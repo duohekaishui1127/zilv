@@ -41,6 +41,9 @@
 .plan-item-completed .plan-name, .plan-item-completed .plan-description { color: #9ca3af; }
 .completion-meta { margin-top: 9rpx; color: #7b8492; font-size: 23rpx; line-height: 1.5; }
 .inline-mood-icon { width: 30rpx; height: 30rpx; margin-left: 8rpx; vertical-align: -7rpx; image-rendering: pixelated; }
+.cross-day-timer { border:1rpx solid #dbe8e1; background:#f8fdfa; }
+.cross-day-clock { color:#256747; font-size:35rpx; font-weight:700; font-variant-numeric:tabular-nums; }
+.cross-day-note { margin-top:10rpx; }
 .timer-panel { margin-top: 18rpx; padding: 18rpx; border-radius: 18rpx; background: #f7f8fa; }
 .timer-head { align-items: baseline; }
 .timer-state { color: #697386; font-size: 23rpx; }

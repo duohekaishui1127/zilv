@@ -1,3 +1,4 @@
+<active-timer id="activeTimerBar"/>
 <view class="container">
   <view class="hero"><view class="h1">好友与群组</view><view class="sub">用轻量提醒和点赞，一起坚持下去</view></view>
   <view class="card" data-url="/pages/circle/friends" bindtap="go"><view class="row"><view class="row-start"><view class="circle-icon-wrap"><image class="circle-icon" src="/assets/categories/friends.png" mode="aspectFit"/><view wx:if="{{pendingFriendRequestCount}}" class="circle-red-dot"></view></view><view><view class="h2">好友 <text wx:if="{{pendingFriendRequestCount}}" class="pending-text">{{pendingFriendRequestCount}} 条申请</text></view><view class="sub">查看好友打卡并管理特别关心</view></view></view><view>›</view></view></view>
