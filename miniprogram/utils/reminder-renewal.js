@@ -8,7 +8,7 @@ function shouldRequestReminderRenewal({ dashboard,plan,config,promptedToday=fals
   return Boolean(
     config?.configured && config.subscriptionType === 'ONE_TIME' &&
     dashboard?.user?.checkinReminderEnabled && !dashboard.user.checkinReminderPushEnabled &&
-    !dashboard.user.reminderRenewedToday && !promptedToday && completesAllTasks(dashboard,plan)
+    !promptedToday && completesAllTasks(dashboard,plan)
   )
 }
 
@@ -17,8 +17,7 @@ function shouldOfferManualRenewal({ dashboard,config }) {
   const allComplete=Boolean(completion?.total) && completion.completed === completion.total
   return Boolean(
     config?.configured && config.subscriptionType === 'ONE_TIME' && allComplete &&
-    dashboard?.user?.checkinReminderEnabled && !dashboard.user.checkinReminderPushEnabled &&
-    !dashboard.user.reminderRenewedToday
+    dashboard?.user?.checkinReminderEnabled && !dashboard.user.checkinReminderPushEnabled
   )
 }
 
@@ -27,4 +26,11 @@ function shouldRequestMakeupReminderRenewal(settings) {
     settings.subscriptionType === 'ONE_TIME' && settings.enabled && !settings.pushEnabled)
 }
 
-module.exports={ completesAllTasks,shouldRequestReminderRenewal,shouldOfferManualRenewal,shouldRequestMakeupReminderRenewal }
+function shouldAutomaticallyRenewReminder({ settings,rememberedChoice='',mainSwitch=true,promptedToday=false }) {
+  if (!shouldRequestMakeupReminderRenewal(settings) || !mainSwitch) return false
+  if (['reject','ban','filter'].includes(rememberedChoice)) return false
+  const rememberedAccepted = ['accept','acceptWithAudio'].includes(rememberedChoice)
+  return rememberedAccepted || !promptedToday
+}
+
+module.exports={ completesAllTasks,shouldRequestReminderRenewal,shouldOfferManualRenewal,shouldRequestMakeupReminderRenewal,shouldAutomaticallyRenewReminder }

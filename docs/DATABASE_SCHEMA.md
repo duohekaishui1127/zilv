@@ -130,7 +130,7 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 
 `users.lastReleaseAnnouncementId` 和 `users.lastCheckinReminderNotificationDate` 是轻量投递凭证。它们与通知展示记录分离，保证旧通知清理后版本公告和同日打卡提醒不会重复创建。
 
-`users.lastReminderRenewalDate` 是一次性微信提醒的续订日期凭证；它不代表可用微信授权，只供今日页避免重复提示。确认补签续订按当前业务日期记录，保留原提醒时间和时区；同日授权消耗后再次获得同意，仍需恢复 `checkinReminderPushEnabled`，不能以日期相同阻止恢复。不新增集合或迁移。
+`users.lastReminderRenewalDate` 记录最近一次微信提醒续订日期，兼容旧客户端但不再用于限制新客户端自动续订。同日额度消耗后再次获准仍恢复 `checkinReminderPushEnabled`，不改变原提醒时间或时区，不新增集合或迁移。客户端另以微信记住的选择和本机 `zilv:checkin-reminder-prompt:<templateId>` 日期记录控制自动请求频率；记住允许时可无感补充，未知选择每天最多自动请求一次，备用手动续订可绕过该冷却。
 
 ## 推荐索引
 

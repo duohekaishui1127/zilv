@@ -2,6 +2,7 @@ const api = require('../../utils/api')
 const { MOODS, MOOD_LABELS, CATEGORY_LABELS, NOTE_TYPES } = require('../../utils/constants')
 const { calendarMoodIcon } = require('../../utils/calendar-mood')
 const { shouldRequestMakeupReminderRenewal } = require('../../utils/reminder-renewal')
+const { getCheckinReminderClient } = require('../../utils/checkin-reminder')
 
 const NOTE_LABELS = Object.fromEntries(NOTE_TYPES.map(item => [item.key, item.label]))
 function emptyMakeupEditor() { return { visible: false, freeEdit: false, step: 'TASKS', date: '', tasks: [], mood: '', note: '', saving: false } }
@@ -110,9 +111,14 @@ Page({
   onHide() { this.closeReview() },
   onPullDownRefresh() { this.loadCalendar().finally(() => wx.stopPullDownRefresh()) },
   async loadCalendar() {
+    const loadId = Number(this._calendarLoadId || 0) + 1
+    this._calendarLoadId = loadId
     this.setData({ loading: true, error: '' })
     try {
       const calendar = await api.call('getActivityCalendar', { month: this.data.month }, { silent: true })
+      if (loadId <= this._reminderReceiptLoadId && calendar.reminderSettings?.enabled) {
+        calendar.reminderSettings.pushEnabled = true
+      }
       this.setData({ calendar: decorateCalendar(calendar, this.data.currentDate) })
       this.setReminderSettings(calendar.reminderSettings)
     } catch (error) {
@@ -219,40 +225,22 @@ Page({
       reminderSettings: settings || null,
       reminderRenewalAvailable: shouldRequestMakeupReminderRenewal(settings)
     })
+    getCheckinReminderClient(wx,api).refresh(settings?.templateId)
   },
-  requestReminderAuthorization() {
-    const settings = this.data.reminderSettings
-    if (!shouldRequestMakeupReminderRenewal(settings) || typeof wx.requestSubscribeMessage !== 'function') {
-      return Promise.resolve(false)
-    }
-    // Invoke synchronously inside the confirm/renew button's tap callback.
-    return new Promise(resolve => {
-      try {
-        wx.requestSubscribeMessage({
-          tmplIds: [settings.templateId],
-          success: result => resolve(['accept', 'acceptWithAudio'].includes(result[settings.templateId])),
-          fail: () => resolve(false)
-        })
-      } catch (error) {
-        console.warn('[calendar-reminder-authorization]', error)
-        resolve(false)
+  beginReminderRenewal(force = false) {
+    return getCheckinReminderClient(wx,api).renew(this.data.reminderSettings,{ force }).then(ready => {
+      if (ready) {
+        this._reminderReceiptLoadId = Number(this._calendarLoadId || 0)
+        this.setReminderSettings({ ...this.data.reminderSettings, pushEnabled:true })
       }
+      return ready
     })
-  },
-  async saveReminderRenewal(authorized) {
-    if (!authorized) return false
-    // No historical date: this grant is for future reminders, not yesterday.
-    const result = await api.call('renewCheckinReminderSubscription', { authorized: true }, { silent: true })
-    const ready = Boolean(result.renewed || result.alreadyAvailable)
-    if (ready) this.setReminderSettings({ ...this.data.reminderSettings, pushEnabled: true })
-    return ready
   },
   async renewReminder() {
     if (this.data.renewingReminder || !this.data.reminderRenewalAvailable) return
     this.setData({ renewingReminder: true })
     try {
-      const authorized = await this.requestReminderAuthorization()
-      const ready = await this.saveReminderRenewal(authorized)
+      const ready = await this.beginReminderRenewal(true)
       wx.showToast({ title: ready ? '提醒已续订' : '提醒未续订，可稍后重试', icon: ready ? 'success' : 'none' })
     } catch (error) {
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
@@ -264,19 +252,15 @@ Page({
     const editor = this.data.makeupEditor
     if (!editor.visible || editor.saving || editor.step !== 'REVIEW') return
     this.setData({ 'makeupEditor.saving': true })
-    const reminderRenewal = editor.freeEdit ? Promise.resolve(false)
-      : this.requestReminderAuthorization().then(authorized => this.saveReminderRenewal(authorized)).catch(error => {
-        console.warn('[calendar-reminder-renewal]', error)
-        return false
-      })
+    if (!editor.freeEdit) this.beginReminderRenewal()
     try {
       if (editor.freeEdit) {
         await api.call('saveDailyReview', { date: editor.date, mood: editor.mood, note: editor.note }, { silent: true })
       } else {
-        await Promise.all([reminderRenewal, api.call('makeupDailyCheckin', {
+        await api.call('makeupDailyCheckin', {
           makeupDate: editor.date, completedPlanIds: editor.tasks.filter(task => task.selected).map(task => task.planId),
           mood: editor.mood, note: editor.note
-        }, { silent: true })])
+        }, { silent: true })
       }
       this.setData({ makeupEditor: emptyMakeupEditor() })
       this.closeReview()
@@ -285,7 +269,6 @@ Page({
     } catch (error) {
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
-      await reminderRenewal
       this.setData({ 'makeupEditor.saving': false })
     }
   },

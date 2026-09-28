@@ -10,6 +10,7 @@ function calendarPage(options = {}) {
   const realRequire = createRequire(file)
   const calls = []
   const toasts = []
+  let authorize, finishCalendar
   let settings = {
     configured: true, templateId: 'checkin-template', subscriptionType: 'ONE_TIME',
     enabled: true, time: '10:00', timezoneOffset: 480, pushEnabled: false, ...options.settings
@@ -28,9 +29,13 @@ function calendarPage(options = {}) {
         if (options.makeupFails) throw new Error('补签失败')
         return { success: true }
       }
-      if (action === 'getActivityCalendar') return {
-        month: '2026-09', days: [], makeup: { balance: 2, yesterday: '2026-09-27' },
-        reminderSettings: { ...settings }
+      if (action === 'getActivityCalendar') {
+        const snapshot = {
+          month: '2026-09', days: [], makeup: { balance: 2, yesterday: '2026-09-27' },
+          reminderSettings: { ...settings }
+        }
+        if (options.delayCalendar) return new Promise(resolve => { finishCalendar = () => resolve(snapshot) })
+        return snapshot
       }
       return {}
     }
@@ -43,8 +48,11 @@ function calendarPage(options = {}) {
     wx: {
       requestSubscribeMessage(request) {
         calls.push({ action: 'authorize', templateIds: request.tmplIds })
-        if (options.authorizationFails) request.fail({ errMsg: 'cancelled' })
-        else request.success({ [settings.templateId]: options.authorization || 'accept' })
+        authorize = () => {
+          if (options.authorizationFails) request.fail({ errMsg: 'cancelled' })
+          else request.success({ [settings.templateId]: options.authorization || 'accept' })
+        }
+        if (!options.delayedAuthorization) authorize()
       },
       showToast: toast => toasts.push(toast)
     }
@@ -63,7 +71,7 @@ function calendarPage(options = {}) {
     visible: true, freeEdit: false, step: 'REVIEW', date: '2026-09-27', saving: false,
     mood: 'GOOD', note: '昨天的记录', tasks: [{ planId: 'study', selected: true }]
   }
-  return { page, calls, toasts }
+  return { page, calls, toasts, authorize:() => authorize(), finishCalendar:() => finishCalendar() }
 }
 
 test('补签确认在任何异步等待之前请求微信授权，并保留 10:00 设置', async () => {
@@ -108,6 +116,7 @@ test('续订保存失败不回滚补签；补签失败也不丢弃已获微信�
   assert.equal(failedRenewal.page.data.reminderRenewalAvailable, true)
   const failedMakeup = calendarPage({ makeupFails: true })
   await failedMakeup.page.submitMakeup()
+  await new Promise(resolve => setImmediate(resolve))
   assert.equal(failedMakeup.toasts.at(-1).title, '补签失败')
   assert.equal(failedMakeup.page.data.reminderSettings.pushEnabled, true)
   assert.equal(failedMakeup.page.data.makeupEditor.saving, false)
@@ -132,4 +141,28 @@ test('补签后可通过续订入口补充授权，接受带声音的授权也�
   await renewal
   assert.equal(page.data.reminderRenewalAvailable, false)
   assert.equal(page.data.renewingReminder, false)
+})
+
+test('补签保存和成功反馈不等待微信授权回调，完成后仍可独立保存授权', async () => {
+  const state = calendarPage({ delayedAuthorization:true })
+  await state.page.submitMakeup()
+  assert.equal(state.toasts.at(-1).title, '补签成功')
+  assert.equal(state.page.data.makeupEditor.visible, false)
+  assert.equal(state.calls.some(call => call.action === 'renewCheckinReminderSubscription'), false)
+  state.authorize()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(state.page.data.reminderSettings.pushEnabled, true)
+})
+
+test('补签后的旧日历查询返回时，不覆盖已经成功保存的提醒授权', async () => {
+  const state = calendarPage({ delayedAuthorization:true,delayCalendar:true })
+  const saving = state.page.submitMakeup()
+  await new Promise(resolve => setImmediate(resolve))
+  state.authorize()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(state.page.data.reminderSettings.pushEnabled, true)
+  state.finishCalendar()
+  await saving
+  assert.equal(state.page.data.reminderSettings.pushEnabled, true)
+  assert.equal(state.page.data.reminderRenewalAvailable, false)
 })
