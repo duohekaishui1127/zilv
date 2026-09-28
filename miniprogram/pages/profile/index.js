@@ -1,66 +1,107 @@
 const api=require('../../utils/api')
+const { getCheckinReminderClient }=require('../../utils/checkin-reminder')
 const { normalizedNickname,profileNeedsIdentity }=require('../../domain/profile-identity')
 const canReviewNickname=wx.canIUse('input.bindnicknamereview')
 Page({
-  data:{profile:null,nicknameDraft:'',profileIncomplete:false,otherExpanded:false,avatarSaving:false,nicknameSaving:false,reminderSaving:false,reminderConfig:null},
-  onShow(){this.load()},
+  data:{profile:null,nicknameDraft:'',profileIncomplete:false,otherExpanded:false,avatarSaving:false,nicknameSaving:false,reminderSaving:false,reminderConfig:null,reminderSettingsVisible:false,reminderFeedback:'',reminderFeedbackError:false},
+  onShow(){if(!this.data.reminderSaving)this.load()},
   async load(){
+    const loadId=Number(this._profileLoadId || 0)+1
+    this._profileLoadId=loadId
+    const reminderRevision=this._reminderRevision || 0
     const [d,reminderConfig]=await Promise.all([
       api.call('getProfile'),
       api.call('getCheckinReminderSettings',{}, { silent:true }).catch(() => null)
     ])
+    if(reminderConfig?.templateId)getCheckinReminderClient(wx,api).refresh(reminderConfig.templateId)
     const savedAvatar=d.user.avatar
     d.user.avatar=await api.resolveCloudFileUrl(savedAvatar)
     d.weightSummary=d.weightStatus?.needUpdate
       ? `该更新了 · 上次：${d.weightStatus.lastUpdateDate || '尚未记录'}`
       : `上次更新：${d.weightStatus?.lastUpdateDate || '尚未记录'}`
+    if(loadId!==this._profileLoadId)return
+    const preserveReminder=this.data.reminderSaving||reminderRevision!==(this._reminderRevision || 0)
+    if(preserveReminder&&this.data.profile){
+      for(const key of ['checkinReminderEnabled','checkinReminderTime','checkinReminderPushEnabled'])d.user[key]=this.data.profile.user[key]
+    }else if(reminderConfig){
+      d.user.checkinReminderEnabled=reminderConfig.enabled
+      d.user.checkinReminderTime=reminderConfig.time
+      d.user.checkinReminderPushEnabled=reminderConfig.pushEnabled
+    }
     this.setData({
       profile:d,
       nicknameDraft:d.user.nickname || '',
       profileIncomplete:profileNeedsIdentity({ ...d.user,avatar:savedAvatar }),
-      reminderConfig
+      reminderConfig:preserveReminder ? this.data.reminderConfig : reminderConfig
     })
   },
   toggleOther(){this.setData({otherExpanded:!this.data.otherExpanded})},
+  noop(){},
+  openReminderSettings(){this.setData({reminderSettingsVisible:true,reminderFeedback:'',reminderFeedbackError:false})},
+  closeReminderSettings(){if(!this.data.reminderSaving)this.setData({reminderSettingsVisible:false})},
+  applyReminderSettings(settings){
+    this.setData({
+      reminderConfig:settings,
+      'profile.user.checkinReminderEnabled':settings.enabled,
+      'profile.user.checkinReminderTime':settings.time,
+      'profile.user.checkinReminderPushEnabled':settings.pushEnabled
+    })
+  },
   async reminderToggle(e){
     if(this.data.reminderSaving)return
     const enabled=Boolean(e.detail.value)
-    this.setData({reminderSaving:true})
+    const previous=Boolean(this.data.profile.user.checkinReminderEnabled)
+    const config=this.data.reminderConfig
+    this._reminderRevision=Number(this._reminderRevision || 0)+1
+    this.setData({reminderSaving:true,reminderFeedback:'',reminderFeedbackError:false,'profile.user.checkinReminderEnabled':enabled})
+    // Invoke the native API in this tap, before any cloud request or await.
+    const authorization=enabled&&config?.configured&&!config.pushEnabled
+      ? getCheckinReminderClient(wx,api).authorize(config.templateId) : Promise.resolve(false)
     try{
-      const config=this.data.reminderConfig || await api.call('getCheckinReminderSettings',{}, { silent:true })
-      this.setData({reminderConfig:config})
-      let grantAccepted=false
-      if(enabled&&config.configured&&!config.pushEnabled){
-        const result=await wx.requestSubscribeMessage({tmplIds:[config.templateId]})
-        grantAccepted=['accept','acceptWithAudio'].includes(result[config.templateId])
-      }
+      const grantAccepted=await authorization
       const settings=await api.call('updateCheckinReminderSettings',{
         enabled,time:this.data.profile.user.checkinReminderTime || '21:00',
         timezoneOffset:-new Date().getTimezoneOffset(),grantAccepted
-      })
-      this.setData({
-        reminderConfig:settings,
-        'profile.user.checkinReminderEnabled':settings.enabled,
-        'profile.user.checkinReminderTime':settings.time,
-        'profile.user.checkinReminderPushEnabled':settings.pushEnabled
-      })
+      },{silent:true})
+      this.applyReminderSettings(settings)
+      if(enabled&&settings.configured&&!settings.pushEnabled)this.setData({reminderFeedback:'未获得微信授权，打卡记录不受影响。可点击下方允许提醒。'})
     }catch(error){
-      this.setData({'profile.user.checkinReminderEnabled':!enabled})
-      if(!/cancel/i.test(error?.errMsg || ''))wx.showToast({title:api.messageOf(error),icon:'none'})
+      this.setData({'profile.user.checkinReminderEnabled':previous,reminderFeedback:api.messageOf(error),reminderFeedbackError:true})
+    }finally{this.setData({reminderSaving:false})}
+  },
+  async renewReminderFromSettings(){
+    if(this.data.reminderSaving||!this.data.profile.user.checkinReminderEnabled)return
+    const config=this.data.reminderConfig
+    if(!config?.configured)return this.setData({reminderFeedback:'微信通知暂不可用，打卡记录不受影响。'})
+    if(config.pushEnabled)return
+    if(config.subscriptionType==='LONG_TERM')return this.reminderToggle({detail:{value:true}})
+    this._reminderRevision=Number(this._reminderRevision || 0)+1
+    this.setData({reminderSaving:true,reminderFeedback:'',reminderFeedbackError:false})
+    const renewal=getCheckinReminderClient(wx,api).renew({...config,enabled:true},{force:true})
+    try{
+      const renewed=await renewal
+      if(renewed){
+        this.applyReminderSettings({...config,enabled:true,pushEnabled:true})
+        this.setData({reminderFeedback:'微信提醒已允许'})
+      }else{
+        this.setData({reminderFeedback:'暂未获得提醒机会，打卡记录不受影响。若曾关闭微信授权，可在小程序设置中调整。'})
+      }
     }finally{this.setData({reminderSaving:false})}
   },
   async reminderTimeChange(e){
-    if(this.data.reminderSaving)return
+    if(this.data.reminderSaving||!this.data.profile.user.checkinReminderEnabled)return
     const previous=this.data.profile.user.checkinReminderTime || '21:00'
     const time=e.detail.value
-    this.setData({reminderSaving:true,'profile.user.checkinReminderTime':time})
+    if(time===previous)return
+    this._reminderRevision=Number(this._reminderRevision || 0)+1
+    this.setData({reminderSaving:true,'profile.user.checkinReminderTime':time,reminderFeedback:'',reminderFeedbackError:false})
     try{
       const settings=await api.call('updateCheckinReminderSettings',{
         enabled:true,time,timezoneOffset:-new Date().getTimezoneOffset()
-      })
-      this.setData({reminderConfig:settings,'profile.user.checkinReminderTime':settings.time})
+      },{silent:true})
+      this.applyReminderSettings(settings)
     }catch(error){
-      this.setData({'profile.user.checkinReminderTime':previous})
+      this.setData({'profile.user.checkinReminderTime':previous,reminderFeedback:api.messageOf(error),reminderFeedbackError:true})
     }finally{this.setData({reminderSaving:false})}
   },
   async chooseAvatar(e){

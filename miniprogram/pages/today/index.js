@@ -162,6 +162,7 @@ Page({
     error: '',
     dashboard: null,
     plansExpanded: true,
+    completedExpanded: false,
     energyExpanded: false,
     completionPct: 0,
     proteinPct: 0,
@@ -179,8 +180,7 @@ Page({
     timerBusyPlanId: '',
     crossDayTimer: null,
     reminderConfig:null,
-    reminderRenewalAvailable:false,
-    renewingReminder:false
+    reminderRenewalAvailable:false
   },
   onShow() { this._visible = true; this._focusTimerOnShow=true; this.loadReminderConfig(); this.load() },
   onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.hideCompletionUndo() },
@@ -351,6 +351,7 @@ Page({
     }, 300)
   },
   togglePlans() { this.setData({ plansExpanded: !this.data.plansExpanded }) },
+  toggleCompleted() { this.setData({ completedExpanded: !this.data.completedExpanded }) },
   toggleEnergy() { this.setData({ energyExpanded: !this.data.energyExpanded }) },
   goFood() { wx.navigateTo({ url: '/pages/record/food' }) },
   goNotifications() { wx.navigateTo({ url: '/pages/notifications/index' }) },
@@ -649,15 +650,6 @@ Page({
       }
       return ready
     })
-  },
-  async renewReminderFromButton() {
-    if (this.data.renewingReminder) return
-    this.setData({ renewingReminder:true })
-    try {
-      const renewed=await this.beginReminderRenewal(null,{ manual:true,force:true })
-      wx.showToast({ title:renewed ? '已续订下次提醒' : '未续订微信提醒',icon:'none' })
-      if (renewed) await this.load()
-    } finally { this.setData({ renewingReminder:false }) }
   },
   openCompletion(e) {
     const plan = this.planFromEvent(e)

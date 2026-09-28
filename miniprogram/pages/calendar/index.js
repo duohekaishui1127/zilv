@@ -92,6 +92,7 @@ Page({
     weekdayLabels: ['一', '二', '三', '四', '五', '六', '日'],
     month: api.localDate().slice(0, 7),
     currentDate: api.localDate(),
+    currentMonth: api.localDate().slice(0, 7),
     calendar: null,
     reportPrompt: null,
     loading: true,
@@ -103,12 +104,15 @@ Page({
     makeupEditor: emptyMakeupEditor(),
     reminderSettings: null,
     reminderRenewalAvailable: false,
-    renewingReminder: false,
     selectedDay: null,
     dayReview: { dailyReview: null, taskProgress: { completed: 0, total: 0 }, notes: [], tasks: [] },
     tasksExpanded: false
   },
-  onShow() { this.setData({ currentDate: api.localDate() }); this.loadCalendar() },
+  onShow() {
+    const currentDate = api.localDate()
+    this.setData({ currentDate, currentMonth: currentDate.slice(0, 7) })
+    this.loadCalendar()
+  },
   onHide() { this.closeReview() },
   onPullDownRefresh() { this.loadCalendar().finally(() => wx.stopPullDownRefresh()) },
   async loadCalendar() {
@@ -117,20 +121,26 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const calendar = await api.call('getActivityCalendar', { month: this.data.month }, { silent: true })
+      if (loadId !== this._calendarLoadId) return
       if (loadId <= this._reminderReceiptLoadId && calendar.reminderSettings?.enabled) {
         calendar.reminderSettings.pushEnabled = true
       }
       this.setData({ calendar: decorateCalendar(calendar, this.data.currentDate), reportPrompt: calendar.reportPrompt || null })
       this.setReminderSettings(calendar.reminderSettings)
     } catch (error) {
-      this.setData({ error: api.messageOf(error) })
+      if (loadId === this._calendarLoadId) this.setData({ error: api.messageOf(error) })
     } finally {
-      this.setData({ loading: false })
+      if (loadId === this._calendarLoadId) this.setData({ loading: false })
     }
   },
   monthChange(e) { this.setData({ month: e.detail.value, calendar: null }, () => this.loadCalendar()) },
   previousMonth() { this.setData({ month: shiftMonth(this.data.month, -1), calendar: null }, () => this.loadCalendar()) },
   nextMonth() { this.setData({ month: shiftMonth(this.data.month, 1), calendar: null }, () => this.loadCalendar()) },
+  goCurrentMonth() {
+    const currentDate = api.localDate()
+    const month = currentDate.slice(0, 7)
+    if (month !== this.data.month) this.setData({ month, currentDate, currentMonth: month, calendar: null }, () => this.loadCalendar())
+  },
   retry() { this.loadCalendar() },
   openReportPrompt() {
     const prompt = this.data.reportPrompt
@@ -174,6 +184,7 @@ Page({
   },
   toggleTasks() { this.setData({ tasksExpanded: !this.data.tasksExpanded }) },
   showMakeupInfo() {
+    if (!this.data.calendar) return
     const makeup = this.data.calendar?.makeup || {}
     const balance = Number(makeup.balance || 0)
     const policy = makeup.policy || { tier: 'FREE', monthlyGrant: 1, cap: 3 }
@@ -198,12 +209,13 @@ Page({
   startMakeup() {
     if (!this.data.makeupEligible || this.data.makeupEditor.visible) return
     if (!this.data.calendar?.makeup?.balance) return this.showMakeupInfo()
+    const tasks = this.data.dayReview.tasks.filter(task => !task.completed).map(task => ({
+      planId: task.planId, name: task.name, categoryLabel: task.categoryLabel,
+      targetLabel: task.targetLabel, timerStatus: task.timerStatus, selected: false
+    }))
     this.setData({ makeupEditor: {
       ...emptyMakeupEditor(), visible: true, date: this.data.selectedDay.date,
-      tasks: this.data.dayReview.tasks.filter(task => !task.completed).map(task => ({
-        planId: task.planId, name: task.name, categoryLabel: task.categoryLabel,
-        targetLabel: task.targetLabel, timerStatus: task.timerStatus, selected: false
-      }))
+      tasks, step: tasks.length ? 'TASKS' : 'REVIEW'
     } })
   },
   closeMakeup() {
@@ -222,7 +234,9 @@ Page({
     this.setData({ 'makeupEditor.tasks': tasks })
   },
   nextMakeupStep() { this.setData({ 'makeupEditor.step': 'REVIEW' }) },
-  previousMakeupStep() { this.setData({ 'makeupEditor.step': 'TASKS' }) },
+  previousMakeupStep() {
+    if (!this.data.makeupEditor.saving && this.data.makeupEditor.tasks.length) this.setData({ 'makeupEditor.step': 'TASKS' })
+  },
   chooseMakeupMood(e) {
     const mood = e.currentTarget.dataset.value
     this.setData({ 'makeupEditor.mood': this.data.makeupEditor.mood === mood ? '' : mood })
@@ -243,18 +257,6 @@ Page({
       }
       return ready
     })
-  },
-  async renewReminder() {
-    if (this.data.renewingReminder || !this.data.reminderRenewalAvailable) return
-    this.setData({ renewingReminder: true })
-    try {
-      const ready = await this.beginReminderRenewal(true)
-      wx.showToast({ title: ready ? '提醒已续订' : '提醒未续订，可稍后重试', icon: ready ? 'success' : 'none' })
-    } catch (error) {
-      wx.showToast({ title: api.messageOf(error), icon: 'none' })
-    } finally {
-      this.setData({ renewingReminder: false })
-    }
   },
   async submitMakeup() {
     const editor = this.data.makeupEditor

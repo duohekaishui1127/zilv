@@ -99,7 +99,7 @@ test('已有未使用授权、关闭提醒、长期模板或未配置时，补�
   }
 })
 
-test('拒绝或微信授权失败不影响补签，仍保留手动续订入口', async () => {
+test('拒绝或微信授权失败不影响补签，也不会错误显示已授权状态', async () => {
   for (const options of [{ authorization: 'reject' }, { authorizationFails: true }]) {
     const { page, calls, toasts } = calendarPage(options)
     await page.submitMakeup()
@@ -134,13 +134,12 @@ test('仅编辑历史心情和小记不触发订阅；重复点击确认只提�
   assert.equal(makeup.calls.filter(call => call.action === 'makeupDailyCheckin').length, 1)
 })
 
-test('补签后可通过续订入口补充授权，接受带声音的授权也有效', async () => {
+test('补签授权逻辑支持显式申请，接受带声音的授权也有效', async () => {
   const { page, calls } = calendarPage({ authorization: 'acceptWithAudio' })
-  const renewal = page.renewReminder()
+  const renewal = page.beginReminderRenewal(true)
   assert.equal(calls[0].action, 'authorize')
   await renewal
   assert.equal(page.data.reminderRenewalAvailable, false)
-  assert.equal(page.data.renewingReminder, false)
 })
 
 test('补签保存和成功反馈不等待微信授权回调，完成后仍可独立保存授权', async () => {

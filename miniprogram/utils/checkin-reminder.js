@@ -41,20 +41,13 @@ function createClient(platform, api) {
     try { platform.setStorageSync?.(storageKey(templateId), date) } catch (error) {}
   }
 
-  function renew(settings, { force = false } = {}) {
-    if (!shouldRequestMakeupReminderRenewal(settings)) return Promise.resolve(false)
-    const templateId = settings.templateId
-    if (pending.has(templateId)) return pending.get(templateId)
+  function authorize(templateId) {
+    if (!templateId || typeof platform.requestSubscribeMessage !== 'function') return Promise.resolve(false)
     const preference = preferences.get(templateId) || {}
-    if (!force && !shouldAutomaticallyRenewReminder({
-      settings, ...preference, promptedToday: promptedToday(templateId)
-    })) return Promise.resolve(false)
-    if (typeof platform.requestSubscribeMessage !== 'function') return Promise.resolve(false)
-
     recordAttempt(templateId)
     // This constructor runs immediately in the user's tap/confirm callback.
     // Never await getSetting or a cloud request before invoking the native API.
-    const authorization = new Promise(resolve => {
+    return new Promise(resolve => {
       try {
         platform.requestSubscribeMessage({
           tmplIds: [templateId],
@@ -68,7 +61,17 @@ function createClient(platform, api) {
         })
       } catch (error) { resolve(false) }
     })
-    const renewal = authorization.then(async authorized => {
+  }
+
+  function renew(settings, { force = false } = {}) {
+    if (!shouldRequestMakeupReminderRenewal(settings)) return Promise.resolve(false)
+    const templateId = settings.templateId
+    if (pending.has(templateId)) return pending.get(templateId)
+    const preference = preferences.get(templateId) || {}
+    if (!force && !shouldAutomaticallyRenewReminder({
+      settings, ...preference, promptedToday: promptedToday(templateId)
+    })) return Promise.resolve(false)
+    const renewal = authorize(templateId).then(async authorized => {
       if (!authorized) return false
       const result = await api.call('renewCheckinReminderSubscription', { authorized: true }, { silent: true })
       return Boolean(result.renewed || result.alreadyAvailable)
@@ -80,7 +83,7 @@ function createClient(platform, api) {
     return renewal
   }
 
-  return { refresh, renew }
+  return { refresh, authorize, renew }
 }
 
 function getCheckinReminderClient(platform, api) {

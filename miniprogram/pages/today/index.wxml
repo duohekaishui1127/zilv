@@ -52,20 +52,16 @@
         <view class="sub">{{dashboard.completion.total ? '完成全部任务后自动打卡' : '今天没有任务，也可以留下一条记录'}}</view>
         <button class="btn btn-small btn-light manual-checkin-button" loading="{{manualCheckinSaving}}" catchtap="manualDailyCheckin">打卡</button>
       </view>
-      <view wx:if="{{reminderRenewalAvailable}}" class="reminder-renew-row row">
-        <view><view class="value">补充下一次打卡提醒</view><view class="sub">已完成今日全部任务，可补充下一次提醒机会</view></view>
-        <button class="btn btn-small btn-light" loading="{{renewingReminder}}" bindtap="renewReminderFromButton">续订</button>
-      </view>
-
       <view wx:if="{{plansExpanded}}" class="plan-list">
-        <view id="today-plan-{{item._id}}" class="plan-item {{item.completed ? 'plan-item-completed' : ''}}" wx:for="{{dashboard.plans}}" wx:key="_id" data-index="{{index}}" bindtap="openCompletion">
+        <block wx:for="{{dashboard.plans}}" wx:key="_id">
+        <view wx:if="{{!item.completed}}" id="today-plan-{{item._id}}" class="plan-item" data-index="{{index}}" bindtap="openCompletion">
           <view class="row-start">
             <view class="flex-1">
               <view class="value plan-name">{{item.name}}</view>
               <view class="plan-time" wx:if="{{item.executionTime}}">{{item.executionTime}}</view>
               <view class="sub plan-description" wx:if="{{item.description}}">{{item.description}}</view>
               <view class="sub" wx:if="{{item.repeatType === 'WEEKLY_COUNT'}}">{{item.categoryLabel}} · 本周 {{item.weeklyProgress.completed}}/{{item.weeklyProgress.target}} · 每次 {{item.targetValue}}{{item.unit}}</view>
-              <view class="sub" wx:else>{{item.categoryLabel}} · 目标 {{item.targetValue}}{{item.unit}}</view>
+              <view class="sub" wx:else>{{item.categoryLabel}}{{item.targetType !== 'BOOLEAN' ? ' · 目标 ' + item.targetValue + item.unit : ''}}</view>
               <view class="timer-panel" wx:if="{{item.timerEnabled && !item.completed}}" catchtap="noop">
                 <view class="row timer-head"><view class="timer-state">{{item.timerModeLabel}} · {{item.timerStatusLabel}}</view><view class="timer-clock">{{item.timerDisplay}}</view></view>
                 <view class="timer-summary" wx:if="{{item.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</view>
@@ -76,18 +72,27 @@
                   <button wx:if="{{item.timerStatus === 'RUNNING' || item.timerStatus === 'PAUSED'}}" class="btn btn-small btn-danger" data-index="{{index}}" catchtap="finishTimer">结束</button>
                 </view>
               </view>
-              <view class="completion-meta" wx:if="{{item.completed && item.targetType !== 'BOOLEAN'}}">本次完成 {{item.checkin.actualValue}}{{item.unit}}</view>
-              <view class="completion-meta" wx:if="{{item.completed && (item.checkin.durationMinutes || item.checkin.note || item.checkin.timerStatus)}}">
-                <text wx:if="{{item.checkin.timerStatus}}">有效 {{item.timerEffectiveDisplay}} · 总用时 {{item.timerTotalDisplay}} · 暂停 {{item.timerPausedDisplay}}</text>
-                <text wx:elif="{{item.checkin.durationMinutes}}">用时 {{item.checkin.durationMinutes}} 分钟</text>
-                <text wx:if="{{item.checkin.note}}">{{item.checkin.timerStatus || item.checkin.durationMinutes ? ' · ' : ''}}{{item.checkin.note}}</text>
-              </view>
             </view>
-            <view class="check-circle {{item.completed ? 'check-circle-done' : ''}} {{item.syncing ? 'check-circle-syncing' : ''}}" data-index="{{index}}" catchtap="quickComplete">{{item.completed ? '✓' : ''}}</view>
+            <view class="check-hit-area" data-index="{{index}}" catchtap="quickComplete" aria-role="button" aria-label="完成{{item.name}}"><view class="check-circle {{item.syncing ? 'check-circle-syncing' : ''}}"></view></view>
           </view>
         </view>
-        <view wx:if="{{!dashboard.plans.length}}" class="empty compact">今天还没有待执行计划</view>
-        <view class="sub plan-tip" wx:if="{{dashboard.plans.length}}">点圆圈直接完成；完成后点任务可修改实际完成量或补充备注。目标与群组关联请到“任务”页修改。</view>
+        </block>
+        <view wx:if="{{dashboard.completion.completed}}" class="completed-section">
+          <view class="row completed-toggle" bindtap="toggleCompleted" aria-role="button" aria-label="{{completedExpanded ? '收起' : '展开'}}已完成任务">
+            <view>已完成 {{dashboard.completion.completed}} 项</view><view class="chevron">{{completedExpanded ? '⌃' : '⌄'}}</view>
+          </view>
+          <block wx:if="{{completedExpanded}}">
+            <block wx:for="{{dashboard.plans}}" wx:key="_id">
+              <view wx:if="{{item.completed}}" id="today-plan-{{item._id}}" class="plan-item plan-item-completed" data-index="{{index}}" bindtap="openCompletion">
+                <view class="row-start">
+                  <view class="flex-1"><view class="value plan-name">{{item.name}}</view><view class="completion-meta">已完成{{item.targetType !== 'BOOLEAN' ? ' · ' + item.checkin.actualValue + item.unit : ''}}{{item.checkin.timerStatus ? ' · 有效 ' + item.timerEffectiveDisplay : (item.checkin.durationMinutes ? ' · ' + item.checkin.durationMinutes + ' 分钟' : '')}}{{item.checkin.note ? ' · 有备注' : ''}}</view></view>
+                  <view class="check-hit-area" data-index="{{index}}" catchtap="quickComplete" aria-role="button" aria-label="查看{{item.name}}完成记录"><view class="check-circle check-circle-done {{item.syncing ? 'check-circle-syncing' : ''}}">✓</view></view>
+                </view>
+              </view>
+            </block>
+          </block>
+        </view>
+        <view wx:if="{{!dashboard.plans.length}}" class="empty compact"><view>今天没有安排任务</view><button class="btn btn-small btn-light empty-plan-action" bindtap="goTasks">添加计划</button></view>
       </view>
     </view>
 
