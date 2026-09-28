@@ -1,0 +1,10 @@
+<view class="container legal-page">
+  <view class="hero"><view class="pixel-kicker">TERMS</view><view class="h1">用户服务协议</view><view class="sub">版本 {{gate.termsVersion || '1.0'}} · 生效日期 {{gate.effectiveDate || '2026-09-28'}}</view></view>
+  <view class="legal-card"><view class="legal-h2">1. 服务说明</view><view class="legal-p">ZILV 提供计划、长期目标、计时、打卡、复盘、成长纪念、健康与生活记录、好友和群组等自我管理工具。产品仍可能持续迭代，公测功能和展示方式可能调整。</view></view>
+  <view class="legal-card"><view class="legal-h2">2. Free、Beta Pro 与 Pro</view><view class="legal-p">基础功能可按产品页面说明免费使用。符合公测条件的用户可在限定期间体验 Pro 权益；Beta Pro 到期不会自动扣费，基础数据不会因到期被删除。</view><view class="legal-p">正式开放永久 Pro 后，具体价格、权益、支付和退款规则以购买页面和平台支付规则为准。公测权益不等于未来所有新增功能均永久免费。</view></view>
+  <view class="legal-card"><view class="legal-h2">3. 账号与使用规则</view><view class="legal-p">请正常使用好友、群组、反馈等功能，不得利用产品骚扰他人、发布违法违规内容、攻击系统、批量滥用接口或影响其他用户正常使用。</view></view>
+  <view class="legal-card"><view class="legal-h2">4. 用户内容与数据</view><view class="legal-p">你对自己主动创建的计划、笔记、图片等内容承担相应责任。我们仅在提供服务所需范围内处理这些内容。你可以通过产品提供的数据管理功能删除部分数据或注销账号。</view></view>
+  <view class="legal-card"><view class="legal-h2">5. 健康与自律功能边界</view><view class="legal-p">身体、饮食、运动、完成率、趋势和复盘均属于自我记录工具，不构成医疗、心理、营养或其他专业意见。奖章、连续记录和完成率用于激励，不应被理解为对个人价值的评价。</view></view>
+  <view class="legal-card"><view class="legal-h2">6. 服务变更与中断</view><view class="legal-p">为修复问题、提升安全性、适配微信平台规则或调整业务，我们可能更新功能。涉及用户重要权益的变化会尽可能通过页面说明、版本公告或协议更新进行提示。</view></view>
+  <view class="legal-card"><view class="legal-h2">7. 联系方式</view><view class="legal-p">运营者：{{gate.operatorName || '运营者信息加载中'}}。</view><view class="legal-p">服务联系：{{gate.serviceContact || gate.privacyContact || '联系方式加载中'}}。</view></view>
+</view>

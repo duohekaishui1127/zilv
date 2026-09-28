@@ -1,0 +1,26 @@
+<view class="consent-page">
+  <view class="consent-shell">
+    <view class="pixel-kicker">WELCOME TO ZILV</view>
+    <view class="consent-title">把长期目标，落实到今天。</view>
+    <view class="consent-copy">开始前，请先了解我们如何提供服务、保存数据，以及你如何管理自己的数据。</view>
+
+    <view class="consent-card" wx:if="{{gate}}">
+      <view class="consent-row" bindtap="openTerms"><view><view class="consent-label">用户服务协议</view><view class="consent-meta">版本 {{gate.termsVersion}}</view></view><view>›</view></view>
+      <view class="consent-row" bindtap="openPrivacy"><view><view class="consent-label">隐私政策</view><view class="consent-meta">版本 {{gate.privacyVersion}} · {{gate.effectiveDate}}</view></view><view>›</view></view>
+    </view>
+
+    <view class="privacy-points">
+      <view class="point"><text>01</text><view><view class="point-title">数据默认属于你</view><view class="point-copy">计划、打卡、健康记录等用于提供你主动使用的功能，不用于出售给广告商。</view></view></view>
+      <view class="point"><text>02</text><view><view class="point-title">按场景授权</view><view class="point-copy">上传图片、保存海报等权限只在你主动使用相关功能时申请。</view></view></view>
+      <view class="point"><text>03</text><view><view class="point-title">可以退出</view><view class="point-copy">你可以在“我的 → 账号与数据”中清空部分数据或永久注销账号。</view></view></view>
+    </view>
+
+    <view class="check-line {{checked?'checked':''}}" bindtap="toggle">
+      <view class="pixel-check">{{checked?'✓':''}}</view>
+      <view>我已阅读并同意<text bindtap="openTerms">《用户服务协议》</text>和<text bindtap="openPrivacy">《隐私政策》</text></view>
+    </view>
+    <button class="primary" loading="{{submitting}}" bindtap="accept">同意并开始使用</button>
+    <button class="ghost" bindtap="exit">不同意并退出</button>
+    <view class="production-warning" wx:if="{{gate && !gate.productionReady}}">开发提示：运营者姓名/隐私联系方式尚未配置，正式提审前请完成云函数环境变量。</view>
+  </view>
+</view>

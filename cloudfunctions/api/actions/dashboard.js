@@ -9,6 +9,7 @@ const { ensureDailyReviewAfterCompletion, dailyReviewStreak } = require('../serv
 const { notificationWindow } = require('../services/notification-retention')
 const { longTermContext } = require('../services/long-term-goals')
 const { presentDailyReview } = require('../domain/daily-review')
+const { membershipOf } = require('../domain/membership')
 
 async function dashboard({ user, localDate }) {
   await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
@@ -40,12 +41,13 @@ async function dashboard({ user, localDate }) {
   return {
     serverTime: now(),
     user: {
-      _id:user._id,nickname:user.nickname,avatar:user.avatar,shareCode:user.shareCode,
+      _id:user._id,nickname:user.nickname,avatar:user.avatar,shareCode:user.shareCode,identityCode:user.identityCode,
       reminderRenewedToday:user.lastReminderRenewalDate === localDate,
       checkinReminderEnabled:Boolean(user.checkinReminderEnabled),
       checkinReminderPushEnabled:Boolean(user.checkinReminderPushEnabled),
       countUpReminderPushEnabled:Boolean(user.countUpReminderPushEnabled)
     },
+    membership: membershipOf(user),
     homePreferences: homePreferencesOf(user),
     nutritionTarget: target,
     plans,

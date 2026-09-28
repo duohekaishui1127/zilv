@@ -4,10 +4,10 @@
  */
 module.exports = Object.freeze({
   "enabled": true,
-  "id": "release-1.6.0",
-  "version": "1.6.0",
-  "title": "好友资料与群组邀请上线",
-  "content": "好友申请新增消息和红点提醒，好友资料支持备注、隐私与特别关心。\n群组现在可复制 ID 和邀请用户，成员按待完成进度排序。\n群成员可以查看仅含群组任务的当月打卡日历。",
+  "id": "release-1.7.1",
+  "version": "1.7.1",
+  "title": "上线合规与 Free / Pro 体系",
+  "content": "新增用户服务协议、隐私政策、协议版本确认、个人数据管理和账号注销闭环。\n完善 Free / Beta Pro / Lifetime Pro 权益层；90 天公测到期平滑回到 Free，数据不丢失。\n新增 Pro 权益页和正式买断占位配置，为后续微信官方虚拟支付接入预留服务端入口。",
   "legacyIds": [
     "2026-09-18-friends-and-groups"
   ]

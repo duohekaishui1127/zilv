@@ -1,3 +1,29 @@
+.progress-page { min-height:100vh; background:linear-gradient(180deg,#eef2f0 0,#f6f7f9 330rpx); }
+.pixel-kicker { margin-bottom:8rpx; color:#6b7280; font-size:19rpx; font-weight:700; letter-spacing:8rpx; }
+.achievement-header { display:flex; align-items:center; justify-content:space-between; gap:20rpx; padding:24rpx; border:2rpx solid #111827; border-radius:10rpx; background:#fff; box-shadow:7rpx 7rpx 0 rgba(17,24,39,.12); }
+.achievement-number { color:#111827; font-size:48rpx; font-weight:900; line-height:1; }
+.achievement-number text { margin-left:4rpx; color:#8a8f98; font-size:24rpx; }
+.identity-stamp { padding:10rpx 13rpx; border:2rpx dashed #315f4a; color:#315f4a; font-family:monospace; font-size:21rpx; font-weight:800; }
+.badge-grid { display:grid; grid-template-columns:1fr 1fr; gap:16rpx; }
+.badge-card { min-height:270rpx; box-sizing:border-box; padding:22rpx; border:2rpx solid #cfd4d8; border-radius:10rpx; background:#fff; box-shadow:5rpx 5rpx 0 rgba(17,24,39,.08); text-align:center; }
+.badge-unlocked { border-color:#315f4a; background:#f4faf6; }
+.badge-locked { opacity:.66; }
+.badge-flipped { display:flex; flex-direction:column; align-items:center; justify-content:center; border-style:dashed; }
+.badge-medal { display:flex; align-items:center; justify-content:center; width:92rpx; height:92rpx; margin:0 auto 16rpx; border:6rpx double #111827; border-radius:18rpx; background:#f0f2f3; transform:rotate(45deg); }
+.badge-unlocked .badge-medal { border-color:#315f4a; background:#dceee4; }
+.badge-symbol { transform:rotate(-45deg); color:#111827; font-family:monospace; font-size:22rpx; font-weight:900; }
+.badge-unlocked .badge-symbol { color:#244b38; }
+.badge-title { color:#111827; font-size:27rpx; font-weight:800; }
+.badge-subtitle { min-height:60rpx; margin-top:7rpx; color:#6b7280; font-size:21rpx; line-height:1.45; }
+.badge-progress { height:8rpx; margin-top:12rpx; overflow:hidden; border:1rpx solid #cfd4d8; border-radius:1rpx; background:#eef0f2; }
+.badge-progress view { height:100%; background:#315f4a; }
+.badge-state { margin-top:8rpx; color:#7a818b; font-family:monospace; font-size:18rpx; }
+.badge-back-label { color:#6b7280; font-family:monospace; font-size:18rpx; letter-spacing:4rpx; }
+.badge-earned-date { margin-top:12rpx; color:#244b38; font-family:monospace; font-size:29rpx; font-weight:900; }
+.badge-back-copy { margin-top:16rpx; color:#374151; font-size:23rpx; line-height:1.55; }
+.badge-back-code { margin-top:18rpx; color:#9ca3af; font-family:monospace; font-size:17rpx; }
+.badge-hint { margin-top:15rpx; color:#8a8f98; font-size:21rpx; text-align:center; }
+.goal-section-title { margin-top:42rpx; }
 .progress-card { border:1rpx solid #e3e7e5; background:linear-gradient(135deg,#fff,#f7faf8); }
 .progress-status { flex:0 0 auto; padding:8rpx 14rpx; border-radius:999rpx; color:#3f6d58; background:#e8f4ed; font-size:22rpx; font-weight:700; }
 .progress-status-PENDING { color:#765b25; background:#fff3d6; }

@@ -1,4 +1,5 @@
 const { presentDailyReview } = require('./daily-review')
+const { longestStreak } = require('./achievements')
 
 function pad(value) { return String(value).padStart(2, '0') }
 
@@ -80,7 +81,7 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
   const mealMap = sumByDate(mealItems, 'recordDate', ['energyKcal', 'proteinGram'])
   const workoutMap = sumByDate(workouts, 'recordDate', ['durationMinutes', 'estimatedCalories'])
   const studyMap = sumByDate(studySessions, 'recordDate', ['durationMinutes'])
-  const checkinMap = sumByDate(checkins.filter(item => item.completed), 'date', ['completed'])
+  const checkinMap = sumByDate(checkins.filter(item => item.completed), 'date', ['completed', 'timerEffectiveSeconds', 'durationMinutes'])
   const noteCounts = notes.filter(item => item.status !== 'DELETED').reduce((map, item) => {
     map[item.recordDate] = (map[item.recordDate] || 0) + 1
     return map
@@ -124,11 +125,15 @@ function buildDailySeries({ dates, bodies = [], mealItems = [], workouts = [], s
       workoutCalories: round1(workout.estimatedCalories),
       studyMinutes: Math.round(number(study.durationMinutes)),
       checkinCount: Math.round(number(checkin.completed)),
+      focusMinutes: Math.round(number(checkin.timerEffectiveSeconds) / 60),
+      taskDurationMinutes: Math.round(number(checkin.durationMinutes)),
       mood: dailyReview?.mood || '',
       dailyCheckedIn: !!dailyReview,
       dailyCheckinState: dailyReview?.checkinState || '',
       allPlansCompleted: dailyReview?.allPlansCompleted || false,
       checkinMode: dailyReview?.checkinMode || '',
+      completedPlanCount: Number(dailyReview?.completedPlanCount || 0),
+      totalPlanCount: Number(dailyReview?.totalPlanCount || 0),
       noteCount,
       activityScore,
       active: activityScore > 0
@@ -147,6 +152,9 @@ function buildProgressReport(input) {
   const firstWeight = bodyPoints[0]?.weightKg ?? null
   const latestWeight = bodyPoints[bodyPoints.length - 1]?.weightKg ?? null
   const balanceDays = daily.filter(day => day.calorieBalance != null)
+  const reviewDays = daily.filter(day => day.dailyCheckedIn)
+  const totalPlans = reviewDays.reduce((sum, day) => sum + day.totalPlanCount, 0)
+  const completedPlans = reviewDays.reduce((sum, day) => sum + day.completedPlanCount, 0)
   return {
     startDate: daily[0]?.date || null,
     endDate: daily[daily.length - 1]?.date || null,
@@ -166,7 +174,14 @@ function buildProgressReport(input) {
       studyMinutes: daily.reduce((sum, day) => sum + day.studyMinutes, 0),
       studyDays: daily.filter(day => day.studyMinutes > 0).length,
       checkinCount: daily.reduce((sum, day) => sum + day.checkinCount, 0),
-      activeDays: daily.filter(day => day.active).length
+      completedTasks: daily.reduce((sum, day) => sum + day.checkinCount, 0),
+      focusMinutes: daily.reduce((sum, day) => sum + day.focusMinutes, 0),
+      activeDays: daily.filter(day => day.active).length,
+      reviewDays: reviewDays.length,
+      completeDays: reviewDays.filter(day => day.allPlansCompleted).length,
+      partialDays: reviewDays.filter(day => !day.allPlansCompleted).length,
+      completionRate: totalPlans > 0 ? Math.round(completedPlans / totalPlans * 100) : null,
+      longestStreak: longestStreak(reviewDays.map(day => day.date))
     }
   }
 }

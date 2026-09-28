@@ -8,7 +8,7 @@ const MUTATING_ACTIONS = new Set([
   'sendFriendRequest','acceptFriendRequest','rejectFriendRequest','cancelFriendRequest','removeFriend','updateFriendSettings','createGroup','joinGroup','leaveGroup','updateGroupMemberSettings','updateGroupSettings','reviewGroupJoinRequest','reviewGroupPlanChange','removeGroupMember','disbandGroup',
   'inviteUsersToGroup','bindPlanToGroup','unbindPlanFromGroup','saveNote','deleteNote','saveBodyMetricPrefs',
   'markNotificationRead','markAllNotificationsRead','updateCheckinReminderSettings','renewCheckinReminderSubscription','submitFeedback','updateFeedbackStatus','replyFeedback',
-  'toggleGroupEventLike','setSpecialCare','setSpecialCareWechat'
+  'toggleGroupEventLike','setSpecialCare','setSpecialCareWechat','acceptLegal','deletePersonalDataCategory'
 ])
 
 function inferEntityId(event = {}, data = {}) {

@@ -25,5 +25,8 @@ module.exports = {
   ...require('./notifications'),
   ...require('./feedback'),
   ...require('./reports'),
-  ...require('./system')
+  ...require('./achievements'),
+  ...require('./system'),
+  ...require('./legal'),
+  ...require('./data-rights')
 }

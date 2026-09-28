@@ -8,6 +8,12 @@
     </view>
   </view>
 
+  <view wx:if="{{reportPrompt}}" class="report-prompt" bindtap="openReportPrompt">
+    <view class="report-prompt-mark">RPT</view>
+    <view class="flex-1"><view class="value">{{reportPrompt.label}}已经生成</view><view class="sub">把这一段走过的路整理成一张可以保存的记录</view></view>
+    <view class="report-prompt-arrow">›</view>
+  </view>
+
   <view class="card calendar-card">
     <view class="row month-nav">
       <button class="month-button" bindtap="previousMonth">‹</button>
@@ -61,7 +67,7 @@
       <view wx:if="{{makeupEligible}}" class="makeup-entry">
         <view><view class="value">昨天还未打卡</view><view class="sub">可选择实际完成的任务，心情和小记可留空</view></view>
         <button wx:if="{{calendar.makeup.balance}}" class="btn btn-small makeup-entry-button" bindtap="startMakeup">使用补签卡</button>
-        <view wx:else class="sub">补签卡已用完，下月自动获得 1 张</view>
+        <view wx:else class="sub">补签卡已用完，下月自动获得 {{calendar.makeup.policy.monthlyGrant || 1}} 张</view>
       </view>
       <view class="review-section">
         <view class="row"><view class="section-title review-title">备注小记</view><button wx:if="{{dayReview.dailyReview}}" class="btn btn-small btn-light review-edit-button" bindtap="editDayReview">{{dayReview.dailyReview.mood ? '编辑' : '记录心情'}}</button></view>

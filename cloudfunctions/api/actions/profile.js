@@ -4,6 +4,9 @@ const { getUserById, getPrivacy, getNutritionProfile } = require('../services/us
 const { latestWeight, weightStatus, currentNutritionTarget, recalcNutritionTarget } = require('../services/nutrition')
 const { homePreferencesOf, normalizedCardOrder } = require('../services/preferences')
 const { isFeedbackAdmin } = require('../services/feedback-admin')
+const { membershipOf } = require('../domain/membership')
+const { entitlementsOf } = require('../domain/entitlements')
+const { proOffer } = require('../domain/pro-offer')
 
 async function getProfile({ user, localDate }) {
   const [nutritionProfile, privacy, weight] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id), latestWeight(user._id)])
@@ -11,7 +14,10 @@ async function getProfile({ user, localDate }) {
     user: { ...user, homePreferences: homePreferencesOf(user) }, nutritionProfile, privacy,
     weightStatus: weightStatus(weight, localDate),
     latestWeight: weight || null,
-    isFeedbackAdmin: isFeedbackAdmin(user)
+    isFeedbackAdmin: isFeedbackAdmin(user),
+    membership: membershipOf(user),
+    entitlements: entitlementsOf(membershipOf(user)),
+    proOffer: proOffer()
   }
 }
 

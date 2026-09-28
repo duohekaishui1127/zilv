@@ -1,0 +1,32 @@
+<view class="container pro-page" wx:if="{{!loading}}">
+  <view class="pro-hero">
+    <view class="pixel-kicker">ZILV PRO</view>
+    <view class="pro-title">让坚持不只留下一个勾。</view>
+    <view class="pro-sub">Free 帮你执行今天，Pro 帮你看见长期变化。</view>
+    <view class="status-stamp {{membership.isPro?'active':''}}">
+      <view class="status-name">{{membership.betaActive?'BETA PRO':(membership.lifetime?'PRO LIFETIME':'FREE')}}</view>
+      <view class="status-desc" wx:if="{{membership.betaActive}}">公测完整体验 · 还剩 {{membership.remainingDays}} 天</view>
+      <view class="status-desc" wx:elif="{{membership.lifetime}}">永久 Pro 已解锁</view>
+      <view class="status-desc" wx:else>基础版永久免费 · 历史数据始终保留</view>
+    </view>
+  </view>
+
+  <view class="section-kicker">FREE · 每个人都能长期使用</view>
+  <view class="feature-card free-card">
+    <view class="feature" wx:for="{{freeFeatures}}" wx:key="0"><view class="feature-mark">✓</view><view><view class="feature-title">{{item[0]}}</view><view class="feature-copy">{{item[1]}}</view></view></view>
+  </view>
+
+  <view class="section-kicker pro-kicker">PRO · 长期使用后越来越有价值</view>
+  <view class="feature-card pro-card">
+    <view class="feature" wx:for="{{proFeatures}}" wx:key="0"><view class="feature-mark pro-mark">P</view><view><view class="feature-title">{{item[0]}}</view><view class="feature-copy">{{item[1]}}</view></view></view>
+  </view>
+
+  <view class="beta-note" wx:if="{{membership.betaUser && !membership.lifetime}}">
+    <view class="beta-title">公测用户权益</view>
+    <view class="beta-copy">你的 90 天体验到期后不会自动扣费，也不会删除历史记录。到期后高级复盘等功能会回到锁定状态；未来购买永久 Pro 后会立即恢复。</view>
+  </view>
+  <button class="buy-button {{offer.purchaseEnabled?'enabled':''}}" bindtap="purchase">
+    {{membership.lifetime?'已永久解锁':(offer.purchaseEnabled?'永久解锁 Pro':'永久 Pro · 正式开放后可买断')}}
+  </button>
+  <view class="payment-note">支付预留通道：微信小程序虚拟支付。当前公测版本不会引导私下转账或自动扣费。</view>
+</view>

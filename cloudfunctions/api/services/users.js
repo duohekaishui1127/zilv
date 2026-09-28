@@ -3,6 +3,10 @@ const { DEFAULT_PRIVACY } = require('../lib/constants')
 const { now, randomCode } = require('../lib/utils')
 const { ensureDefaultAdminFriendship } = require('./default-admin-friend')
 const { INITIAL_CARDS, INITIAL_GRANT_VERSION, todayForUser } = require('../domain/makeup-cards')
+const { betaEnrollmentFields, identityCode } = require('../domain/membership')
+
+function betaEnrollmentEnabled() { return String(process.env.BETA_ENROLLMENT_ENABLED || 'true').toLowerCase() !== 'false' }
+function defaultAdminFriendEnabled() { return String(process.env.DEFAULT_ADMIN_FRIEND_ENABLED || 'false').toLowerCase() === 'true' }
 
 async function uniqueCode(collection, field, len = 6) {
   for (let i = 0; i < 8; i++) {
@@ -16,8 +20,9 @@ async function uniqueCode(collection, field, len = 6) {
 async function ensureUser(openid) {
   const r = await db.collection(C.USERS).where({ openid }).limit(1).get()
   if (r.data.length) {
-    const user = r.data[0]
-    if (!user.defaultAdminFriendshipInitialized) return initializeDefaultAdminFriendship(user)
+    let user = r.data[0]
+    user = await ensureProductIdentity(user)
+    if (defaultAdminFriendEnabled() && !user.defaultAdminFriendshipInitialized) return initializeDefaultAdminFriendship(user)
     return user
   }
 
@@ -30,10 +35,12 @@ async function ensureUser(openid) {
     makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION,
     avatar: '',
     shareCode,
+    identityCode: `ZL-${shareCode}`,
     status: 'ACTIVE',
     createdAt: now(),
     updatedAt: now()
   }
+  if (betaEnrollmentEnabled()) Object.assign(data, betaEnrollmentFields(data, data.createdAt))
   const added = await db.collection(C.USERS).add({ data })
   const user = { _id: added._id, ...data }
 
@@ -51,7 +58,24 @@ async function ensureUser(openid) {
     } })
   ])
 
-  return initializeDefaultAdminFriendship(user)
+  return defaultAdminFriendEnabled() ? initializeDefaultAdminFriendship(user) : user
+}
+
+async function findUserByOpenid(openid) {
+  if (!openid) return null
+  const result = await db.collection(C.USERS).where({ openid }).limit(1).get()
+  return result.data[0] || null
+}
+
+async function ensureProductIdentity(user) {
+  const data = {}
+  const code = identityCode(user)
+  if (user.identityCode !== code) data.identityCode = code
+  if (betaEnrollmentEnabled() && (!user.betaUser || !user.betaStartedAt || !user.betaExpiresAt)) Object.assign(data, betaEnrollmentFields(user, now()))
+  if (!Object.keys(data).length) return user
+  data.updatedAt = now()
+  await db.collection(C.USERS).doc(user._id).update({ data })
+  return { ...user, ...data }
 }
 
 async function initializeDefaultAdminFriendship(user) {
@@ -89,4 +113,4 @@ async function getNutritionProfile(userId) {
   return r.data[0] || null
 }
 
-module.exports = { uniqueCode, ensureUser, getUserById, getPrivacy, getNutritionProfile }
+module.exports = { uniqueCode, ensureUser, ensureProductIdentity, findUserByOpenid, getUserById, getPrivacy, getNutritionProfile }

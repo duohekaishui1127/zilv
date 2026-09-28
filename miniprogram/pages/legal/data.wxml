@@ -1,0 +1,33 @@
+<view class="container data-page">
+  <view class="hero"><view class="pixel-kicker">YOUR DATA</view><view class="h1">账号与数据</view><view class="sub">你的记录应该由你决定保留多久。清空操作不可撤销，请先确认范围。</view></view>
+  <view class="card summary-card">
+    <view class="summary-grid">
+      <view><text>{{summary.plans||0}}</text><view>任务 / 目标</view></view>
+      <view><text>{{summary.reviews||0}}</text><view>日复盘</view></view>
+      <view><text>{{summary.notes||0}}</text><view>历程笔记</view></view>
+      <view><text>{{summary.meals||0}}</text><view>饮食记录</view></view>
+    </view>
+  </view>
+  <view class="card">
+    <view class="data-action" data-type="ACTIVITY" bindtap="start"><view><view class="value">清空执行历史</view><view class="sub">打卡、完成和学习执行记录</view></view><view>›</view></view>
+    <view class="data-action" data-type="HEALTH" bindtap="start"><view><view class="value">清空身体与运动数据</view><view class="sub">身体指标、运动和营养计算</view></view><view>›</view></view>
+    <view class="data-action" data-type="DIET" bindtap="start"><view><view class="value">清空饮食数据</view><view class="sub">饮食记录、照片与自定义食物</view></view><view>›</view></view>
+    <view class="data-action" data-type="NOTES" bindtap="start"><view><view class="value">清空我的历程</view><view class="sub">笔记和图片附件</view></view><view>›</view></view>
+  </view>
+  <view class="card danger-zone">
+    <view class="danger-title">DANGER ZONE</view>
+    <view class="data-action" data-type="ACCOUNT" bindtap="start"><view><view class="value danger">永久注销账号</view><view class="sub">删除或匿名化账号关联数据，操作不可撤销</view></view><view>›</view></view>
+  </view>
+  <view class="tip">隐私或数据请求也可以联系：{{contact || '请在上线前配置隐私联系方式'}}</view>
+</view>
+
+<view class="confirm-mask" wx:if="{{confirmType}}">
+  <view class="confirm-box">
+    <view class="pixel-kicker">PLEASE CONFIRM</view>
+    <view class="confirm-title">{{confirmTitle}}</view>
+    <view class="confirm-desc">{{confirmDesc}}</view>
+    <view class="confirm-hint">请输入「{{confirmType==='ACCOUNT'?'永久注销':'确认清空'}}」确认</view>
+    <input class="input" value="{{phraseDraft}}" bindinput="input" placeholder="输入确认文字"/>
+    <view class="confirm-actions"><button class="btn btn-light" bindtap="cancel">取消</button><button class="btn btn-danger" loading="{{submitting}}" bindtap="confirm">确认</button></view>
+  </view>
+</view>

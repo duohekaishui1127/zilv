@@ -24,19 +24,26 @@ function between(userId, field, startDate, endDate) {
 async function loadRangeData(userId, dates, includeTargets = true) {
   const startDate = dates[0]
   const endDate = dates[dates.length - 1]
-  const [bodies, mealItems, workouts, studySessions, checkins, targets] = await Promise.all([
+  const [bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets] = await Promise.all([
     fetchAll(C.BODY, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.MEAL_ITEMS, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.WORKOUTS, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.STUDY, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.CHECKINS, between(userId, 'date', startDate, endDate), 'date'),
+    fetchAll(C.DAILY_REVIEWS, between(userId, 'date', startDate, endDate), 'date'),
     includeTargets ? fetchAll(C.NUTRITION_TARGETS, { userId }) : []
   ])
-  return { dates, bodies, mealItems, workouts, studySessions, checkins, targets }
+  return { dates, bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets }
 }
 
 async function loadProgressReport(userId, endDate, days) {
   const dates = dateRange(endDate, days)
+  return buildProgressReport(await loadRangeData(userId, dates, true))
+}
+
+async function loadProgressReportRange(userId, startDate, endDate) {
+  const days = Math.max(1, Math.round((new Date(`${endDate}T12:00:00Z`) - new Date(`${startDate}T12:00:00Z`)) / 86400000) + 1)
+  const dates = dateRange(endDate, days).filter(date => date >= startDate)
   return buildProgressReport(await loadRangeData(userId, dates, true))
 }
 
@@ -110,4 +117,4 @@ async function loadDayReview(userId, date) {
   }
 }
 
-module.exports = { loadProgressReport, loadActivityCalendar, loadDayReview }
+module.exports = { fetchAll, loadProgressReport, loadProgressReportRange, loadActivityCalendar, loadDayReview }

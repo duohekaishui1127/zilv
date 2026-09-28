@@ -16,3 +16,9 @@
 .profile-nickname-placeholder { color:#9ca3af; font-weight:500; }
 .profile-completion-hint { margin-top:20rpx; padding-top:18rpx; border-top:1rpx solid #eef0f2; color:#6b7280; font-size:23rpx; }
 .reminder-setting picker { display:block; min-width:0; }
+.membership-strip { display:flex; align-items:center; justify-content:space-between; gap:16rpx; margin-top:22rpx; padding:18rpx; border:2rpx solid #d7dbe0; border-radius:10rpx; background:#f6f7f9; }
+.membership-pro { border-color:#315f4a; background:#edf6f1; box-shadow:5rpx 5rpx 0 rgba(49,95,74,.12); }
+.membership-title { color:#1f2937; font-family:monospace; font-size:22rpx; font-weight:800; letter-spacing:1rpx; }
+.membership-sub { margin-top:5rpx; color:#6b7280; font-size:21rpx; }
+.membership-code { flex:0 0 auto; color:#315f4a; font-family:monospace; font-size:20rpx; font-weight:800; }
+.pro-inline { margin-left:8rpx; padding:3rpx 7rpx; border:1rpx solid #315f4a; border-radius:4rpx; color:#315f4a; font-size:17rpx; vertical-align:middle; }

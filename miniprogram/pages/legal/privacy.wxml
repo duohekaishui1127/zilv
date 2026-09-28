@@ -1,0 +1,41 @@
+<view class="container legal-page">
+  <view class="hero"><view class="pixel-kicker">PRIVACY</view><view class="h1">隐私政策</view><view class="sub">版本 {{gate.privacyVersion || '1.0'}} · 生效日期 {{gate.effectiveDate || '2026-09-28'}}</view></view>
+  <view class="legal-card">
+    <view class="legal-h2">1. 运营者与联系方式</view>
+    <view class="legal-p">运营者：{{gate.operatorName || '运营者信息加载中'}}。</view>
+    <view class="legal-p">隐私问题联系方式：{{gate.privacyContact || '联系方式加载中'}}。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">2. 我们处理哪些信息</view>
+    <view class="legal-p">账户与身份：微信平台提供的用户标识、昵称、头像、ZILV 身份码和好友码，用于识别账号、保存数据和社交功能。</view>
+    <view class="legal-p">计划与自律记录：任务、长期目标、打卡、专注时长、心情和复盘，用于提供计划执行、统计、奖章和周期报告。</view>
+    <view class="legal-p">健康与生活记录：你主动填写的身高、生日、性别、体重、体脂、围度、饮食、运动及学习记录，用于个人趋势展示和复盘。相关数据默认不会向好友公开，除非你主动调整可见范围或加入需要展示执行状态的功能。</view>
+    <view class="legal-p">图片：你主动上传的头像、笔记图片、饮食图片和反馈截图，用于对应功能展示。</view>
+    <view class="legal-p">社交数据：好友关系、群组关系、绑定计划的完成状态、点赞和特别关心设置，用于你主动使用的好友/群组功能。</view>
+    <view class="legal-p">设备与诊断信息：在你提交反馈时，可包含设备型号、系统、微信版本、小程序版本等，用于定位问题。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">3. 权限如何使用</view>
+    <view class="legal-p">相册/媒体选择、保存图片、订阅消息等能力只在你主动触发上传图片、保存总结海报或开启提醒时调用，并按照微信平台要求进行授权。</view>
+    <view class="legal-p">我们不会因为你拒绝与某一具体功能无关的权限，而拒绝你使用其他不依赖该权限的基础功能。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">4. 存储、保存期限与安全</view>
+    <view class="legal-p">数据通过本小程序实际部署的微信云开发/相关云基础设施处理与存储。我们仅在实现服务、履行法定义务和处理争议所需期间保存数据。</view>
+    <view class="legal-p">账号有效期间，你的历史记录会持续保存以支持长期复盘；当你主动删除数据或注销账号时，我们会按照产品功能和适用规则删除或匿名化相关数据。法律法规要求留存的记录除外。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">5. 共享与公开</view>
+    <view class="legal-p">我们不会出售你的个人信息。好友与群组功能只按照你的主动操作和隐私设置展示必要内容。生成分享海报时，仅绘制报告中明确展示的数据，不包含笔记正文、饮食明细等默认私密内容。</view>
+    <view class="legal-p">为提供微信小程序、云开发、消息、支付等平台能力，相关信息可能由微信/腾讯等平台按照其规则处理。实际接入新的第三方服务前，应同步更新本政策和微信后台隐私保护指引。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">6. 你的权利</view>
+    <view class="legal-p">你可以在“我的”中修改资料与好友可见范围；在“账号与数据”中清空部分数据、申请永久注销；也可以通过上述联系方式提出查阅、更正、删除或其他隐私请求。</view>
+    <view class="legal-p">协议或隐私政策发生实质更新时，我们会通过版本机制再次提示你阅读并确认。</view>
+  </view>
+  <view class="legal-card">
+    <view class="legal-h2">7. 健康数据说明</view>
+    <view class="legal-p">身体、饮食和运动功能用于个人记录与趋势参考，不构成医疗、诊断、治疗或专业营养建议。请勿在紧急或高风险健康情形下依赖本产品作决定。</view>
+  </view>
+</view>

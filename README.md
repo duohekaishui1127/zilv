@@ -1,8 +1,19 @@
-# 自律 · 微信小程序 1.6.0
+# 自律 · 微信小程序 1.7.1
 
 面向自己与少量好友长期使用的身体管理、饮食营养、运动记录、计划打卡、群组监督与个人历程小程序。
 
-首个正式版聚焦个人长期自律记录，并兼顾 **可修改性、可测试性、可靠性、安全性、性能与易用性**。
+当前 Beta 版聚焦个人长期自律记录，并兼顾 **可修改性、可测试性、可靠性、安全性、性能、易用性与上线合规**。
+
+## Free / Pro 产品层
+
+- Free：任务、长期目标、今日执行、基础计时、日历打卡、基础成长纪念、好友/群组、基础健康记录与数据控制长期可用。
+- Beta Pro：公测用户自动体验 90 天 Pro；到期不扣费、不删数据，平滑回到 Free。
+- Lifetime Pro：正式支付能力接入后预留一次性买断；可信履约后以 `proLifetime=true` 永久解锁。
+- Pro：周/月/90 天深度复盘、总结海报、高级趋势、完整成长档案和 Recovery+。
+
+## 上线合规
+
+1.7.1 新增协议版本确认、完整隐私政策/用户协议、账号与数据管理、永久注销、默认管理员好友关闭和微信隐私检查开关。正式提审前还必须在微信公众平台配置真实的《小程序用户隐私保护指引》。详见 `docs/PRIVACY_AND_RELEASE.md`。
 
 ## 主要能力
 
@@ -96,8 +107,8 @@ progress-report.js
 - 15 个运动项目；
 - 12 个身体指标定义；
 - 7 项系统配置；
-- `schemaVersion = 13`；
-- Schema 1~13 migration 记录。
+- `schemaVersion = 18`；
+- Schema 1~18 migration 记录。
 
 真实微信云环境仍需要你部署后调用一次 `admin-init`；工程本身无法代替你的微信账号授权。
 
@@ -143,7 +154,7 @@ npm run verify
 - Action 模块不得重新膨胀为巨型文件；
 - Domain 单元测试。
 
-详细设计见：`docs/ARCHITECTURE.md`、`docs/QUALITY_ATTRIBUTES.md`、`docs/NOTES_DESIGN.md`、`docs/REMINDERS.md`。
+详细设计见：`docs/ARCHITECTURE.md`、`docs/QUALITY_ATTRIBUTES.md`、`docs/NOTES_DESIGN.md`、`docs/REMINDERS.md`、`docs/PRIVACY_AND_RELEASE.md`、`docs/PRO_AND_PAYMENT.md`。
 
 ## 医疗与营养说明
 

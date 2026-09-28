@@ -44,7 +44,7 @@ chore: bump schema version
 
 ```json
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "title": "本次更新标题",
   "content": [
     "第一项更新内容",
@@ -78,6 +78,6 @@ npm run verify
 当前版本：
 
 ```text
-APP_VERSION    1.6.0
-SCHEMA_VERSION 10
+APP_VERSION    1.7.1
+SCHEMA_VERSION 18
 ```

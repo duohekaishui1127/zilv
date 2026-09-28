@@ -89,3 +89,6 @@
 .makeup-actions .btn { flex:1; padding:16rpx 8rpx; font-size:23rpx; }
 .review-edit-button { padding:8rpx 14rpx; font-size:21rpx; }
 .makeup-month-hint { margin-top:16rpx; color:#6d4b90; font-size:22rpx; text-align:center; text-decoration:underline; }
+.report-prompt { display:flex; align-items:center; gap:18rpx; margin:24rpx 0 4rpx; padding:20rpx; border:2rpx solid #315f4a; border-radius:10rpx; background:#eef6f1; box-shadow:6rpx 6rpx 0 rgba(49,95,74,.13); }
+.report-prompt-mark { flex:0 0 auto; padding:9rpx 10rpx; border:2rpx solid #315f4a; background:#fff; color:#315f4a; font-family:monospace; font-size:19rpx; font-weight:800; letter-spacing:2rpx; }
+.report-prompt-arrow { color:#315f4a; font-size:42rpx; font-weight:800; }

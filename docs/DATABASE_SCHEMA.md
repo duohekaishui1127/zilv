@@ -1,6 +1,11 @@
-# 云数据库集合设计（应用 1.6.0 / Schema 16）
+# 云数据库集合设计（应用 1.7.1 / Schema 18）
 
 > Schema 16 增加昨日补签卡、月度赠送和补签来源字段；不新增集合。
+
+> Schema 18 不新增集合，增加上线合规与会员状态字段，并解除旧版默认管理员好友的强制保护。
+> `users` 新增/使用：`identityCode`、`betaUser`、`betaStartedAt`、`betaExpiresAt`、`proLifetime`、`termsVersionAccepted`、`privacyVersionAccepted`、`legalAcceptedAt`。
+> Free / Pro 的功能开关由服务端会员状态计算；Beta 到期不删除业务数据。
+
 
 ## 执行任务与长期目标
 
@@ -107,7 +112,7 @@ audit_logs
 ## 整日打卡与进食时间流
 
 - `daily_reviews`: `userId`、`date`、可稍后补充的 `mood`、`note`、`completedPlanCount`、`totalPlanCount`、`checkedInAt`；`checkinMode=AUTO/MANUAL/MAKEUP` 区分创建方式，`allPlansCompleted` 保存打卡对应的任务完成状态。旧记录按自动完成兼容。
-- `users.makeupCardBalance` 与 `makeupCardGrantMonth` 保存补签卡余额和上次月度赠送月份；新用户初始 3 张，每月补充 1 张，最多保留 3 张。`makeupCardInitialGrantVersion` 标记旧用户一次性补足，避免重复加卡。
+- `users.makeupCardBalance` 与 `makeupCardGrantMonth` 保存补签卡余额和上次月度赠送月份；新用户初始 3 张；Free 每月补充 1 张、最多 3 张；Pro 每月补充 2 张、最多 6 张。`makeupCardInitialGrantVersion` 标记旧用户一次性补足，避免重复加卡。
 - 昨日补签的 `daily_reviews.makeupAt`、`makeupCardSpent=1` 与任务 `checkins.completionSource=MAKEUP`、`makeupAt` 保留实际操作时间和补签来源；服务端事务同步扣卡、写入任务及整日记录。
 - 仅服务器认定的昨天可补签。已打卡日期不能再消耗补签卡；跨天计时可以继续和结束，但完成昨天任务须从日历补签。
 - `meals.recordedAt`: 本次进食的服务端时间戳。
@@ -170,3 +175,5 @@ feedbacks 保存用户建议：userId、category、content、images、contact、
 ## 权限
 
 客户端不直接查询业务数据库。跨用户可见性由云函数 API 统一控制。Notes 在当前版本中仅本人可访问。
+
+> Schema 17 仍不新增集合。`users` 增加惰性字段：`identityCode`、`betaUser`、`betaStartedAt`、`betaExpiresAt`、`proSource`、`reportViewMarks`。纪念章由历史数据实时推导，不额外复制用户行为数据。

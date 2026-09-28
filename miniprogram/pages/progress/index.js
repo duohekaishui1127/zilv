@@ -28,17 +28,40 @@ function goalView(goal) {
   }
 }
 
+function badgeView(item,membership) {
+  const target=Math.max(1,Number(item.target || 1))
+  const progress=Math.min(target,Number(item.progress || 0))
+  const detailLocked=Boolean(item.pro && !membership?.isPro)
+  return { ...item,detailLocked,progressPct:Math.round(progress / target * 100),progressLabel:item.unlocked ? '已获得' : `${progress}/${target}` }
+}
+
 Page({
-  data:{ loading:true,goals:[] },
+  data:{ loading:true,goals:[],badges:[],achievementSummary:null,membership:null,identityCode:'',flippedBadgeId:'' },
   onShow(){this.load()},
   async load(){
     this.setData({ loading:true })
     try{
-      const result=await api.call('getProgressGoals',{}, { silent:true })
-      this.setData({ goals:(result.goals || []).map(goalView) })
+      const [result,achievements]=await Promise.all([
+        api.call('getProgressGoals',{}, { silent:true }),
+        api.call('getAchievements',{}, { silent:true })
+      ])
+      this.setData({
+        goals:(result.goals || []).map(goalView),
+        badges:(achievements.badges || []).map(item => badgeView(item,achievements.membership)),
+        achievementSummary:{ unlockedCount:achievements.unlockedCount || 0,totalCount:achievements.totalCount || 0 },
+        membership:achievements.membership || null,
+        identityCode:achievements.identityCode || ''
+      })
     }catch(error){
       wx.showToast({ title:api.messageOf(error),icon:'none' })
     }finally{this.setData({ loading:false })}
+  },
+  flipBadge(e){
+    const id=e.currentTarget.dataset.id
+    const badge=this.data.badges.find(item => item.id === id)
+    if(!badge?.unlocked)return
+    if(badge.detailLocked)return wx.navigateTo({url:'/pages/pro/index'})
+    this.setData({ flippedBadgeId:this.data.flippedBadgeId === id ? '' : id })
   },
   open(e){wx.navigateTo({ url:`/pages/progress/detail?id=${e.currentTarget.dataset.id}` })}
 })

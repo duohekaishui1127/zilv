@@ -1,5 +1,19 @@
-const cloud = require('wx-server-sdk')
-cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+let cloud
+try {
+  cloud = require('wx-server-sdk')
+  cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+} catch (error) {
+  const unavailable = name => () => { throw new Error(`wx-server-sdk 未安装，无法在本地执行数据库操作：${name}`) }
+  const command = new Proxy({}, { get:(_, key) => unavailable(`command.${String(key)}`) })
+  const collection = new Proxy({}, { get:(_, key) => unavailable(`collection.${String(key)}`) })
+  const database = () => ({ command, collection:unavailable('collection'), runTransaction:unavailable('runTransaction') })
+  cloud = {
+    DYNAMIC_CURRENT_ENV:'',
+    init(){},
+    database,
+    getWXContext:unavailable('getWXContext')
+  }
+}
 
 const db = cloud.database()
 const _ = db.command

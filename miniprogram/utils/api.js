@@ -38,7 +38,11 @@ async function call(action, data = {}, options = {}) {
     return body.data
   } catch (error) {
     console.error('[zilu-client]', diagnosticOf(error, action))
-    if (!options.silent) wx.showToast({ title: messageOf(error), icon: 'none', duration: 2200 })
+    if (error?.code === 'LEGAL_CONSENT_REQUIRED' && action !== 'getLegalGate' && action !== 'acceptLegal') {
+      const pages = getCurrentPages()
+      const route = pages.length ? pages[pages.length - 1].route : ''
+      if (!route.startsWith('pages/legal/')) setTimeout(() => wx.reLaunch({ url: '/pages/legal/consent' }), 0)
+    } else if (!options.silent) wx.showToast({ title: messageOf(error), icon: 'none', duration: 2200 })
     throw error
   }
 }

@@ -3,7 +3,7 @@ const { APP_VERSION } = require('./config/version')
 const api = require('./utils/api')
 
 App({
-  globalData: { appVersion: APP_VERSION, focusTimerPlanId: '' },
+  globalData: { appVersion: APP_VERSION, focusTimerPlanId: '', legalGate: null },
 
   onLaunch() {
     if (!wx.cloud) {
@@ -14,8 +14,32 @@ App({
     wx.cloud.init({ ...(env ? { env } : {}), traceUser: true })
   },
 
+  async ensureLegalGate() {
+    if (this._legalGatePromise) return this._legalGatePromise
+    this._legalGatePromise = (async () => {
+      try {
+        const gate = await api.call('getLegalGate', {}, { silent: true })
+        this.globalData.legalGate = gate
+        if (gate.accepted) return true
+        const pages = getCurrentPages()
+        const route = pages.length ? pages[pages.length - 1].route : ''
+        if (!route.startsWith('pages/legal/')) {
+          setTimeout(() => wx.reLaunch({ url: '/pages/legal/consent' }), 0)
+        }
+        return false
+      } catch (error) {
+        console.warn('[legal-gate]', api.diagnosticOf(error, 'getLegalGate'))
+        return false
+      } finally {
+        this._legalGatePromise = null
+      }
+    })()
+    return this._legalGatePromise
+  },
+
   async onShow() {
     if (!wx.cloud) return
+    if (!(await this.ensureLegalGate())) return
     try {
       const result = await api.call('getFriendRequestSummary', {}, { silent: true })
       if (result.pendingCount) wx.showTabBarRedDot({ index: 3 })

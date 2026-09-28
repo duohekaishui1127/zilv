@@ -1,4 +1,4 @@
-# 1.6.0 数据库初始化（Schema 16）
+# 1.7.0 数据库初始化（Schema 17）
 
 `cloudfunctions/admin-init` 是一次性管理函数。
 
@@ -26,3 +26,9 @@ Schema 16 不新增集合；补签卡字段保存在 `users`，新用户初始 3
 2. 如果需要保留，配置环境变量 `ADMIN_INIT_TOKEN`，调用时携带 token。
 
 业务客户端永远不需要直接调用 admin-init。
+
+## Schema 17：公测 Pro 与成长复盘
+
+Schema 17 不新增集合。现有用户在首次调用新版 API 时会惰性补齐 `identityCode`、`betaUser`、`betaStartedAt`、`betaExpiresAt` 等字段；默认公测期为 90 天且不会在重复登录时自动延长。报告已读状态保存在 `users.reportViewMarks`。
+
+公测招募结束后，可在 `api` 云函数环境变量中设置 `BETA_ENROLLMENT_ENABLED=false`，这样既不会影响已经领取过公测权益的用户，也不会继续给新用户发放 90 天 Beta Pro。

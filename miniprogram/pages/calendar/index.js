@@ -93,6 +93,7 @@ Page({
     month: api.localDate().slice(0, 7),
     currentDate: api.localDate(),
     calendar: null,
+    reportPrompt: null,
     loading: true,
     error: '',
     reviewVisible: false,
@@ -119,7 +120,7 @@ Page({
       if (loadId <= this._reminderReceiptLoadId && calendar.reminderSettings?.enabled) {
         calendar.reminderSettings.pushEnabled = true
       }
-      this.setData({ calendar: decorateCalendar(calendar, this.data.currentDate) })
+      this.setData({ calendar: decorateCalendar(calendar, this.data.currentDate), reportPrompt: calendar.reportPrompt || null })
       this.setReminderSettings(calendar.reminderSettings)
     } catch (error) {
       this.setData({ error: api.messageOf(error) })
@@ -131,6 +132,11 @@ Page({
   previousMonth() { this.setData({ month: shiftMonth(this.data.month, -1), calendar: null }, () => this.loadCalendar()) },
   nextMonth() { this.setData({ month: shiftMonth(this.data.month, 1), calendar: null }, () => this.loadCalendar()) },
   retry() { this.loadCalendar() },
+  openReportPrompt() {
+    const prompt = this.data.reportPrompt
+    if (!prompt) return
+    wx.navigateTo({ url: `/pages/report/week?period=${prompt.type}&promptKey=${encodeURIComponent(prompt.key)}` })
+  },
   async openDay(e) {
     const day = this.data.calendar?.cells?.[Number(e.currentTarget.dataset.index)]
     if (!day || day.blank) return
@@ -168,10 +174,12 @@ Page({
   },
   toggleTasks() { this.setData({ tasksExpanded: !this.data.tasksExpanded }) },
   showMakeupInfo() {
-    const balance = Number(this.data.calendar?.makeup?.balance || 0)
+    const makeup = this.data.calendar?.makeup || {}
+    const balance = Number(makeup.balance || 0)
+    const policy = makeup.policy || { tier: 'FREE', monthlyGrant: 1, cap: 3 }
     wx.showModal({
-      title: `补签卡 × ${balance}`,
-      content: '初始 3 张，每月补充 1 张，最多保留 3 张。仅能补签昨天，保存成功后才消耗。',
+      title: `补签卡 × ${balance}${policy.tier === 'PRO' ? ' · PRO' : ''}`,
+      content: `${policy.tier === 'PRO' ? 'Pro 权益：' : ''}每月补充 ${policy.monthlyGrant} 张，最多保留 ${policy.cap} 张。仅能补签昨天，保存成功后才消耗。`,
       showCancel: false
     })
   },

@@ -31,7 +31,12 @@
     "pages/notes/index",
     "pages/notes/edit",
     "pages/notifications/index",
-    "pages/profile/about"
+    "pages/profile/about",
+    "pages/legal/consent",
+    "pages/legal/privacy",
+    "pages/legal/terms",
+    "pages/legal/data",
+    "pages/pro/index"
   ],
   "window": {
     "navigationBarTitleText": "自律",
@@ -79,5 +84,6 @@
     ]
   },
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "__usePrivacyCheck__": true
 }

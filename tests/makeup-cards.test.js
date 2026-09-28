@@ -1,32 +1,45 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { CARD_CAP, INITIAL_CARDS, INITIAL_GRANT_VERSION, dateAtOffset, todayForUser, previousDate, makeupCardState } = require('../cloudfunctions/api/domain/makeup-cards')
+const { CARD_CAP, PRO_CARD_CAP, INITIAL_CARDS, INITIAL_GRANT_VERSION, dateAtOffset, todayForUser, previousDate, makeupCardState } = require('../cloudfunctions/api/domain/makeup-cards')
+
+function core(state) { return { balance: state.balance, grantMonth: state.grantMonth } }
 
 test('新用户和从未领取过补签卡的旧用户初始为三张', () => {
   assert.equal(INITIAL_CARDS, 3)
-  assert.deepEqual(makeupCardState({}, '2026-09-24'), { balance: 3, grantMonth: '2026-09' })
+  assert.deepEqual(core(makeupCardState({}, '2026-09-24')), { balance: 3, grantMonth: '2026-09' })
 })
 
 test('旧规则已领取一张的用户一次性补差，保留已消耗数量', () => {
   const legacy = { makeupCardBalance: 1, makeupCardGrantMonth: '2026-09' }
-  assert.deepEqual(makeupCardState(legacy, '2026-09-24'), { balance: 3, grantMonth: '2026-09' })
-  assert.deepEqual(makeupCardState({ ...legacy, makeupCardBalance: 0 }, '2026-09-24'),
+  assert.deepEqual(core(makeupCardState(legacy, '2026-09-24')), { balance: 3, grantMonth: '2026-09' })
+  assert.deepEqual(core(makeupCardState({ ...legacy, makeupCardBalance: 0 }, '2026-09-24')),
     { balance: 2, grantMonth: '2026-09' })
-  assert.deepEqual(makeupCardState({ ...legacy, makeupCardBalance: 2, makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION }, '2026-09-24'),
+  assert.deepEqual(core(makeupCardState({ ...legacy, makeupCardBalance: 2, makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION }, '2026-09-24')),
     { balance: 2, grantMonth: '2026-09' })
 })
 
 test('跨月每月增加一张，最多保留三张', () => {
   const user = { makeupCardBalance: 0, makeupCardGrantMonth: '2026-09', makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION }
-  assert.deepEqual(makeupCardState(user, '2026-09-30'), { balance: 0, grantMonth: '2026-09' })
-  assert.deepEqual(makeupCardState(user, '2026-10-01'), { balance: 1, grantMonth: '2026-10' })
-  assert.deepEqual(makeupCardState(user, '2027-01-01'), { balance: CARD_CAP, grantMonth: '2027-01' })
+  assert.deepEqual(core(makeupCardState(user, '2026-09-30')), { balance: 0, grantMonth: '2026-09' })
+  assert.deepEqual(core(makeupCardState(user, '2026-10-01')), { balance: 1, grantMonth: '2026-10' })
+  assert.deepEqual(core(makeupCardState(user, '2027-01-01')), { balance: CARD_CAP, grantMonth: '2027-01' })
 })
 
 test('用户时区跨月回退时不会重复领取当月补签卡', () => {
   const user = { makeupCardBalance: 1, makeupCardGrantMonth: '2026-10', makeupCardInitialGrantVersion: INITIAL_GRANT_VERSION }
-  assert.deepEqual(makeupCardState(user, '2026-09-30'), { balance: 1, grantMonth: '2026-10' })
-  assert.deepEqual(makeupCardState(user, '2026-10-01'), { balance: 1, grantMonth: '2026-10' })
+  assert.deepEqual(core(makeupCardState(user, '2026-09-30')), { balance: 1, grantMonth: '2026-10' })
+  assert.deepEqual(core(makeupCardState(user, '2026-10-01')), { balance: 1, grantMonth: '2026-10' })
+})
+
+
+test('Free 与 Pro 使用不同的补签恢复策略', () => {
+  const free = makeupCardState({ makeupCardBalance:0,makeupCardGrantMonth:'2026-09',makeupCardInitialGrantVersion:INITIAL_GRANT_VERSION }, '2026-11-01')
+  assert.equal(free.balance, 2)
+  assert.deepEqual(free.policy, { tier:'FREE',cap:CARD_CAP,monthlyGrant:1 })
+
+  const pro = makeupCardState({ betaUser:true,betaExpiresAt:'2027-01-01T00:00:00.000Z',makeupCardBalance:0,makeupCardGrantMonth:'2026-09',makeupCardInitialGrantVersion:INITIAL_GRANT_VERSION }, '2026-11-01', new Date('2026-11-01T00:00:00.000Z'))
+  assert.equal(pro.balance, 4)
+  assert.deepEqual(pro.policy, { tier:'PRO',cap:PRO_CARD_CAP,monthlyGrant:2 })
 })
 
 test('昨天的日期正确跨越月末、年末和闰日', () => {

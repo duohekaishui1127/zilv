@@ -1,5 +1,36 @@
-<view class="container">
-  <view class="hero"><view class="h1">我的进步</view><view class="sub">完成过的目标不会消失，每一段坚持都有迹可循</view></view>
+<view class="container progress-page">
+  <view class="hero">
+    <view class="pixel-kicker">MY JOURNEY</view>
+    <view class="h1">我的进步</view>
+    <view class="sub">完成过的目标不会消失，每一段坚持都可以成为纪念</view>
+  </view>
+
+  <view wx:if="{{achievementSummary}}" class="achievement-header">
+    <view><view class="achievement-number">{{achievementSummary.unlockedCount}}<text>/{{achievementSummary.totalCount}}</text></view><view class="sub">已点亮纪念章</view></view>
+    <view class="identity-stamp">{{identityCode}}</view>
+  </view>
+
+  <view class="section-title">纪念章墙</view>
+  <view class="badge-grid" wx:if="{{badges.length}}">
+    <view wx:for="{{badges}}" wx:key="id" class="badge-card {{item.unlocked ? 'badge-unlocked' : 'badge-locked'}} {{flippedBadgeId === item.id ? 'badge-flipped' : ''}}" data-id="{{item.id}}" bindtap="flipBadge">
+      <block wx:if="{{flippedBadgeId === item.id && item.unlocked}}">
+        <view class="badge-back-label">获得于</view>
+        <view class="badge-earned-date">{{item.earnedAt}}</view>
+        <view class="badge-back-copy">{{item.subtitle}}</view>
+        <view class="badge-back-code">{{item.id}}</view>
+      </block>
+      <block wx:else>
+        <view class="badge-medal"><view class="badge-symbol">{{item.unlocked ? item.symbol : '?'}}</view></view>
+        <view class="badge-title">{{item.title}}</view>
+        <view class="badge-subtitle">{{item.subtitle}}</view>
+        <view wx:if="{{!item.unlocked}}" class="badge-progress"><view style="width:{{item.progressPct}}%"></view></view>
+        <view class="badge-state">{{item.progressLabel}}{{item.pro ? (item.detailLocked ? ' · PRO 解锁详情' : ' · PRO') : ''}}</view>
+      </block>
+    </view>
+  </view>
+  <view wx:if="{{badges.length}}" class="badge-hint">已获得的纪念章可以点击翻面；少数长期里程碑的完整背面故事属于 Pro。</view>
+
+  <view class="section-title goal-section-title">完成过的长期目标</view>
   <view class="empty" wx:if="{{loading && !goals.length}}">正在整理你的进步…</view>
   <view wx:elif="{{goals.length}}">
     <view class="card progress-card" wx:for="{{goals}}" wx:key="_id" data-id="{{item._id}}" bindtap="open">
