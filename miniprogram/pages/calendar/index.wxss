@@ -13,8 +13,6 @@
 .calendar-blank { border-color:transparent; background:transparent; }
 .day-number { position:absolute; top:5rpx; left:7rpx; z-index:1; color:#5f6670; font-size:19rpx; font-weight:700; }
 .calendar-mood { position:absolute; left:50%; top:50%; width:48rpx; height:48rpx; transform:translate(-50%,-42%); image-rendering:pixelated; }
-.calendar-mood.checkin-complete,.review-mood.checkin-complete { opacity:.68; filter:invert(47%) sepia(83%) saturate(514%) hue-rotate(83deg) brightness(91%) contrast(91%); }
-.calendar-mood.checkin-incomplete,.review-mood.checkin-incomplete { opacity:.68; filter:invert(31%) sepia(89%) saturate(1749%) hue-rotate(342deg) brightness(91%) contrast(91%); }
 .calendar-day.checkin-complete { box-shadow:inset 0 0 0 2rpx rgba(22,163,74,.22); }
 .calendar-day.checkin-incomplete { box-shadow:inset 0 0 0 2rpx rgba(220,38,38,.22); }
 .note-mark { position:absolute; left:50%; top:54%; width:12rpx; height:12rpx; transform:translate(-50%,-50%); background:#111827; }
@@ -26,6 +24,8 @@
 .activity-4 { background:#c2c6cc; }
 .calendar-summary { margin-top:24rpx; color:#4b5563; font-size:23rpx; text-align:center; }
 .calendar-hint { margin-top:10rpx; color:#9ca3af; font-size:21rpx; text-align:center; }
+.reminder-renewal-entry { display:flex; align-items:center; justify-content:space-between; gap:12rpx; margin-top:16rpx; color:#6b7280; font-size:22rpx; }
+.reminder-renewal-entry .btn { flex:0 0 auto; margin:0; }
 .retry-button { margin:18rpx auto 0; }
 
 .review-mask { position:fixed; inset:0; z-index:120; display:flex; align-items:flex-end; background:rgba(17,24,39,.48); }

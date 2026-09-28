@@ -22,4 +22,9 @@ function shouldOfferManualRenewal({ dashboard,config }) {
   )
 }
 
-module.exports={ completesAllTasks,shouldRequestReminderRenewal,shouldOfferManualRenewal }
+function shouldRequestMakeupReminderRenewal(settings) {
+  return Boolean(settings?.configured && settings.templateId &&
+    settings.subscriptionType === 'ONE_TIME' && settings.enabled && !settings.pushEnabled)
+}
+
+module.exports={ completesAllTasks,shouldRequestReminderRenewal,shouldOfferManualRenewal,shouldRequestMakeupReminderRenewal }

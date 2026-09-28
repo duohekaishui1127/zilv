@@ -30,6 +30,10 @@
       </view>
       <view class="calendar-summary">本月活跃 {{calendar.summary.activeDays}} 天 · 完成 {{calendar.summary.checkinCount}} 项 · 小记 {{calendar.summary.noteDays || 0}} 天</view>
       <view class="calendar-hint">绿色心情为任务完成打卡，红色心情为任务未完成打卡</view>
+      <view wx:if="{{reminderRenewalAvailable}}" class="reminder-renewal-entry">
+        <view>{{reminderSettings.time}} 微信打卡提醒待续订</view>
+        <button class="btn btn-small btn-light" bindtap="renewReminder" loading="{{renewingReminder}}" disabled="{{renewingReminder || makeupEditor.saving}}">续订提醒</button>
+      </view>
       <view wx:if="{{calendar.showYesterdayShortcut}}" class="makeup-month-hint" bindtap="openYesterdayMonth">昨天在上个月 · 点此查看 ›</view>
     </block>
   </view>
@@ -118,6 +122,7 @@
         </view>
       </view>
       <textarea class="input makeup-note-input" value="{{makeupEditor.note}}" maxlength="1000" placeholder="昨天有什么想记录的？（可不填）" bindinput="makeupNoteInput"/>
+      <view wx:if="{{!makeupEditor.freeEdit && reminderRenewalAvailable}}" class="sub makeup-optional-note">确认时可续订 {{reminderSettings.time}} 微信打卡提醒，不允许也不影响补签。</view>
       <view class="makeup-actions"><button wx:if="{{!makeupEditor.freeEdit}}" class="btn btn-light" bindtap="previousMakeupStep" disabled="{{makeupEditor.saving}}">返回选任务</button><button class="btn" bindtap="submitMakeup" loading="{{makeupEditor.saving}}" disabled="{{makeupEditor.saving}}">{{makeupEditor.freeEdit ? '保存记录' : '确认补签 · 消耗 1 张'}}</button></view>
     </block>
   </view>

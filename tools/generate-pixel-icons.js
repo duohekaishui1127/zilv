@@ -72,6 +72,10 @@ const shapes = {
 
 const outputs = [
   ...['great','good','okay','tired','bad','checked'].map(name => ({ shape:`mood-${name}`, path:`moods/${name}.png`, scale:4 })),
+  ...['great','good','okay','tired','bad'].flatMap(name => [
+    { shape:`mood-${name}`, path:`moods/${name}-complete.png`, scale:4, fillColor:'#16a34a', fillAlpha:46, calendarMood:true },
+    { shape:`mood-${name}`, path:`moods/${name}-incomplete.png`, scale:4, fillColor:'#dc2626', fillAlpha:38, calendarMood:true }
+  ]),
   ...['calendar','today','plan','circle','profile'].flatMap(name => [
     { shape:name, path:`tabbar/${name}.png`, scale:5, color:'#8a8f98' },
     { shape:name, path:`tabbar/${name}-active.png`, scale:5, color:'#111827' }
@@ -93,14 +97,14 @@ function chunk(type, data) {
   length.writeUInt32BE(data.length); checksum.writeUInt32BE(crc32(Buffer.concat([name,data])))
   return Buffer.concat([length,name,data,checksum])
 }
-function pngOf(m, scale, color) {
+function pngOf(m, scale, color, fillColor = '#ffffff', fillAlpha = 255) {
   const width=SIZE*scale, height=SIZE*scale, row=width*4+1, raw=Buffer.alloc(row*height)
-  const fg=rgb(color), white=[255,255,255]
+  const fg=rgb(color), fill=rgb(fillColor)
   for(let y=0;y<height;y++) for(let x=0;x<width;x++) {
     const value=m[Math.floor(y/scale)][Math.floor(x/scale)], offset=y*row+1+x*4
     if (!value) continue
-    const valueRgb=value===2?white:fg
-    raw[offset]=valueRgb[0];raw[offset+1]=valueRgb[1];raw[offset+2]=valueRgb[2];raw[offset+3]=255
+    const valueRgb=value===2?fill:fg
+    raw[offset]=valueRgb[0];raw[offset+1]=valueRgb[1];raw[offset+2]=valueRgb[2];raw[offset+3]=value===2?fillAlpha:255
   }
   const header=Buffer.alloc(13);header.writeUInt32BE(width,0);header.writeUInt32BE(height,4);header[8]=8;header[9]=6
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',header),chunk('IDAT',zlib.deflateSync(raw)),chunk('IEND',Buffer.alloc(0))])
@@ -111,11 +115,15 @@ function svgOf(m) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIZE} ${SIZE}" shape-rendering="crispEdges">${pixels.join('')}</svg>\n`
 }
 
-fs.mkdirSync(sourceDir,{recursive:true})
-for (const [name, shape] of Object.entries(shapes)) fs.writeFileSync(path.join(sourceDir,`${name}.svg`),svgOf(shape))
-for (const output of outputs) {
+const calendarOnly = process.argv.includes('--calendar-moods-only')
+if (!calendarOnly) {
+  fs.mkdirSync(sourceDir,{recursive:true})
+  for (const [name, shape] of Object.entries(shapes)) fs.writeFileSync(path.join(sourceDir,`${name}.svg`),svgOf(shape))
+}
+const selectedOutputs = calendarOnly ? outputs.filter(output => output.calendarMood) : outputs
+for (const output of selectedOutputs) {
   const target=path.join(assetDir,output.path)
   fs.mkdirSync(path.dirname(target),{recursive:true})
-  fs.writeFileSync(target,pngOf(shapes[output.shape],output.scale,output.color||'#111827'))
+  fs.writeFileSync(target,pngOf(shapes[output.shape],output.scale,output.color||'#111827',output.fillColor,output.fillAlpha))
 }
-console.log(`generated ${Object.keys(shapes).length} SVG sources and ${outputs.length} PNG assets`)
+console.log(`generated ${calendarOnly ? 0 : Object.keys(shapes).length} SVG sources and ${selectedOutputs.length} PNG assets`)

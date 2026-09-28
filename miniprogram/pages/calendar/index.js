@@ -1,5 +1,7 @@
 const api = require('../../utils/api')
-const { MOODS, MOOD_ICONS, MOOD_LABELS, CATEGORY_LABELS, NOTE_TYPES } = require('../../utils/constants')
+const { MOODS, MOOD_LABELS, CATEGORY_LABELS, NOTE_TYPES } = require('../../utils/constants')
+const { calendarMoodIcon } = require('../../utils/calendar-mood')
+const { shouldRequestMakeupReminderRenewal } = require('../../utils/reminder-renewal')
 
 const NOTE_LABELS = Object.fromEntries(NOTE_TYPES.map(item => [item.key, item.label]))
 function emptyMakeupEditor() { return { visible: false, freeEdit: false, step: 'TASKS', date: '', tasks: [], mood: '', note: '', saving: false } }
@@ -40,7 +42,7 @@ function decorateCalendar(calendar, currentDate) {
     key: day.date,
     today: day.date === currentDate,
     activityClass: `activity-${day.activityScore}`,
-    moodIcon: MOOD_ICONS[day.mood] || '',
+    moodIcon: calendarMoodIcon(day.mood, day.dailyCheckedIn ? day.dailyCheckinState : ''),
     moodLabel: MOOD_LABELS[day.mood] || '',
     checkinClass: day.dailyCheckedIn
       ? (day.dailyCheckinState === 'COMPLETE' ? 'checkin-complete' : 'checkin-incomplete')
@@ -70,7 +72,7 @@ function presentReview(review) {
     ...review,
     dailyReview: review.dailyReview ? {
       ...review.dailyReview,
-      moodIcon: MOOD_ICONS[review.dailyReview.mood] || '',
+      moodIcon: calendarMoodIcon(review.dailyReview.mood, review.dailyReview.allPlansCompleted ? 'COMPLETE' : 'INCOMPLETE'),
       moodLabel: MOOD_LABELS[review.dailyReview.mood] || '',
       checkinClass: review.dailyReview.allPlansCompleted ? 'checkin-complete' : 'checkin-incomplete',
       checkinLabel: `${review.dailyReview.checkinMode === 'MAKEUP' ? '补签 · ' : ''}${review.dailyReview.allPlansCompleted ? '任务完成打卡' : '任务未完成打卡'}`
@@ -97,6 +99,9 @@ Page({
     makeupEligible: false,
     moods: MOODS,
     makeupEditor: emptyMakeupEditor(),
+    reminderSettings: null,
+    reminderRenewalAvailable: false,
+    renewingReminder: false,
     selectedDay: null,
     dayReview: { dailyReview: null, taskProgress: { completed: 0, total: 0 }, notes: [], tasks: [] },
     tasksExpanded: false
@@ -109,6 +114,7 @@ Page({
     try {
       const calendar = await api.call('getActivityCalendar', { month: this.data.month }, { silent: true })
       this.setData({ calendar: decorateCalendar(calendar, this.data.currentDate) })
+      this.setReminderSettings(calendar.reminderSettings)
     } catch (error) {
       this.setData({ error: api.messageOf(error) })
     } finally {
@@ -134,10 +140,20 @@ Page({
     })
     try {
       const review = await api.call('getDayReview', { reviewDate: requestDate }, { silent: true })
-      if (this._reviewRequestDate === requestDate) this.setData({
-        dayReview: presentReview(review),
-        makeupEligible: requestDate === this.data.calendar?.makeup?.yesterday && !review.dailyReview
-      })
+      if (this._reviewRequestDate === requestDate) {
+        const dayReview = presentReview(review)
+        this.setData({
+          dayReview,
+          selectedDay: {
+            ...this.data.selectedDay,
+            moodIcon: dayReview.dailyReview?.moodIcon || '',
+            moodLabel: dayReview.dailyReview?.moodLabel || '',
+            checkinClass: dayReview.dailyReview?.checkinClass || ''
+          },
+          makeupEligible: requestDate === this.data.calendar?.makeup?.yesterday && !review.dailyReview
+        })
+        this.setReminderSettings(review.reminderSettings)
+      }
     } catch (error) {
       if (this._reviewRequestDate === requestDate) wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
@@ -198,18 +214,69 @@ Page({
     this.setData({ 'makeupEditor.mood': this.data.makeupEditor.mood === mood ? '' : mood })
   },
   makeupNoteInput(e) { this.setData({ 'makeupEditor.note': e.detail.value }) },
+  setReminderSettings(settings) {
+    this.setData({
+      reminderSettings: settings || null,
+      reminderRenewalAvailable: shouldRequestMakeupReminderRenewal(settings)
+    })
+  },
+  requestReminderAuthorization() {
+    const settings = this.data.reminderSettings
+    if (!shouldRequestMakeupReminderRenewal(settings) || typeof wx.requestSubscribeMessage !== 'function') {
+      return Promise.resolve(false)
+    }
+    // Invoke synchronously inside the confirm/renew button's tap callback.
+    return new Promise(resolve => {
+      try {
+        wx.requestSubscribeMessage({
+          tmplIds: [settings.templateId],
+          success: result => resolve(['accept', 'acceptWithAudio'].includes(result[settings.templateId])),
+          fail: () => resolve(false)
+        })
+      } catch (error) {
+        console.warn('[calendar-reminder-authorization]', error)
+        resolve(false)
+      }
+    })
+  },
+  async saveReminderRenewal(authorized) {
+    if (!authorized) return false
+    // No historical date: this grant is for future reminders, not yesterday.
+    const result = await api.call('renewCheckinReminderSubscription', { authorized: true }, { silent: true })
+    const ready = Boolean(result.renewed || result.alreadyAvailable)
+    if (ready) this.setReminderSettings({ ...this.data.reminderSettings, pushEnabled: true })
+    return ready
+  },
+  async renewReminder() {
+    if (this.data.renewingReminder || !this.data.reminderRenewalAvailable) return
+    this.setData({ renewingReminder: true })
+    try {
+      const authorized = await this.requestReminderAuthorization()
+      const ready = await this.saveReminderRenewal(authorized)
+      wx.showToast({ title: ready ? '提醒已续订' : '提醒未续订，可稍后重试', icon: ready ? 'success' : 'none' })
+    } catch (error) {
+      wx.showToast({ title: api.messageOf(error), icon: 'none' })
+    } finally {
+      this.setData({ renewingReminder: false })
+    }
+  },
   async submitMakeup() {
     const editor = this.data.makeupEditor
     if (!editor.visible || editor.saving || editor.step !== 'REVIEW') return
     this.setData({ 'makeupEditor.saving': true })
+    const reminderRenewal = editor.freeEdit ? Promise.resolve(false)
+      : this.requestReminderAuthorization().then(authorized => this.saveReminderRenewal(authorized)).catch(error => {
+        console.warn('[calendar-reminder-renewal]', error)
+        return false
+      })
     try {
       if (editor.freeEdit) {
         await api.call('saveDailyReview', { date: editor.date, mood: editor.mood, note: editor.note }, { silent: true })
       } else {
-        await api.call('makeupDailyCheckin', {
+        await Promise.all([reminderRenewal, api.call('makeupDailyCheckin', {
           makeupDate: editor.date, completedPlanIds: editor.tasks.filter(task => task.selected).map(task => task.planId),
           mood: editor.mood, note: editor.note
-        }, { silent: true })
+        }, { silent: true })])
       }
       this.setData({ makeupEditor: emptyMakeupEditor() })
       this.closeReview()
@@ -218,6 +285,7 @@ Page({
     } catch (error) {
       wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
+      await reminderRenewal
       this.setData({ 'makeupEditor.saving': false })
     }
   },

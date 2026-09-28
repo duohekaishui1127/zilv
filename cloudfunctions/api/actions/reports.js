@@ -2,6 +2,7 @@ const { fail, parseDateOnly } = require('../lib/utils')
 const { loadProgressReport, loadActivityCalendar, loadDayReview } = require('../services/progress')
 const { ensureReleaseAnnouncement } = require('../services/release-announcements')
 const { getMakeupCardStatus } = require('../services/makeup-checkins')
+const { getCheckinReminderSettings } = require('./notifications')
 
 async function getProgressReport({ user, event, localDate }) {
   const days = Number(event.days || 30)
@@ -18,7 +19,7 @@ async function getActivityCalendar({ user, event, localDate }) {
     loadActivityCalendar(user._id, month),
     getMakeupCardStatus(user)
   ])
-  return { ...calendar, makeup }
+  return { ...calendar, makeup, reminderSettings: await getCheckinReminderSettings({ user }) }
 }
 
 async function getWeeklyReport({ user, localDate }) {
@@ -28,7 +29,8 @@ async function getWeeklyReport({ user, localDate }) {
 async function getDayReview({ user, event }) {
   const date = String(event.reviewDate || '')
   if (!parseDateOnly(date)) throw fail('INVALID_PARAMETER', '日期格式不合法')
-  return loadDayReview(user._id, date)
+  const review = await loadDayReview(user._id, date)
+  return { ...review, reminderSettings: await getCheckinReminderSettings({ user }) }
 }
 
 module.exports = { getProgressReport, getActivityCalendar, getWeeklyReport, getDayReview }
