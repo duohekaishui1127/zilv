@@ -27,7 +27,7 @@ function deltaTone(value) {
 }
 
 function present(result) {
-  if(result.locked)return result
+  if(result.locked)return { ...result,trialDays:result.membership?.betaGrantedDays || result.membership?.configuredTrialDays || 90 }
   const report=result.current
   const comparison=result.comparison || {}
   return {

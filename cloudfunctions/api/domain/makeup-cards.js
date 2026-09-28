@@ -1,9 +1,11 @@
 const { membershipOf } = require('./membership')
+const { DEFAULTS, productRules } = require('../config/product-rules')
 
-const CARD_CAP = 3
-const PRO_CARD_CAP = 6
-const MONTHLY_GRANT = 1
-const PRO_MONTHLY_GRANT = 2
+// These exports remain as defaults for compatibility/tests. Runtime policy reads productRules().
+const CARD_CAP = DEFAULTS.makeupFreeCap
+const PRO_CARD_CAP = DEFAULTS.makeupProCap
+const MONTHLY_GRANT = DEFAULTS.makeupFreeMonthlyGrant
+const PRO_MONTHLY_GRANT = DEFAULTS.makeupProMonthlyGrant
 const INITIAL_CARDS = 3
 const INITIAL_GRANT_VERSION = 3
 
@@ -30,10 +32,11 @@ function monthIndex(month) {
 }
 
 function makeupPolicy(user = {}, at = new Date()) {
-  const membership=membershipOf(user,at)
+  const membership = membershipOf(user, at)
+  const rules = productRules().makeup
   return membership.isPro
-    ? { tier:'PRO',cap:PRO_CARD_CAP,monthlyGrant:PRO_MONTHLY_GRANT }
-    : { tier:'FREE',cap:CARD_CAP,monthlyGrant:MONTHLY_GRANT }
+    ? { tier:'PRO', cap:rules.pro.cap, monthlyGrant:rules.pro.monthlyGrant }
+    : { tier:'FREE', cap:rules.free.cap, monthlyGrant:rules.free.monthlyGrant }
 }
 
 function makeupCardState(user = {}, today, at = new Date()) {
@@ -41,13 +44,13 @@ function makeupCardState(user = {}, today, at = new Date()) {
   const recordedMonth = String(user.makeupCardGrantMonth || '')
   const recordedIndex = monthIndex(recordedMonth)
   const currentIndex = monthIndex(currentMonth)
-  const policy=makeupPolicy(user,at)
+  const policy = makeupPolicy(user, at)
   if (recordedIndex == null || currentIndex == null) {
-    return { balance: Math.min(policy.cap,INITIAL_CARDS), grantMonth: currentMonth, policy }
+    return { balance: Math.min(policy.cap, INITIAL_CARDS), grantMonth: currentMonth, policy }
   }
   const rawBalance = Number(user.makeupCardBalance || 0)
   const legacyTopUp = Number(user.makeupCardInitialGrantVersion || 0) < 2 ? INITIAL_CARDS - 1 : 0
-  const monthsPassed=Math.max(0,currentIndex - recordedIndex)
+  const monthsPassed = Math.max(0, currentIndex - recordedIndex)
   const balance = Math.min(policy.cap,
     Math.max(0, Number.isFinite(rawBalance) ? Math.floor(rawBalance) : 0)
       + monthsPassed * policy.monthlyGrant + legacyTopUp)

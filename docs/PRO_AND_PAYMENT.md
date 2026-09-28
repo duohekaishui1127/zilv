@@ -18,7 +18,7 @@
 - 好友与群组
 - 基础健康记录
 - 隐私、数据清除、账号注销
-- 补签卡：最多 3 张，每月恢复 1 张
+- 补签卡：默认最多 3 张、每月恢复 1 张（可配置）
 
 ### Pro
 
@@ -26,18 +26,21 @@
 - 周期对比和高级趋势
 - 总结海报保存与分享
 - 完整成长档案与稀有纪念章详情
-- Recovery+：最多 6 张补签卡，每月恢复 2 张
+- Recovery+：默认最多 6 张补签卡、每月恢复 2 张（可配置）
 - 后续高级主题和深度复盘能力
 
 ## Beta Pro 生命周期
 
+`BETA_PRO_DAYS` 控制 **之后首次领取** Beta Pro 的用户体验时长，默认 90 天。已经领取资格的用户保存自己的 `betaStartedAt`、`betaExpiresAt` 和 `betaGrantedDays`，后续修改配置不会缩短或延长他们的既有资格。
+
 ```text
 首次进入公测版
   -> betaStartedAt
-  -> betaExpiresAt = +90 天
+  -> betaExpiresAt = +BETA_PRO_DAYS
+  -> betaGrantedDays = 当时配置值
   -> source=BETA
 
-90 天到期
+到期
   -> source=FREE
   -> 不删除历史数据
   -> 深度报告等高级入口锁定
@@ -47,6 +50,8 @@
   -> source=LIFETIME
   -> 立即恢复全部 Pro 权益
 ```
+
+常用规则和环境变量完整说明见 `docs/PRODUCT_RULES.md`。
 
 ## 为什么不把私下转账设计进代码
 

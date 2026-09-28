@@ -66,7 +66,7 @@ rg -n "wx\\.(chooseMedia|saveImageToPhotosAlbum|requestSubscribeMessage|getLocat
 ## 六、Free / Beta Pro / Lifetime Pro
 
 - `FREE`：基础任务、长期目标、计时、打卡、日历、基础纪念章、社交和基础健康记录长期可用。
-- `BETA`：首次命中公测服务后获得 90 天 Pro，结束时不扣费、不删历史数据，自动回到 Free。
+- `BETA`：首次命中公测服务后按 `BETA_PRO_DAYS` 获得 Pro（默认 90 天），结束时不扣费、不删历史数据，自动回到 Free。
 - `LIFETIME`：未来正式支付成功后由可信服务端履约，把 `users.proLifetime=true`；永久权益优先于 Beta 到期时间。
 - 公测结束后将 `BETA_ENROLLMENT_ENABLED=false`，已有公测用户的到期时间不会改变。
 

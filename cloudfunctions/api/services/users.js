@@ -4,8 +4,9 @@ const { now, randomCode } = require('../lib/utils')
 const { ensureDefaultAdminFriendship } = require('./default-admin-friend')
 const { INITIAL_CARDS, INITIAL_GRANT_VERSION, todayForUser } = require('../domain/makeup-cards')
 const { betaEnrollmentFields, identityCode } = require('../domain/membership')
+const { productRules } = require('../config/product-rules')
 
-function betaEnrollmentEnabled() { return String(process.env.BETA_ENROLLMENT_ENABLED || 'true').toLowerCase() !== 'false' }
+function betaEnrollmentEnabled() { return productRules().betaEnrollmentEnabled }
 function defaultAdminFriendEnabled() { return String(process.env.DEFAULT_ADMIN_FRIEND_ENABLED || 'false').toLowerCase() === 'true' }
 
 async function uniqueCode(collection, field, len = 6) {

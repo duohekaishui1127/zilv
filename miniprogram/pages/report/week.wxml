@@ -16,7 +16,7 @@
     <view wx:if="{{report.locked}}" class="pro-lock-card">
       <view class="pro-lock-kicker">PRO REVIEW</view><view class="h2">完整成长复盘属于 Pro</view>
       <view class="sub">周报、月报、90 天复盘、分享海报和高级历史趋势都会保留。基础功能与原始数据始终可用。</view>
-      <view class="pro-lock-note">{{report.membership.betaUser ? '你的 90 天公测 Pro 已结束，历史数据仍然完整保留。' : '公测期间会获得 90 天完整 Pro 体验。'}}</view>
+      <view class="pro-lock-note"><block wx:if="{{report.membership.betaUser}}">你的 {{report.trialDays}} 天公测 Pro 已结束，历史数据仍然完整保留。</block><block wx:else>当前新用户可获得 {{report.trialDays}} 天完整 Pro 体验。</block></view>
       <button class="btn pro-lock-button" bindtap="goPro">查看 Free / Pro 区别</button>
     </view>
 

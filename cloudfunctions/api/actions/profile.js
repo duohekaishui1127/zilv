@@ -7,6 +7,7 @@ const { isFeedbackAdmin } = require('../services/feedback-admin')
 const { membershipOf } = require('../domain/membership')
 const { entitlementsOf } = require('../domain/entitlements')
 const { proOffer } = require('../domain/pro-offer')
+const { publicProductRules } = require('../config/product-rules')
 
 async function getProfile({ user, localDate }) {
   const [nutritionProfile, privacy, weight] = await Promise.all([getNutritionProfile(user._id), getPrivacy(user._id), latestWeight(user._id)])
@@ -17,7 +18,8 @@ async function getProfile({ user, localDate }) {
     isFeedbackAdmin: isFeedbackAdmin(user),
     membership: membershipOf(user),
     entitlements: entitlementsOf(membershipOf(user)),
-    proOffer: proOffer()
+    proOffer: proOffer(),
+    productRules: publicProductRules()
   }
 }
 

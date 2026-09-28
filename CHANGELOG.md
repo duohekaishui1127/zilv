@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.2 - 2026-09-28
+
+### 可配置产品规则
+- 新增 `cloudfunctions/api/config/product-rules.js`，集中读取公测、Pro 与 Recovery 常用运营规则。
+- `BETA_PRO_DAYS` 可配置新用户 Beta Pro 体验天数（1~365 天）；修改后仅影响之后首次领取的用户，已领取用户保持原 `betaExpiresAt`。
+- Free / Pro 补签卡上限和每月恢复量支持环境变量配置，Pro 页面自动显示服务端当前规则。
+- Pro 永久价格与购买开关统一通过同一配置层读取；`getMembershipOverview`、`getProfile`、`getSystemInfo` 返回安全的公开规则。
+- 新增 `docs/PRODUCT_RULES.md`，Schema 保持 18，无需数据库迁移。
+
 ## 1.7.1 - 2026-09-28
 
 ### 上线合规与 Free / Pro

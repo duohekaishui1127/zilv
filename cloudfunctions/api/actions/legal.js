@@ -4,6 +4,7 @@ const { legalConfig, legalAccepted, acceptanceFields } = require('../domain/lega
 const { membershipOf } = require('../domain/membership')
 const { entitlementsOf } = require('../domain/entitlements')
 const { proOffer } = require('../domain/pro-offer')
+const { publicProductRules } = require('../config/product-rules')
 
 async function getLegalGate({ user }) {
   const config = legalConfig()
@@ -27,7 +28,7 @@ async function acceptLegal({ user, event }) {
 
 async function getMembershipOverview({ user }) {
   const membership = membershipOf(user)
-  return { membership, entitlements: entitlementsOf(membership), offer: proOffer() }
+  return { membership, entitlements: entitlementsOf(membership), offer: proOffer(), rules: publicProductRules() }
 }
 
 module.exports = { getLegalGate, acceptLegal, getMembershipOverview }

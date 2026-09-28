@@ -31,4 +31,4 @@ Schema 16 不新增集合；补签卡字段保存在 `users`，新用户初始 3
 
 Schema 17 不新增集合。现有用户在首次调用新版 API 时会惰性补齐 `identityCode`、`betaUser`、`betaStartedAt`、`betaExpiresAt` 等字段；默认公测期为 90 天且不会在重复登录时自动延长。报告已读状态保存在 `users.reportViewMarks`。
 
-公测招募结束后，可在 `api` 云函数环境变量中设置 `BETA_ENROLLMENT_ENABLED=false`，这样既不会影响已经领取过公测权益的用户，也不会继续给新用户发放 90 天 Beta Pro。
+公测招募结束后，可在 `api` 云函数环境变量中设置 `BETA_ENROLLMENT_ENABLED=false`，这样既不会影响已经领取过公测权益的用户，也不会继续给新用户发放 Beta Pro。体验天数由 `BETA_PRO_DAYS` 控制。

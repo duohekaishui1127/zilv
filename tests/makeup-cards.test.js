@@ -42,6 +42,23 @@ test('Free 与 Pro 使用不同的补签恢复策略', () => {
   assert.deepEqual(pro.policy, { tier:'PRO',cap:PRO_CARD_CAP,monthlyGrant:2 })
 })
 
+
+test('补签卡 Free / Pro 策略可通过环境变量集中调整', () => {
+  const keys=['MAKEUP_FREE_CARD_CAP','MAKEUP_FREE_MONTHLY_GRANT','MAKEUP_PRO_CARD_CAP','MAKEUP_PRO_MONTHLY_GRANT']
+  const backup=Object.fromEntries(keys.map(key => [key,process.env[key]]))
+  Object.assign(process.env,{MAKEUP_FREE_CARD_CAP:'4',MAKEUP_FREE_MONTHLY_GRANT:'2',MAKEUP_PRO_CARD_CAP:'8',MAKEUP_PRO_MONTHLY_GRANT:'3'})
+  try {
+    const free = makeupCardState({ makeupCardBalance:0,makeupCardGrantMonth:'2026-09',makeupCardInitialGrantVersion:INITIAL_GRANT_VERSION }, '2026-11-01')
+    assert.deepEqual(free.policy,{ tier:'FREE',cap:4,monthlyGrant:2 })
+    assert.equal(free.balance,4)
+    const pro = makeupCardState({ betaUser:true,betaExpiresAt:'2027-01-01T00:00:00.000Z',makeupCardBalance:0,makeupCardGrantMonth:'2026-09',makeupCardInitialGrantVersion:INITIAL_GRANT_VERSION }, '2026-11-01', new Date('2026-11-01T00:00:00.000Z'))
+    assert.deepEqual(pro.policy,{ tier:'PRO',cap:8,monthlyGrant:3 })
+    assert.equal(pro.balance,6)
+  } finally {
+    keys.forEach(key => { backup[key] == null ? delete process.env[key] : process.env[key]=backup[key] })
+  }
+})
+
 test('昨天的日期正确跨越月末、年末和闰日', () => {
   assert.equal(previousDate('2026-10-01'), '2026-09-30')
   assert.equal(previousDate('2027-01-01'), '2026-12-31')

@@ -1,4 +1,4 @@
-# 自律 · 微信小程序 1.7.1
+# 自律 · 微信小程序 1.7.2
 
 面向自己与少量好友长期使用的身体管理、饮食营养、运动记录、计划打卡、群组监督与个人历程小程序。
 
@@ -7,13 +7,13 @@
 ## Free / Pro 产品层
 
 - Free：任务、长期目标、今日执行、基础计时、日历打卡、基础成长纪念、好友/群组、基础健康记录与数据控制长期可用。
-- Beta Pro：公测用户自动体验 90 天 Pro；到期不扣费、不删数据，平滑回到 Free。
+- Beta Pro：新用户体验时长由 `BETA_PRO_DAYS` 配置（默认 90 天）；到期不扣费、不删数据，平滑回到 Free。
 - Lifetime Pro：正式支付能力接入后预留一次性买断；可信履约后以 `proLifetime=true` 永久解锁。
 - Pro：周/月/90 天深度复盘、总结海报、高级趋势、完整成长档案和 Recovery+。
 
 ## 上线合规
 
-1.7.1 新增协议版本确认、完整隐私政策/用户协议、账号与数据管理、永久注销、默认管理员好友关闭和微信隐私检查开关。正式提审前还必须在微信公众平台配置真实的《小程序用户隐私保护指引》。详见 `docs/PRIVACY_AND_RELEASE.md`。
+1.7.1 起新增协议版本确认、完整隐私政策/用户协议、账号与数据管理、永久注销、默认管理员好友关闭和微信隐私检查开关。正式提审前还必须在微信公众平台配置真实的《小程序用户隐私保护指引》。详见 `docs/PRIVACY_AND_RELEASE.md`。
 
 ## 主要能力
 
@@ -80,6 +80,7 @@ progress-report.js
 - 日志是通用 `notes + note_attachments` 模型，而不是分别建立体态备注、学习备注、训练备注。
 - 日志通过 `relatedType + relatedId` 关联已有业务记录，避免业务表不断增加备注字段。
 - App/Schema/算法版本集中管理。
+- 1.7.2 起常用运营规则集中在 `cloudfunctions/api/config/product-rules.js`，并支持云函数环境变量覆盖；详见 `docs/PRODUCT_RULES.md`。
 - `admin-init` 负责幂等建库、种子数据和 migration 记录。
 - 静态质量门禁检查版本一致性、页面完整性、Action 契约、固定依赖与模块体量。
 
@@ -154,7 +155,7 @@ npm run verify
 - Action 模块不得重新膨胀为巨型文件；
 - Domain 单元测试。
 
-详细设计见：`docs/ARCHITECTURE.md`、`docs/QUALITY_ATTRIBUTES.md`、`docs/NOTES_DESIGN.md`、`docs/REMINDERS.md`、`docs/PRIVACY_AND_RELEASE.md`、`docs/PRO_AND_PAYMENT.md`。
+详细设计见：`docs/ARCHITECTURE.md`、`docs/QUALITY_ATTRIBUTES.md`、`docs/NOTES_DESIGN.md`、`docs/REMINDERS.md`、`docs/PRIVACY_AND_RELEASE.md`、`docs/PRO_AND_PAYMENT.md`、`docs/PRODUCT_RULES.md`。
 
 ## 医疗与营养说明
 
