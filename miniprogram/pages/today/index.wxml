@@ -9,6 +9,7 @@
   </view>
 
   <block wx:elif="{{dashboard}}">
+    <view wx:if="{{error}}" class="refresh-retry" bindtap="retry" aria-role="button">暂时无法更新，已保留当前内容 <text>重试 ›</text></view>
     <view class="hero row">
       <view><view class="h1">自律</view><view class="sub">{{dashboard.user.nickname}} · 今日事今日毕</view></view>
       <view class="message-entry {{dashboard.unreadNotificationCount ? 'message-entry-unread' : ''}}" bindtap="goNotifications" aria-label="消息中心">

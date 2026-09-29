@@ -34,6 +34,8 @@ test('正式 Pro 购买默认关闭，仅配置商品 ID 不会误开放', () =>
   assert.equal(proOffer().purchaseEnabled,false)
   process.env.PRO_PURCHASE_ENABLED='true'
   assert.equal(proOffer().purchaseEnabled,true)
+  assert.equal(proOffer().paymentReady,false)
+  assert.match(proOffer().note,/尚未开放/)
   process.env = backup
 })
 

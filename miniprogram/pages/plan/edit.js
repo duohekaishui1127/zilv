@@ -1,5 +1,10 @@
 const api = require('../../utils/api')
 const { PLAN_CATEGORIES, TARGET_TYPES, REPEAT_TYPES, TIMER_MODES } = require('../../utils/constants')
+const PRESETS = [
+  { name:'阅读',taskName:'阅读30分钟',category:'STUDY',type:'DURATION',value:30,unit:'分钟' },
+  { name:'运动',taskName:'运动20分钟',category:'WORKOUT',type:'DURATION',value:20,unit:'分钟' },
+  { name:'背单词',taskName:'背50个单词',category:'STUDY',type:'COUNT',value:50,unit:'词' }
+]
 
 function indexOfValue(list, value, fallback = 0) {
   const index = list.findIndex(x => x.value === value)
@@ -9,6 +14,7 @@ function indexOfValue(list, value, fallback = 0) {
 Page({
   data: {
     id:'',editMode:false,loading:false,saving:false,managed:false,
+    advanced:false,presets:PRESETS,
     name: '', description: '',
     categories: PLAN_CATEGORIES.map(x => x.label), categoryValues: PLAN_CATEGORIES.map(x => x.value), categoryIndex: 0,
     targetTypes: TARGET_TYPES.map(x => x.label), targetValues: TARGET_TYPES.map(x => x.value), targetIndex: 0,
@@ -21,6 +27,7 @@ Page({
     weekdays: [1,2,3,4,5,6,7].map((value, i) => ({ value, label: ['一','二','三','四','五','六','日'][i], selected: false }))
   },
   onLoad(options) {
+    this.setData({ executionDate:api.localDate() })
     if (options.id) {
       this.setData({ id: options.id, editMode: true })
       wx.setNavigationBarTitle({ title: '编辑执行任务' })
@@ -34,6 +41,7 @@ Page({
       const repeatIndex = indexOfValue(REPEAT_TYPES, plan.repeatType)
       const selectedDays = new Set(plan.repeatConfig?.weekdays || [])
       this.setData({
+        advanced:true,
         managed:Boolean(plan.managedByGoalId),
         name: plan.name,
         description: plan.description || '',
@@ -54,6 +62,17 @@ Page({
     } finally { this.setData({ loading: false }) }
   },
   input(e) { this.setData({ [e.currentTarget.dataset.key]: e.detail.value }) },
+  toggleAdvanced() { this.setData({ advanced:!this.data.advanced }) },
+  usePreset(e) {
+    if (this.data.editMode || this.data.managed) return
+    const preset = PRESETS[Number(e.currentTarget.dataset.index)]
+    if (!preset) return
+    this.setData({
+      name:preset.taskName,categoryIndex:indexOfValue(PLAN_CATEGORIES,preset.category),
+      targetIndex:indexOfValue(TARGET_TYPES,preset.type),targetValue:preset.value,unit:preset.unit,
+      repeatIndex:indexOfValue(REPEAT_TYPES,'DAILY'),isOneTime:false,isSpecificDays:false,isWeeklyCount:false
+    })
+  },
   category(e) { this.setData({ categoryIndex: Number(e.detail.value) }) },
   target(e) { this.setData({ targetIndex: Number(e.detail.value) }) },
   timerMode(e) {

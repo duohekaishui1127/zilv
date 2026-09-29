@@ -18,13 +18,13 @@ async function trimNotificationHistory(userId, keep = NOTIFICATION_LIMIT) {
   return removed
 }
 
-async function notificationWindow(userId) {
+async function notificationWindow(userId,options = {}) {
   const result = await db.collection(C.NOTIFICATIONS)
     .where({ userId })
     .orderBy('createdAt', 'desc')
     .limit(NOTIFICATION_LIMIT)
     .get()
-  await trimNotificationHistory(userId)
+  if (options.trim !== false) await trimNotificationHistory(userId)
   return {
     notifications: result.data,
     unreadCount: result.data.filter(item => item.status === 'UNREAD').length

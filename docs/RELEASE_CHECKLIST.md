@@ -1,4 +1,4 @@
-# 1.7.1 发布检查清单
+# 发布检查清单（Schema 18）
 
 ## 代码质量
 
@@ -12,8 +12,8 @@
 
 ## 数据库
 
-- [ ] 在开发环境先运行 `admin-init`
-- [ ] 确认 `system_meta.schemaVersion = 16`
+- [ ] 首次初始化或旧 Schema 升级前，先配置 `ADMIN_INIT_TOKEN`，仅携带匹配 token 执行；初始化完成后停用入口
+- [ ] 确认 `system_meta.schemaVersion = 18`；已完成 Schema 18 的本轮优化无需重复初始化
 - [ ] 配置 `FEEDBACK_ADMIN_SHARE_CODES` 并验证作者可以打开反馈管理页
 - [ ] 确认 `release:sync` 生成的版本公告与 `VERSION` 一致
 - [ ] 确认 `004_plan_reminders` migration 已记录
@@ -40,12 +40,15 @@
 - [ ] 7/30/90 天趋势图在真机高像素密度屏幕上清晰显示
 - [ ] 月度活跃日历可前后切换月份
 - [ ] 未记录饮食的日期不会产生虚假的热量缺口
+- [ ] 完成、撤回、备注保存、计时暂停/恢复无需固定整页刷新，失败仅恢复受影响任务
+- [ ] 连续点击、超时重试、跨零点和历史补签通过，心情小记与累计数量保持一致
+- [ ] 缓存写后失效、强制刷新、草稿恢复按 `UX_OPTIMIZATION.md` 验收，并记录真机耗时
 
 ## 环境与发布
 
 - [ ] develop 使用开发云环境
 - [ ] trial/release 使用预期云环境
-- [ ] 先部署 `admin-init` 并完成迁移
+- [ ] 如需迁移，先部署令牌保护的 `admin-init` 并完成迁移；不在前台保存管理员令牌
 - [ ] 再部署 `api`
 - [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_TEMPLATE_ID`
 - [ ] `api` 与 `reminder-dispatch` 配置相同的 `PLAN_REMINDER_SUBSCRIPTION_TYPE`；普通工具类打卡提醒保持 `ONE_TIME`
@@ -66,4 +69,5 @@
 - [ ] Beta Pro 到期模拟验证：回到 Free、数据不丢失、Pro 报告锁定。
 - [ ] `proLifetime=true` 模拟验证：无论 Beta 是否到期都保持永久 Pro。
 - [ ] 未完成官方支付接入前 `PRO_PURCHASE_ENABLED=false`。
+- [ ] `paymentReady=false` 时不显示可购买状态；配置商品 ID 不等于支付已验收。
 - [ ] 默认管理员好友自动添加关闭。

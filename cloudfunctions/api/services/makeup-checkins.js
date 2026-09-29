@@ -2,12 +2,13 @@ const { executionSnapshot } = require('../domain/execution-history')
 const crypto = require('crypto')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
-const { getTodayPlans } = require('./plans')
+const { loadHistoricalPlans } = require('./historical-plans')
 const { getDailyReview } = require('./daily-reviews')
 const { presentDailyReview } = require('../domain/daily-review')
 const { INITIAL_GRANT_VERSION, todayForUser, previousDate, makeupCardState } = require('../domain/makeup-cards')
 const { syncPlanCategoryRecord } = require('./plan-records')
 const { syncLongTermGoalAchievements } = require('./long-term-goals')
+const { executionCheckinId } = require('./checkin-storage')
 
 const MOODS = new Set(['GREAT', 'GOOD', 'OKAY', 'TIRED', 'BAD'])
 
@@ -16,7 +17,7 @@ function reviewId(userId, date) {
 }
 
 function checkinId(userId, planId, date) {
-  return crypto.createHash('sha256').update(`makeup-checkin:${userId}:${planId}:${date}`).digest('hex').slice(0, 32)
+  return executionCheckinId(userId,planId,date)
 }
 
 async function txDocument(transaction, collection, id) {
@@ -61,7 +62,7 @@ async function makeupDailyCheckin({ user, event }) {
   const mood = String(event.mood || '')
   if (mood && !MOODS.has(mood)) throw fail('INVALID_PARAMETER', '心情选项不合法')
   const note = String(event.note || '').trim().slice(0, 1000)
-  const plans = await getTodayPlans(user._id, date)
+  const { tasks:plans } = await loadHistoricalPlans(user._id,date)
   const planMap = new Map(plans.map(plan => [plan._id, plan]))
   if (selectedIds.some(id => !planMap.has(id))) throw fail('PLAN_NOT_DUE', '只能补签昨天应执行的任务')
   const existingReview = await getDailyReview(user._id, date)

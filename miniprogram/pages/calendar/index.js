@@ -114,13 +114,13 @@ Page({
     this.loadCalendar()
   },
   onHide() { this.closeReview() },
-  onPullDownRefresh() { this.loadCalendar().finally(() => wx.stopPullDownRefresh()) },
-  async loadCalendar() {
+  onPullDownRefresh() { this.loadCalendar({ fresh:true }).finally(() => wx.stopPullDownRefresh()) },
+  async loadCalendar(options = {}) {
     const loadId = Number(this._calendarLoadId || 0) + 1
     this._calendarLoadId = loadId
     this.setData({ loading: true, error: '' })
     try {
-      const calendar = await api.call('getActivityCalendar', { month: this.data.month }, { silent: true })
+      const calendar = await api.call('getActivityCalendar', { month:this.data.month }, { silent:true,...options })
       if (loadId !== this._calendarLoadId) return
       if (loadId <= this._reminderReceiptLoadId && calendar.reminderSettings?.enabled) {
         calendar.reminderSettings.pushEnabled = true
@@ -141,7 +141,7 @@ Page({
     const month = currentDate.slice(0, 7)
     if (month !== this.data.month) this.setData({ month, currentDate, currentMonth: month, calendar: null }, () => this.loadCalendar())
   },
-  retry() { this.loadCalendar() },
+  retry() { this.loadCalendar({ fresh:true }) },
   openReportPrompt() {
     const prompt = this.data.reportPrompt
     if (!prompt) return

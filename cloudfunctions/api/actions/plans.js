@@ -1,16 +1,17 @@
-const { recordExecutionHistory, completionSnapshots } = require('../domain/execution-history')
+const { recordExecutionHistory } = require('../domain/execution-history')
+const { completionRecord } = require('../domain/completion-record')
 const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
 const { isBasePlanDue, getTodayPlans } = require('../services/plans')
 const { emitGroupEventsForCheckin } = require('../services/social')
 const { syncPlanCategoryRecord } = require('../services/plan-records')
-const { ensureDailyReviewAfterCompletion } = require('../services/daily-reviews')
-const { completedTimerFields } = require('../domain/plan-timer')
+const { ensureDailyReviewAfterCompletion,dailyReviewStreak } = require('../services/daily-reviews')
 const { normalizePlan, isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
 const { longTermContext, syncLongTermGoalAchievements } = require('../services/long-term-goals')
 const { requestGroupPlanChange, applyPlanChange } = require('../services/group-plan-changes')
 const { broadcastGroupPlanChange } = require('../services/group-plan-broadcasts')
 const { prepareManagedAccumulationPlanUpdate } = require('../services/managed-accumulation')
+const { saveExecutionCheckin } = require('../services/checkin-storage')
 const { todayForUser } = require('../domain/makeup-cards')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
@@ -80,58 +81,29 @@ async function completePlan({ user, event, localDate }) {
     if (count.total >= Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1)) throw fail('PLAN_WEEKLY_TARGET_REACHED', '本周目标已完成')
   }
 
-  const existingCheckin = cr.data[0] || null
   const completionTime = now()
-  const finalizedTimer = completedTimerFields(existingCheckin, plan, completionTime)
-  const durationMinutes = event.durationMinutes === undefined
-    ? (existingCheckin?.durationMinutes ?? null)
-    : (event.durationMinutes === '' || event.durationMinutes == null ? null : Number(event.durationMinutes))
-  if (durationMinutes != null && (!Number.isFinite(durationMinutes) || durationMinutes < 0 || durationMinutes > 1440)) {
-    throw fail('INVALID_PARAMETER', '实际用时应为0到1440分钟')
-  }
-  const timerDurationMinutes = finalizedTimer.durationMinutes ?? (existingCheckin?.timerStatus === 'FINISHED'
-    ? roundTimerMinutes(existingCheckin.timerEffectiveSeconds)
-    : durationMinutes)
-  const allowedMoods = ['GREAT', 'GOOD', 'OKAY', 'TIRED', 'BAD']
-  const mood = event.mood === undefined
-    ? (existingCheckin?.mood || '')
-    : (allowedMoods.includes(event.mood) ? event.mood : '')
-  const note = event.note === undefined ? (existingCheckin?.note || '') : String(event.note || '').slice(0, 500)
-  const actualValue = Number(event.actualValue ?? (existingCheckin?.completed ? existingCheckin.actualValue : null) ?? plan.targetValue ?? 1)
-  if (!Number.isFinite(actualValue) || actualValue < 0 || actualValue > 1000000000) {
-    throw fail('INVALID_PARAMETER', '实际完成量不合法')
-  }
-  let checkin
-  const shouldEmitGroupEvent = !existingCheckin?.completed
-  const completionVersion = shouldEmitGroupEvent ? Number(existingCheckin?.completionVersion || 0) + 1 : Number(existingCheckin?.completionVersion || 1)
-  const data = {
-    ...completionSnapshots(plan, existingCheckin),
-    actualValue, completed: true,
-    durationMinutes: timerDurationMinutes, mood, completedAt: shouldEmitGroupEvent ? completionTime : (existingCheckin?.completedAt || completionTime),
-    completionVersion, revokedAt: null,
-    note, ...finalizedTimer, updatedAt: completionTime
-  }
-  if (cr.data.length) {
-    await db.collection(C.CHECKINS).doc(cr.data[0]._id).update({ data })
-    checkin = { ...cr.data[0], ...data }
-  } else {
-    const base = { userId: user._id, planId: plan._id, date: localDate, createdAt: now(), ...data }
-    const add = await db.collection(C.CHECKINS).add({ data: base })
-    checkin = { _id: add._id, ...base }
-  }
+  const saved = await saveExecutionCheckin({ db,C,userId:user._id,planId:plan._id,date:localDate,existingId:cr.data[0]?._id,
+    build:(existing,currentPlan) => completionRecord(currentPlan,existing,event,completionTime,localDate)
+  })
+  const checkin = saved.checkin
+  const shouldEmitGroupEvent = !saved.wasCompleted
   const categoryRecordPromise = syncPlanCategoryRecord({ user, plan, checkin, localDate }).catch(error => {
     console.warn('[plan-category-record]', error?.message || error)
   })
   const socialPromise = shouldEmitGroupEvent ? emitGroupEventsForCheckin(user, plan, checkin).catch(error => {
     console.warn('[social-checkin]', error?.message || error)
   }) : Promise.resolve()
-  const dailyStatePromise = getTodayPlans(user._id, localDate).then(async plans => ({
-    plans,
-    dailyReview: await ensureDailyReviewAfterCompletion(user._id, localDate, plans).catch(error => {
+  const dailyStatePromise = getTodayPlans(user._id, localDate).then(async plans => {
+    const dailyReview = await ensureDailyReviewAfterCompletion(user._id, localDate, plans).catch(error => {
       console.warn('[auto-daily-review]', error?.message || error)
       return null
     })
-  })).catch(error => {
+    const currentStreak = dailyReview ? await dailyReviewStreak(user._id,localDate).catch(error => {
+      console.warn('[daily-review-streak]',error?.message || error)
+      return null
+    }) : null
+    return { plans,dailyReview,currentStreak }
+  }).catch(error => {
     console.warn('[today-plan-refresh]', error?.message || error)
     return { plans: null, dailyReview: null }
   })
@@ -145,13 +117,14 @@ async function completePlan({ user, event, localDate }) {
   return {
     checkin,
     dailyReview: dailyState.dailyReview,
+    currentStreak:dailyState.currentStreak,
     plans: dailyState.plans,
     completion: Array.isArray(dailyState.plans) ? {
       total: dailyState.plans.length,
       completed: dailyState.plans.filter(item => item.completed).length
     } : null,
+    updatedGoals:goalSync.updatedGoals,
     achievedGoals: goalSync.achievedGoals
   }
 }
-function roundTimerMinutes(seconds) { const value = Number(seconds); return Number.isFinite(value) && value >= 0 ? Math.round(value / 6) / 10 : null }
 module.exports = { createPlan, getPlan, updatePlan, setPlanEnabled, deletePlan, getPlans, completePlan }

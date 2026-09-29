@@ -1,3 +1,5 @@
+const crypto = require('crypto')
+function generatedId(kind,userId,planId,date) { return crypto.createHash('sha256').update(`${kind}:${userId}:${planId}:${date}`).digest('hex').slice(0,32) }
 const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
 
@@ -57,7 +59,7 @@ async function syncStudyRecord(user, plan, checkin, localDate) {
     } })
     return
   }
-  await db.collection(C.STUDY).add({ data: {
+  await db.collection(C.STUDY).doc(generatedId('study',user._id,plan._id,localDate)).set({ data: {
     userId: user._id,
     planId: plan._id,
     checkinId: checkin._id,
@@ -100,7 +102,7 @@ async function syncWorkoutRecord(user, plan, checkin, localDate) {
     } })
     return
   }
-  await db.collection(C.WORKOUTS).add({ data: {
+  await db.collection(C.WORKOUTS).doc(generatedId('workout',user._id,plan._id,localDate)).set({ data: {
     userId: user._id,
     planId: plan._id,
     checkinId: checkin._id,

@@ -1,4 +1,6 @@
 const api = require('../../utils/api')
+const drafts = require('../../utils/drafts')
+const { reconcileTask,reconcileDailyReview } = require('../../utils/task-reconciliation')
 const fmt = require('../../utils/format')
 const reminderRenewal = require('../../utils/reminder-renewal')
 const { getCheckinReminderClient } = require('../../utils/checkin-reminder')
@@ -183,15 +185,15 @@ Page({
     reminderRenewalAvailable:false
   },
   onShow() { this._visible = true; this._focusTimerOnShow=true; this.loadReminderConfig(); this.load() },
-  onHide() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.hideCompletionUndo() },
-  onUnload() { this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.clearUndoTimer() },
+  onHide() { drafts.flush(); this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.hideCompletionUndo() },
+  onUnload() { drafts.flush(); this._visible = false; this.stopTicker(); this.cancelCardDrag(); this.clearUndoTimer() },
   onPageScroll(e) {
     this._pageScrollTop=Number(e.scrollTop || 0)
     if(this.data.cardDrag.active && !this.data.cardDrag.settling && this._cardDragState?.lastClientY != null) {
       this.updateCardDrag(this._cardDragState.lastClientY)
     }
   },
-  onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
+  onPullDownRefresh() { this.load({ fresh:true }).finally(() => wx.stopPullDownRefresh()) },
   serverNow() { return Date.now() + Number(this._clockOffset || 0) },
   async loadReminderConfig() {
     if (this.data.reminderConfig?.configured) {
@@ -213,13 +215,14 @@ Page({
       reminderRenewalAvailable:reminderRenewal.shouldOfferManualRenewal({ dashboard,config })
     })
   },
-  async load() {
+  async load(options = {}) {
+    const revision = Number(this._dashboardRevision || 0)
     const loadId = Number(this._dashboardLoadId || 0) + 1
     this._dashboardLoadId = loadId
     this.setData({ loading: true, error: '' })
     try {
-      const d = await api.call('dashboard', {}, { silent: true })
-      if (loadId !== this._dashboardLoadId) return
+      const d = await api.call('dashboard', {}, { silent:true,...options })
+      if (loadId !== this._dashboardLoadId || revision !== Number(this._dashboardRevision || 0)) return
       if (loadId <= this._reminderReceiptLoadId && d.user?._id === this._reminderReceiptUserId
         && d.user.checkinReminderEnabled) {
         d.user.checkinReminderPushEnabled = true
@@ -229,16 +232,19 @@ Page({
       this._clockOffset = serverMs == null ? 0 : serverMs - Date.now()
       const target = d.nutritionTarget || {}
       d.homePreferences = { showEnergy:true,showLongTermGoals:true,cardOrder:HOME_CARDS, ...(d.homePreferences || {}) }
+      const sameDay = this.data.dashboard?.businessDate === d.businessDate && this.data.dashboard?.user?._id === d.user?._id
+      if (!sameDay) {
+        this._optimisticPlanIds?.clear()
+        this._optimisticRevokingIds?.clear()
+      }
       d.plans = (d.plans || []).map(plan => {
-        const local = this.data.dashboard?.plans?.find(item => item._id === plan._id)
-        if (this._optimisticPlanIds?.has(plan._id) && !plan.completed && local?.completed) {
-          return decoratePlan({ ...plan, completed: true, checkin: local.checkin, syncing:true }, this.serverNow())
-        }
+        const local = sameDay ? this.data.dashboard?.plans?.find(item => item._id === plan._id) : null
         if (plan.completed && !this._quickCompletingIds?.has(plan._id)) this._optimisticPlanIds?.delete(plan._id)
-        return decoratePlan({ ...plan,syncing:Boolean(this._quickCompletingIds?.has(plan._id)) }, this.serverNow())
+        return decoratePlan({ ...reconcileTask(plan,local,this._optimisticPlanIds?.has(plan._id),this._optimisticRevokingIds?.has(plan._id),true),syncing:Boolean(this._quickCompletingIds?.has(plan._id)) },this.serverNow())
       })
       d.completion = { total: d.plans.length, completed: d.plans.filter(plan => plan.completed).length }
       d.longTermGoals = (d.longTermGoals || []).map(presentGoal).slice(0, 3)
+      d.dailyReview = reconcileDailyReview(d.dailyReview,null,d.completion)
       if (d.dailyReview) d.dailyReview = {
         ...d.dailyReview,
         moodIcon: MOOD_ICONS[d.dailyReview.mood] || '',
@@ -288,9 +294,9 @@ Page({
     if (!plan || this._autoFinishingTimer) return
     this._autoFinishingTimer = plan._id
     try {
-      await api.call('finishPlanTimer', { planId: plan._id }, { silent: true })
+      const result = await api.call('finishPlanTimer', { planId: plan._id }, { silent: true })
       this.refreshActiveTimerBar()
-      await this.load()
+      if (!this.applyTimerResult(result)) await this.load({ fresh:true })
       if (this._visible && typeof wx.vibrateLong === 'function') {
         wx.vibrateLong({ fail: () => {} })
       }
@@ -302,7 +308,8 @@ Page({
     }
   },
   onCountUpRestReminder() { this.load() },
-  retry() { this.load() },
+  retry() { this.load({ fresh:true }) },
+  markDashboardChanged() { this._dashboardRevision = Number(this._dashboardRevision || 0) + 1 },
   refreshActiveTimerBar() { this.selectComponent('#activeTimerBar')?.refresh() },
   onActiveTimerChange(e) {
     const timer=e.detail?.timer
@@ -548,12 +555,13 @@ Page({
   },
   planFromEvent(e) { return this.data.dashboard?.plans?.[Number(e.currentTarget.dataset.index)] },
   optimisticComplete(plan, index) {
+    this.markDashboardChanged()
     if (!this._optimisticPlanIds) this._optimisticPlanIds = new Set()
     if (!this._quickCompletingIds) this._quickCompletingIds = new Set()
     this._optimisticPlanIds.add(plan._id)
     this._quickCompletingIds.add(plan._id)
     const completion = { ...this.data.dashboard.completion }
-    const snapshot = { index, plan, completion, completionPct: this.data.completionPct }
+    const snapshot = { index,plan,completion,completionPct:this.data.completionPct,businessDate:this.data.dashboard.businessDate }
     const checkin = {
       ...(plan.checkin || {}), completed: true, actualValue: Number(plan.targetValue),
       date: api.localDate(), completedAt: new Date(this.serverNow()).toISOString(), optimistic: true
@@ -569,21 +577,26 @@ Page({
   },
   rollbackOptimisticCompletion(snapshot) {
     if (!snapshot) return
+    const date = snapshot.businessDate || snapshot.plan.checkin?.date
+    if (date && date !== this.data.dashboard?.businessDate) return
+    this.markDashboardChanged()
     this._optimisticPlanIds?.delete(snapshot.plan._id)
-    this.setData({
-      [`dashboard.plans[${snapshot.index}]`]: snapshot.plan,
-      'dashboard.completion.completed': snapshot.completion.completed,
-      completionPct: snapshot.completionPct
-    })
+    this._optimisticRevokingIds?.delete(snapshot.plan._id)
+    const plans = [...(this.data.dashboard?.plans || [])]
+    const index = plans.findIndex(plan => plan._id === snapshot.plan._id)
+    if (index < 0) return
+    plans[index] = snapshot.plan
+    const completed = plans.filter(plan => plan.completed).length
+    const completion = { total:plans.length,completed }
+    this.setData({ 'dashboard.plans':plans,'dashboard.completion':completion,'dashboard.dailyReview':reconcileDailyReview(null,this.data.dashboard?.dailyReview,completion),completionPct:fmt.pct(completed,plans.length) })
   },
   applyCompletionResult(result) {
     if (!Array.isArray(result?.plans)) return
+    if (result.checkin?.date && result.checkin.date !== this.data.dashboard?.businessDate) { this.load({ fresh:true }); return }
+    this.markDashboardChanged()
     const plans = result.plans.map(plan => {
       const local = this.data.dashboard?.plans?.find(item => item._id === plan._id)
-      if (this._optimisticPlanIds?.has(plan._id) && !plan.completed && local?.completed) {
-        return decoratePlan({ ...plan,completed:true,checkin:local.checkin,syncing:true },this.serverNow())
-      }
-      return decoratePlan({ ...plan,syncing:Boolean(this._quickCompletingIds?.has(plan._id)) }, this.serverNow())
+      return decoratePlan({ ...reconcileTask(plan,local,this._optimisticPlanIds?.has(plan._id),this._optimisticRevokingIds?.has(plan._id)),syncing:Boolean(this._quickCompletingIds?.has(plan._id)) },this.serverNow())
     })
     const completion = { total:plans.length,completed:plans.filter(plan => plan.completed).length }
     const updates = {
@@ -591,12 +604,21 @@ Page({
       'dashboard.completion': completion,
       completionPct: fmt.pct(completion.completed, completion.total)
     }
-    if (result.dailyReview && this.data.dashboard?.dailyReview) updates['dashboard.dailyReview'] = {
-      ...result.dailyReview,
-      moodIcon: MOOD_ICONS[result.dailyReview.mood] || '',
-      moodLabel: MOOD_LABELS[result.dailyReview.mood] || ''
+    const review = reconcileDailyReview(result.dailyReview,this.data.dashboard?.dailyReview,completion)
+    if (review) updates['dashboard.dailyReview'] = {
+      ...review,
+      moodIcon: MOOD_ICONS[review.mood] || '',
+      moodLabel: MOOD_LABELS[review.mood] || ''
     }
     this.setData(updates)
+    if (Number.isFinite(result.currentStreak)) this.setData({ 'dashboard.currentStreak':result.currentStreak })
+    if (Array.isArray(result.updatedGoals)) {
+      const replacements = new Map(result.updatedGoals.map(goal => [goal._id,goal]))
+      const existing = this.data.dashboard?.longTermGoals || []
+      const goals = existing.map(goal => replacements.get(goal._id) || goal).filter(goal => goal.goalStatus === 'ACTIVE').map(presentGoal)
+      this.setData({ 'dashboard.longTermGoals':goals })
+    }
+    this.maybePromptDailyReview(this.data.dashboard)
   },
   finishQuickSync(planId) {
     this._quickCompletingIds?.delete(planId)
@@ -663,14 +685,28 @@ Page({
     if(!plan || this._quickCompletingIds?.has(plan._id))return false
     if(!this._quickCompletingIds)this._quickCompletingIds=new Set()
     this._quickCompletingIds.add(plan._id)
+    if(!this._optimisticRevokingIds)this._optimisticRevokingIds=new Set()
+    this._optimisticRevokingIds.add(plan._id)
+    const index=this.data.dashboard.plans.findIndex(item => item._id === plan._id)
+    const businessDate=this.data.dashboard.businessDate
+    this.markDashboardChanged()
+    const completed=Math.max(0,this.data.dashboard.completion.completed - 1)
+    this.setData({ [`dashboard.plans[${index}]`]:decoratePlan({ ...plan,completed:false,syncing:true,checkin:{ ...plan.checkin,completed:false,optimistic:true } },this.serverNow()),
+      'dashboard.completion.completed':completed,completionPct:fmt.pct(completed,this.data.dashboard.completion.total) })
     try {
-      await api.call('revokePlanCompletion', { planId: plan._id })
+      const result=await api.call('revokePlanCompletion',{ planId:plan._id })
+      this._optimisticRevokingIds.delete(plan._id)
+      if(Array.isArray(result.plans))this.applyCompletionResult(result)
       this._promptedDailyReviewDate = ''
       this._dailyPromptScheduledDate = ''
       wx.showToast({ title: '已撤回', icon: 'success', duration: 1000 })
-      await this.load()
+      if(!Array.isArray(result.plans) || result.reopenedGoalIds?.length)await this.load({ fresh:true })
       return true
+    } catch(error) {
+      this.rollbackOptimisticCompletion({ plan,businessDate })
+      return false
     } finally {
+      this._optimisticRevokingIds?.delete(plan._id)
       this.finishQuickSync(plan._id)
     }
   },
@@ -691,14 +727,16 @@ Page({
   },
   showCompletion(plan) {
     const checkin = plan.checkin || {}
+    const context = this.completionDraftContext(plan)
+    const draft = drafts.get(context.key,context.base)
     const timed = !!checkin.timerStatus
     this.setData({
       completionEditor: {
         visible: true,
         planId: plan._id,
         planName: plan.name,
-        note: checkin.note || '',
-        actualValue: checkin.actualValue == null ? plan.targetValue : checkin.actualValue,
+        note: draft?.note ?? checkin.note ?? '',
+        actualValue: draft?.actualValue ?? checkin.actualValue ?? plan.targetValue,
         unit: plan.unit || '', quantitative: plan.targetType !== 'BOOLEAN',
         timed,
         timerEffectiveDisplay: plan.timerEffectiveDisplay,
@@ -735,21 +773,31 @@ Page({
     } finally {
       this.finishQuickSync(plan._id)
     }
-    const linkedToGoal = Boolean(plan.managedByGoalId || plan.longTermGoalIds?.length)
     const needsCompatibilityRefresh = !Array.isArray(result?.plans)
-    if (completed && (needsCompatibilityRefresh || completesToday || linkedToGoal || result?.achievedGoals?.length)) this.load()
+    if (completed && (needsCompatibilityRefresh || result?.achievedGoals?.length)) this.load({ fresh:true })
   },
   async timerAction(action, e) {
     const plan = this.planFromEvent(e)
     if (!plan || this.data.timerBusyPlanId) return
     this.setData({ timerBusyPlanId: plan._id })
     try {
-      await api.call(action, { planId: plan._id })
+      const result = await api.call(action, { planId: plan._id })
       this.refreshActiveTimerBar()
-      await this.load()
+      if (!this.applyTimerResult(result)) await this.load({ fresh:true })
     } finally {
       this.setData({ timerBusyPlanId: '' })
     }
+  },
+  applyTimerResult(result) {
+    const checkin = result?.checkin
+    if (!checkin || checkin.date !== this.data.dashboard?.businessDate) return false
+    const index = this.data.dashboard.plans.findIndex(plan => plan._id === checkin.planId)
+    if (index < 0) return false
+    const plan = this.data.dashboard.plans[index]
+    this.markDashboardChanged()
+    this.setData({ [`dashboard.plans[${index}]`]:decoratePlan({ ...plan,checkin,completed:Boolean(checkin.completed) },this.serverNow()) })
+    this.startTicker()
+    return true
   },
   async requestTimerReminder() {
     const config = this.data.reminderConfig
@@ -770,9 +818,10 @@ Page({
       const needsTimerReminder = plan.timerMode === 'COUNT_DOWN'
         || (plan.timerMode === 'COUNT_UP' && !this.data.dashboard?.user?.countUpReminderPushEnabled)
       const timerReminderAuthorized = needsTimerReminder ? await this.requestTimerReminder() : false
-      await api.call('startPlanTimer', { planId: plan._id, timerReminderAuthorized })
+      const result = await api.call('startPlanTimer', { planId: plan._id, timerReminderAuthorized })
+      if (plan.timerMode === 'COUNT_UP') this.setData({ 'dashboard.user.countUpReminderPushEnabled':false })
       this.refreshActiveTimerBar()
-      await this.load()
+      if (!this.applyTimerResult(result)) await this.load({ fresh:true })
     } finally {
       this.setData({ timerBusyPlanId: '' })
     }
@@ -790,7 +839,9 @@ Page({
       })
       wx.showToast({ title:result.achievedGoals?.length ? '长期目标已达成' : (completesToday ? '今日打卡完成' : '任务已完成'),icon:'success' })
       this.refreshActiveTimerBar()
-      await this.load()
+      if (plan.timerMode === 'COUNT_UP' && plan.checkin?.timerReminderPushEnabled) this.setData({ 'dashboard.user.countUpReminderPushEnabled':true })
+      if (Array.isArray(result.plans)) this.applyCompletionResult(result)
+      if (!Array.isArray(result.plans) || result.achievedGoals?.length) await this.load({ fresh:true })
     } finally {
       this.setData({ timerBusyPlanId: '' })
     }
@@ -844,8 +895,14 @@ Page({
     if (!this.data.completionSaving) this.setData({ completionEditor: emptyEditor() })
   },
   noop() {},
+  completionDraftContext(plan) {
+    return { key:this.data.dashboard?.user?._id ? `task:${this.data.dashboard.user._id}:${plan?._id}:${this.data.dashboard.businessDate || api.localDate()}` : '',base:JSON.stringify([plan?.checkin?.note || '',plan?.checkin?.actualValue ?? null]) }
+  },
   editorInput(e) {
     this.setData({ [`completionEditor.${e.currentTarget.dataset.key}`]: e.detail.value })
+    const plan = this.data.dashboard?.plans?.find(item => item._id === this.data.completionEditor.planId)
+    const context = this.completionDraftContext(plan)
+    drafts.save(context.key,{ note:this.data.completionEditor.note,actualValue:this.data.completionEditor.actualValue },context.base)
   },
   async saveCompletion() {
     if (this.data.completionSaving) return
@@ -855,14 +912,16 @@ Page({
 
     this.setData({ completionSaving: true })
     try {
-      await api.call('completePlan', {
+      const result = await api.call('completePlan', {
         planId: editor.planId,
         note: editor.note,
         actualValue: editor.quantitative && editor.actualValue !== '' ? Number(editor.actualValue) : undefined
       })
+      drafts.remove(this.completionDraftContext(plan).key)
       this.setData({ completionEditor: emptyEditor() })
       wx.showToast({ title: '备注已保存', icon: 'success' })
-      await this.load()
+      if (Array.isArray(result.plans)) this.applyCompletionResult(result)
+      else await this.load({ fresh:true })
     } finally {
       this.setData({ completionSaving: false })
     }
@@ -870,32 +929,49 @@ Page({
   openDailyReview() {
     const review = this.data.dashboard?.dailyReview
     if (!review) return
-    this.setData({ dailyReviewEditor: { visible: true, mood: review?.mood || '', note: review?.note || '' } })
+    const context = this.dailyDraftContext()
+    this.setData({ dailyReviewEditor:{ visible:true,mood:review.mood || '',note:review.note || '',...(drafts.get(context.key,context.base) || {}) } })
+  },
+  dailyDraftContext() {
+    const dashboard = this.data.dashboard, review = dashboard?.dailyReview
+    return { key:dashboard?.user?._id ? `daily:${dashboard.user._id}:${review?.date || dashboard.businessDate || api.localDate()}` : '',base:JSON.stringify([review?.mood || '',review?.note || '']) }
+  },
+  persistDailyDraft() {
+    const context = this.dailyDraftContext(), editor = this.data.dailyReviewEditor
+    drafts.save(context.key,{ mood:editor.mood,note:editor.note },context.base)
   },
   async manualDailyCheckin() {
     if (this.data.manualCheckinSaving) return
     this.setData({ manualCheckinSaving: true })
     this.beginReminderRenewal(null,{ manual:true })
     try {
-      await api.call('manualDailyCheckin')
-      await this.load()
+      const result = await api.call('manualDailyCheckin')
+      this.markDashboardChanged()
+      if (result.review) this.setData({ 'dashboard.dailyReview':{
+        ...result.review,moodIcon:MOOD_ICONS[result.review.mood] || '',moodLabel:MOOD_LABELS[result.review.mood] || ''
+      },'dashboard.currentStreak':result.currentStreak })
+      else await this.load({ fresh:true })
       this.openDailyReview()
     } finally {
       this.setData({ manualCheckinSaving: false })
     }
   },
-  closeDailyReview() { if (!this.data.completionSaving) this.setData({ dailyReviewEditor: emptyDailyReviewEditor() }) },
-  chooseDailyMood(e) { this.setData({ 'dailyReviewEditor.mood': e.currentTarget.dataset.value }) },
-  dailyReviewInput(e) { this.setData({ 'dailyReviewEditor.note': e.detail.value }) },
+  closeDailyReview() { if (!this.data.completionSaving) { drafts.flush(); this.setData({ dailyReviewEditor:emptyDailyReviewEditor() }) } },
+  chooseDailyMood(e) { this.setData({ 'dailyReviewEditor.mood':e.currentTarget.dataset.value }); this.persistDailyDraft() },
+  dailyReviewInput(e) { this.setData({ 'dailyReviewEditor.note':e.detail.value }); this.persistDailyDraft() },
   async saveDailyReview() {
     const editor = this.data.dailyReviewEditor
-    if (!editor.mood) return wx.showToast({ title: '请选择今天的心情', icon: 'none' })
     this.setData({ completionSaving: true })
     try {
-      await api.call('saveDailyReview', { mood: editor.mood, note: editor.note })
+      const result = await api.call('saveDailyReview', { mood:editor.mood,note:editor.note })
+      this.markDashboardChanged()
+      drafts.remove(this.dailyDraftContext().key)
       this.setData({ dailyReviewEditor: emptyDailyReviewEditor() })
       wx.showToast({ title: '心情与小记已保存', icon: 'success' })
-      await this.load()
+      if (result.review) this.setData({ 'dashboard.dailyReview':{
+        ...result.review,moodIcon:MOOD_ICONS[result.review.mood] || '',moodLabel:MOOD_LABELS[result.review.mood] || ''
+      } })
+      else await this.load({ fresh:true })
     } finally { this.setData({ completionSaving: false }) }
   }
 })

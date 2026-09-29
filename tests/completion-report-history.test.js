@@ -13,12 +13,13 @@ async function complete(existing, event = {}) {
       where() { return query },limit() { return query },
       async get() { return { data:[existing] } },
       doc() { return {
-        async get() { return { data:plan } },
+        async get() { return { data:name === 'plans' ? plan : { userId:'u',planId:'p',date:'2026-09-29',...existing } } },
         async update({ data }) { saved = data }
       } }
     }
     return query
   } }
+  db.runTransaction = async callback => callback(db)
   const mocks = {
     '../lib/db':{ db,C:{ PLANS:'plans',CHECKINS:'checkins' } },
     '../lib/utils':{ now:() => new Date('2026-09-29T00:00:00Z') },

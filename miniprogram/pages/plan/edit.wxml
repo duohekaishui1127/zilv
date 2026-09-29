@@ -1,28 +1,29 @@
 <view class="container">
   <view class="empty" wx:if="{{loading}}">正在加载计划…</view>
   <view class="card" wx:else>
-    <view class="tip" wx:if="{{managed}}">这是数量积累目标自动管理的任务。你可以调整执行频率和时间；名称、单位和每次建议量由长期目标同步，不能单独停用或删除。</view>
-    <view class="field"><view class="label">任务名称</view><input wx:if="{{!managed}}" class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="例如：背50个单词"/><view wx:else class="input managed-readonly">{{name}}</view></view>
-    <view class="field"><view class="label">具体内容（可选）</view><textarea class="input" data-key="description" value="{{description}}" bindinput="input" maxlength="500" placeholder="例如：复习第3章，并完成课后练习；内容会显示在今日首页"/></view>
-    <view class="field"><view class="label">分类</view><picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="category"><view class="input">{{categories[categoryIndex]}}</view></picker></view>
-    <block wx:if="{{!managed}}"><view class="field"><view class="label">目标类型</view><picker mode="selector" range="{{targetTypes}}" value="{{targetIndex}}" bindchange="target"><view class="input">{{targetTypes[targetIndex]}}</view></picker></view><view class="row"><view class="field flex-1"><view class="label">目标值</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="分钟/次/ml"/></view></view></block>
-    <view class="field" wx:else><view class="label">本次建议量</view><view class="input managed-readonly">{{targetValue}}{{unit}}</view><view class="sub">修改执行频率并保存后，系统会按剩余期限重新计算。</view></view>
-    <view class="field"><view class="label">重复规则</view><picker mode="selector" range="{{repeatTypes}}" value="{{repeatIndex}}" bindchange="repeat"><view class="input">{{repeatTypes[repeatIndex]}}</view></picker></view>
+    <view class="tip" wx:if="{{managed}}">这是数量积累目标的配套任务。调整频率和时间即可，每次建议量会自动重算。</view>
+    <view wx:if="{{!editMode}}" class="quick-presets">
+      <view wx:for="{{presets}}" wx:key="name" class="preset-chip" data-index="{{index}}" bindtap="usePreset">{{item.name}}</view>
+    </view>
+    <view class="field"><view class="label">任务名称</view><input wx:if="{{!managed}}" class="input" data-key="name" value="{{name}}" bindinput="input" placeholder="今天想做什么？" maxlength="80"/><view wx:else class="input managed-readonly">{{name}}</view></view>
+    <view class="field"><view class="label">执行频率</view><picker mode="selector" range="{{repeatTypes}}" value="{{repeatIndex}}" bindchange="repeat"><view class="input">{{repeatTypes[repeatIndex]}}</view></picker></view>
     <view wx:if="{{isOneTime}}" class="field"><view class="label">执行日期</view><picker mode="date" value="{{executionDate}}" bindchange="dateChange"><view class="input">{{executionDate}}</view></picker></view>
-    <view wx:if="{{isSpecificDays}}" class="field"><view class="label">选择星期</view><view class="row wrap" style="margin-top:12rpx"><view wx:for="{{weekdays}}" wx:key="value" data-day="{{item.value}}" bindtap="toggleDay" class="tag {{item.selected ? 'tag-active' : ''}}">{{item.selected ? '✓ ' : ''}}周{{item.label}}</view></view></view>
-    <view wx:if="{{isWeeklyCount}}" class="field"><view class="label">每周完成次数</view><input class="input" type="number" data-key="weeklyCount" value="{{weeklyCount}}" bindinput="input"/><view class="sub">每周完成 1～7 次；上面的“目标值”仍表示每次计划的目标，例如学习120分钟。</view></view>
-    <view class="list-item row"><view><view class="value">指定执行时间</view><view class="sub">不指定则作为全天任务显示</view></view><switch checked="{{hasExecutionTime}}" bindchange="toggleExecutionTime"/></view>
-    <view wx:if="{{hasExecutionTime}}" class="field"><view class="label">执行时间</view><picker mode="time" value="{{executionTime}}" bindchange="timeChange"><view class="input">{{executionTime}}</view></picker></view>
-    <view class="divider"></view>
-    <view class="field">
-      <view class="label">专注计时</view>
-      <picker mode="selector" range="{{timerModes}}" value="{{timerIndex}}" bindchange="timerMode"><view class="input">{{timerModes[timerIndex]}}</view></picker>
-      <view class="sub">正计时从 00:00 开始累计；倒计时会按有效专注时间递减。</view>
+    <view wx:if="{{isSpecificDays}}" class="field"><view class="label">选择星期</view><view class="row wrap weekday-options"><view wx:for="{{weekdays}}" wx:key="value" data-day="{{item.value}}" bindtap="toggleDay" class="tag weekday-option {{item.selected ? 'tag-active' : ''}}">{{item.selected ? '✓ ' : ''}}周{{item.label}}</view></view></view>
+    <view wx:if="{{isWeeklyCount}}" class="field"><view class="label">每周完成次数</view><input class="input" type="number" data-key="weeklyCount" value="{{weeklyCount}}" bindinput="input"/><view class="sub">每周 1～7 次，执行日可以自由安排。</view></view>
+    <view class="list-item row"><view><view class="value">指定执行时间</view><view class="sub">关闭则作为全天任务显示</view></view><switch checked="{{hasExecutionTime}}" bindchange="toggleExecutionTime"/></view>
+    <view wx:if="{{hasExecutionTime}}" class="field"><picker mode="time" value="{{executionTime}}" bindchange="timeChange"><view class="input">{{executionTime}}</view></picker></view>
+    <view wx:if="{{managed}}" class="field"><view class="label">本次建议量</view><view class="input managed-readonly">{{targetValue}}{{unit}}</view><view class="sub">保存新频率后，按剩余期限自动调整。</view></view>
+    <view class="more-settings row" bindtap="toggleAdvanced"><view><view class="value">更多设置（可选）</view><view class="sub">{{targetTypes[targetIndex]}} {{targetIndex ? targetValue + unit : ''}} · {{timerModes[timerIndex]}}</view></view><text>{{advanced ? '⌃' : '⌄'}}</text></view>
+    <view wx:if="{{advanced}}">
+      <view class="field"><view class="label">分类</view><picker mode="selector" range="{{categories}}" value="{{categoryIndex}}" bindchange="category"><view class="input">{{categories[categoryIndex]}}</view></picker></view>
+      <view class="field"><view class="label">具体内容（可选）</view><textarea class="input" data-key="description" value="{{description}}" bindinput="input" maxlength="500" placeholder="需要时，再写一点任务说明"/></view>
+      <block wx:if="{{!managed}}">
+        <view class="field"><view class="label">完成方式</view><picker mode="selector" range="{{targetTypes}}" value="{{targetIndex}}" bindchange="target"><view class="input">{{targetTypes[targetIndex]}}</view></picker></view>
+        <view wx:if="{{targetIndex}}" class="row"><view class="field flex-1"><view class="label">每次目标</view><input class="input" type="digit" data-key="targetValue" value="{{targetValue}}" bindinput="input"/></view><view class="field flex-1"><view class="label">单位</view><input class="input" data-key="unit" value="{{unit}}" bindinput="input" placeholder="分钟/次/词"/></view></view>
+      </block>
+      <view class="field"><view class="label">专注计时</view><picker mode="selector" range="{{timerModes}}" value="{{timerIndex}}" bindchange="timerMode"><view class="input">{{timerModes[timerIndex]}}</view></picker></view>
+      <view class="field" wx:if="{{isCountdown}}"><view class="label">倒计时时长（分钟）</view><input class="input" type="number" data-key="timerDurationMinutes" value="{{timerDurationMinutes}}" bindinput="input" placeholder="例如：25"/></view>
     </view>
-    <view class="field" wx:if="{{isCountdown}}">
-      <view class="label">倒计时时长（分钟）</view>
-      <input class="input" type="number" data-key="timerDurationMinutes" value="{{timerDurationMinutes}}" bindinput="input" placeholder="例如：25"/>
-    </view>
-    <button class="btn" loading="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建执行任务'}}</button>
+    <button class="btn" loading="{{saving}}" disabled="{{saving}}" bindtap="save">{{editMode ? '保存修改' : '创建执行任务'}}</button>
   </view>
 </view>

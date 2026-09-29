@@ -10,6 +10,8 @@ function localDateOf(value) {
 function executionSnapshot(plan) {
   return {
     name:plan.name || '已归档任务',category:plan.category || 'CUSTOM',
+    description:plan.description || '',executionTime:plan.executionTime || '',targetType:plan.targetType || 'BOOLEAN',
+    timerMode:plan.timerMode || 'NONE',timerDurationMinutes:plan.timerDurationMinutes || null,
     repeatType:plan.repeatType || 'DAILY',repeatConfig:plan.repeatConfig || {},
     startDate:plan.startDate || '',endDate:plan.endDate || null,enabled:plan.enabled !== false && !plan.deletedAt,
     targetValue:Number(plan.targetValue || 1),unit:plan.unit || '',

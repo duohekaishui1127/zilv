@@ -1,4 +1,5 @@
 const api=require('../../utils/api')
+const drafts=require('../../utils/drafts')
 
 const RESULT_OPTIONS=Object.freeze([
   { value:'PENDING',label:'待出分' },
@@ -61,27 +62,36 @@ Page({
     try{
       const result=await api.call('getProgressGoal',{ goalId:this.data.id },{ silent:true })
       const goal=present(result.goal)
+      this._draftBase=JSON.stringify([goal.examResultStatus || 'PENDING',goal.examScore || '',goal.examReview || ''])
+      const draft=drafts.get(`exam:${this.data.id}`,this._draftBase)
       this.setData({
         goal,resultStatus:goal.examResultStatus || 'PENDING',
-        score:goal.examScore || '',review:goal.examReview || ''
+        score:goal.examScore || '',review:goal.examReview || '',...(draft || {})
       })
       wx.setNavigationBarTitle({ title:goal.name || '进步详情' })
     }catch(error){
       wx.showToast({ title:api.messageOf(error),icon:'none' })
     }finally{this.setData({ loading:false })}
   },
-  chooseResult(e){this.setData({ resultStatus:e.currentTarget.dataset.value })},
-  input(e){this.setData({ [e.currentTarget.dataset.key]:e.detail.value })},
+  onHide(){drafts.flush()},
+  onUnload(){drafts.flush()},
+  persistDraft(){
+    if(this.data.goal)drafts.save(`exam:${this.data.id}`,{ resultStatus:this.data.resultStatus,score:this.data.score,review:this.data.review },this._draftBase)
+  },
+  chooseResult(e){this.setData({ resultStatus:e.currentTarget.dataset.value });this.persistDraft()},
+  input(e){this.setData({ [e.currentTarget.dataset.key]:e.detail.value });this.persistDraft()},
   async save(){
     if(this.data.saving)return
     this.setData({ saving:true })
     try{
-      await api.call('updateExamGoalResult',{
+      const result=await api.call('updateExamGoalResult',{
         goalId:this.data.id,resultStatus:this.data.resultStatus,
         score:this.data.score,review:this.data.review
       })
+      drafts.remove(`exam:${this.data.id}`)
       wx.showToast({ title:'考试记录已保存',icon:'success' })
-      await this.load()
+      this.setData({ goal:present({ ...this.data.goal,...result.goal }) })
+      this._draftBase=JSON.stringify([this.data.resultStatus,this.data.score.trim(),this.data.review.trim()])
     }finally{this.setData({ saving:false })}
   }
 })

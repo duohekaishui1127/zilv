@@ -5,13 +5,14 @@ function proOffer() {
   const productId = String(process.env.PRO_VIRTUAL_PRODUCT_ID || '').trim()
   return {
     purchaseEnabled: Boolean(rules.proPurchaseEnabled && productId),
+    paymentReady: false,
     configured: Boolean(productId),
     channel: 'WECHAT_VIRTUAL_PAYMENT',
     productId,
     price: rules.proLifetimePrice,
     currency: 'CNY',
     billing: 'LIFETIME',
-    note: rules.proPurchaseEnabled && productId ? '永久 Pro 买断' : '购买入口尚未开放；公测期间无需付费'
+    note: '购买入口尚未开放；公测期间无需付费'
   }
 }
 

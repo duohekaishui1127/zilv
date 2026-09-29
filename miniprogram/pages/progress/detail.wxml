@@ -15,6 +15,7 @@
         <view class="metric"><view class="label">累计完成</view><view class="journey-value">{{goal.completedCount}} 次</view></view>
         <view class="metric"><view class="label">累计学习</view><view class="journey-value">{{goal.durationText}}</view></view>
       </view>
+      <view class="history-note" wx:if="{{goal.snapshot.unknownScheduleDays}}">部分旧排期未留存，完成率仅统计可核实的排期；实际完成次数与学习时间仍保留。</view>
       <view class="tip journey-note" wx:if="{{goal.description}}">{{goal.description}}</view>
     </view>
 

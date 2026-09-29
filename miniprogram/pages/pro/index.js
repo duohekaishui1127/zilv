@@ -44,7 +44,7 @@ Page({
     const offer=this.data.offer||{}
     const membership=this.data.membership||{}
     const trialDays=membership.configuredTrialDays || this.data.rules?.beta?.trialDays || 90
-    if(!offer.purchaseEnabled)return wx.showModal({title:'公测期间无需购买',content:`永久 Pro 支付入口暂未开放。新用户当前默认获得 ${trialDays} 天 Beta Pro；到期后会平滑回到 Free，历史数据不会删除；正式支付接入后可直接永久解锁。`,showCancel:false})
+    if(!offer.purchaseEnabled || !offer.paymentReady)return wx.showModal({title:'公测期间无需购买',content:`永久 Pro 支付入口暂未开放。新用户当前默认获得 ${trialDays} 天 Beta Pro；到期后会平滑回到 Free，历史数据不会删除；正式支付接入后可直接永久解锁。`,showCancel:false})
     wx.showModal({title:'支付接口已预留',content:'当前代码只启用了 Pro 商品配置开关，正式收款前还需要接入微信小程序虚拟支付并完成真实订单验收。',showCancel:false})
   }
 })

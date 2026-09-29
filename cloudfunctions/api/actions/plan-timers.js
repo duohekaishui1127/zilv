@@ -4,18 +4,9 @@ const { timerSnapshot, secondsOf } = require('../domain/plan-timer')
 const { completePlan } = require('./plans')
 const { recordCountdownFinished } = require('../services/timer-notifications')
 const { activeCheckins, getActiveTimer, timerContext } = require('../services/active-timers')
-
+const { saveExecutionCheckin } = require('../services/checkin-storage')
+const { timerResult } = require('../domain/plan-timer-result')
 const { todayForUser } = require('../domain/makeup-cards')
-function timerResult(checkin, plan, serverTime = now()) {
-  const snapshot = timerSnapshot(checkin, plan, serverTime)
-  return { checkin, snapshot: {
-    status: snapshot.status,
-    effectiveSeconds: secondsOf(snapshot.effectiveMs),
-    totalSeconds: secondsOf(snapshot.totalMs),
-    pausedSeconds: secondsOf(snapshot.pausedMs),
-    reachedTarget: snapshot.reachedTarget
-  }, serverTime }
-}
 
 async function startPlanTimer({ user, event, localDate }) {
   if (localDate !== todayForUser(user)) throw fail('MAKEUP_REQUIRED', '不能为过去的日期新开计时')
@@ -49,16 +40,18 @@ async function startPlanTimer({ user, event, localDate }) {
     timerPausedSeconds: 0,
     updatedAt: timestamp
   }
-  let saved
-  if (checkin) {
-    await db.collection(C.CHECKINS).doc(checkin._id).update({ data })
-    saved = { ...checkin, ...data }
-  } else {
-    const base = { userId: user._id, planId: plan._id, date: localDate, completed: false, actualValue: 0, createdAt: timestamp, ...data }
-    const added = await db.collection(C.CHECKINS).add({ data: base })
-    saved = { _id: added._id, ...base }
-  }
-  if (usesReservedCountUpReminder) {
+  const result = await saveExecutionCheckin({ db,C,userId:user._id,planId:plan._id,date:localDate,existingId:checkin?._id,
+    build(current,currentPlan) {
+      if (current?.completed) throw fail('PLAN_ALREADY_COMPLETED','该计划今天已完成')
+      if (current?.timerStatus === 'RUNNING') return null
+      if (current?.timerStatus === 'PAUSED') throw fail('TIMER_PAUSED','计时已暂停，请继续计时')
+      if (current?.timerStatus === 'FINISHED') throw fail('TIMER_FINISHED','计时已结束，请完成记录')
+      if (!currentPlan.enabled) throw fail('PLAN_DISABLED','计划已停用')
+      return { ...(current ? {} : { completed:false,actualValue:0 }),...data }
+    }
+  })
+  const saved = result.checkin
+  if (usesReservedCountUpReminder && result.changed) {
     await db.collection(C.USERS).doc(user._id).update({ data: { countUpReminderPushEnabled: false, updatedAt: timestamp } })
   }
   return timerResult(saved, plan, timestamp)
@@ -153,7 +146,7 @@ async function finishAndCompletePlanTimer(context) {
     localDate: timer.checkin.date || context.localDate,
     event: { planId: context.event.planId }
   })
-  return { ...timer, checkin:completed.checkin, dailyReview:completed.dailyReview || null, achievedGoals:completed.achievedGoals || [] }
+  return { ...timer,...completed }
 }
 
 module.exports = { getActiveTimer, startPlanTimer, pausePlanTimer, resumePlanTimer, finishPlanTimer, finishAndCompletePlanTimer }

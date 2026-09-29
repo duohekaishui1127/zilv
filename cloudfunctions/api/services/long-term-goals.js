@@ -1,4 +1,4 @@
-const { db, C } = require('../lib/db')
+const { db, _, C } = require('../lib/db')
 const { now } = require('../lib/utils')
 const { decorateGoals } = require('../domain/long-term-goal')
 const { isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
@@ -13,19 +13,31 @@ const {
 async function allMatches(collection, where) {
   const records = []
   while (true) {
-    const result = await db.collection(collection).where(where).skip(records.length).limit(100).get()
+    const result = await db.collection(collection).where(where).orderBy('_id','asc').skip(records.length).limit(100).get()
     records.push(...result.data)
     if (result.data.length < 100) return records
   }
 }
 
-async function longTermContext(userId, localDate) {
+async function checkinsForPlans(userId,ids) {
+  const jobs = []
+  for (let offset = 0; offset < ids.length; offset += 20) {
+    const batch = ids.slice(offset,offset + 20)
+    jobs.push(allMatches(C.CHECKINS,{ userId,planId:_.in(batch),completed:true }))
+  }
+  return (await Promise.all(jobs)).flat()
+}
+async function longTermContext(userId, localDate, options = {}) {
   const plans = await allMatches(C.PLANS, { userId })
   const active = plans.filter(item => !item.deletedAt)
-  const goals = active.filter(isLongTermGoal)
+  const goals = active.filter(item => isLongTermGoal(item) && (!options.activeOnly || item.goalStatus === 'ACTIVE'))
   const executionPlans = active.filter(isExecutionPlan)
   if (!goals.length) return { plans:executionPlans,allExecutionPlans:plans.filter(isExecutionPlan),goals:[],checkins:[] }
-  const checkins = await allMatches(C.CHECKINS, { userId, completed: true })
+  const linkedIds = [...new Set(goals.flatMap(goal => [
+    ...plans.filter(plan => plan.longTermGoalIds?.includes(goal._id)).map(plan => plan._id),
+    ...(goal.linkedPlanHistory || []).map(item => item.planId)
+  ]))]
+  const checkins = options.checkins ? (await options.checkins).filter(item => linkedIds.includes(item.planId)) : await checkinsForPlans(userId,linkedIds)
   const allExecutionPlans = plans.filter(isExecutionPlan)
   const timestamp=now()
   for(const goal of goals) {
@@ -66,10 +78,7 @@ async function longTermContextForPlan(userId, localDate, plan) {
   const allExecutionPlans = plans.filter(isExecutionPlan)
   const linkedPlans = allExecutionPlans.filter(item => Array.isArray(item.longTermGoalIds)
     && item.longTermGoalIds.some(id => goalIds.includes(id)))
-  const checkinPages = await Promise.all(linkedPlans.map(item => allMatches(C.CHECKINS, {
-    userId, planId: item._id, completed: true
-  })))
-  const checkins = checkinPages.flat()
+  const checkins = await checkinsForPlans(userId,linkedPlans.map(item => item._id))
   const context = {
     plans: active.filter(isExecutionPlan),
     allExecutionPlans,
@@ -103,15 +112,19 @@ async function syncLongTermGoalAchievements(userId, localDate, options = {}) {
       goal,context.allExecutionPlans,localDate,'ACHIEVED'
     )
     await db.collection(C.PLANS).doc(goal._id).update({ data })
-    if(goal.goalType === 'ACCUMULATION')await archiveManagedAccumulationPlan(goal,'COMPLETED',timestamp)
+    Object.assign(goal,data)
+    if(goal.goalType === 'ACCUMULATION')await archiveManagedAccumulationPlan(goal,'COMPLETED',timestamp,localDate)
   }
   await Promise.all(reopened.map(async goal => {
-    await db.collection(C.PLANS).doc(goal._id).update({ data: {
+    const data = {
       goalStatus:'ACTIVE',enabled:true,completionMode:null,completedAt:null,archiveSnapshot:null,updatedAt:timestamp
-    } })
-    if(goal.goalType === 'ACCUMULATION')await reopenManagedAccumulationPlan(goal,timestamp)
+    }
+    await db.collection(C.PLANS).doc(goal._id).update({ data })
+    Object.assign(goal,data)
+    if(goal.goalType === 'ACCUMULATION')await reopenManagedAccumulationPlan(goal,timestamp,localDate)
   }))
   return {
+    updatedGoals:context.goals,
     achievedGoals: achieved.map(goal => ({ _id: goal._id, name: goal.name, goalType: goal.goalType })),
     reopenedGoalIds: reopened.map(goal => goal._id)
   }
@@ -128,7 +141,7 @@ async function archiveAccumulationGoal(userId,goalId,localDate) {
     goalStatus:'COMPLETED',enabled:false,completionMode:'TERMINATED',completedAt:timestamp,
     archiveSnapshot,updatedAt:timestamp
   } })
-  await archiveManagedAccumulationPlan(goal,'TERMINATED',timestamp)
+  await archiveManagedAccumulationPlan(goal,'TERMINATED',timestamp,localDate)
   return { goal:{ ...goal,goalStatus:'COMPLETED',completionMode:'TERMINATED',archiveSnapshot } }
 }
 

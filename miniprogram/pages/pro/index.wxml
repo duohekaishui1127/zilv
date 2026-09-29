@@ -25,8 +25,8 @@
     <view class="beta-title">公测用户权益</view>
     <view class="beta-copy">你的 {{experienceDays}} 天体验到期后不会自动扣费，也不会删除历史记录。到期后高级复盘等功能会回到锁定状态；未来购买永久 Pro 后会立即恢复。</view>
   </view>
-  <button class="buy-button {{offer.purchaseEnabled?'enabled':''}}" bindtap="purchase">
-    {{membership.lifetime?'已永久解锁':(offer.purchaseEnabled?'¥'+offer.price+' · 永久解锁 Pro':'永久 Pro · 正式开放后可买断')}}
+  <button class="buy-button {{offer.purchaseEnabled && offer.paymentReady?'enabled':''}}" bindtap="purchase">
+    {{membership.lifetime?'已永久解锁':(offer.purchaseEnabled && offer.paymentReady?'¥'+offer.price+' · 永久解锁 Pro':'永久 Pro · 正式开放后可买断')}}
   </button>
   <view class="payment-note">支付预留通道：微信小程序虚拟支付。当前公测版本不会引导私下转账或自动扣费。</view>
 </view>

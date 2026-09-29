@@ -2,7 +2,7 @@ const { db, _, C } = require('../lib/db')
 const { dateRange, monthRange, buildProgressReport, buildActivityCalendar } = require('../domain/progress-report')
 const { attachmentsForNotes } = require('./notes')
 const { presentDailyReview } = require('../domain/daily-review')
-const { getTodayPlans } = require('./plans')
+const { loadHistoricalPlans } = require('./historical-plans')
 
 async function fetchAll(collection, where, orderField) {
   const rows = []
@@ -59,15 +59,11 @@ async function loadActivityCalendar(userId, month) {
 }
 
 async function loadDayReview(userId, date) {
-  const [checkins, notes, plans, scheduledPlans, dailyReviewResult] = await Promise.all([
-    fetchAll(C.CHECKINS, { userId, date, completed: true }, 'completedAt'),
+  const [history,notes] = await Promise.all([
+    loadHistoricalPlans(userId,date),
     fetchAll(C.NOTES, { userId, recordDate: date, status: 'ACTIVE' }, 'createdAt'),
-    fetchAll(C.PLANS, { userId }, 'createdAt'),
-    getTodayPlans(userId, date),
-    db.collection(C.DAILY_REVIEWS).where({ userId, date }).limit(1).get()
   ])
   const attachmentMap = await attachmentsForNotes(notes.map(note => note._id))
-  const planMap = Object.fromEntries(plans.map(plan => [plan._id, plan]))
   const presentTask = (plan, checkin) => {
     return {
       _id: checkin?._id || `plan:${plan._id}:${date}`,
@@ -92,17 +88,12 @@ async function loadDayReview(userId, date) {
       timerPausedSeconds: Number(checkin?.timerPausedSeconds || 0)
     }
   }
-  const tasks = scheduledPlans.map(plan => presentTask(plan, plan.checkin))
-  const includedPlanIds = new Set(tasks.map(task => task.planId))
-  checkins.forEach(checkin => {
-    if (includedPlanIds.has(checkin.planId)) return
-    tasks.push(presentTask(planMap[checkin.planId] || { _id: checkin.planId }, checkin))
-    includedPlanIds.add(checkin.planId)
-  })
+  const tasks = history.tasks.map(plan => presentTask(plan,plan.checkin))
   const completedTaskCount = tasks.filter(task => task.completed).length
   return {
     date,
-    dailyReview: presentDailyReview(dailyReviewResult.data.find(item => item.status !== 'REVOKED') || null),
+    historyUnavailable:history.historyUnavailable,
+    dailyReview: presentDailyReview(history.review),
     taskProgress: { completed: completedTaskCount, total: tasks.length },
     tasks,
     notes: notes.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(note => ({

@@ -1,63 +1,52 @@
-const { db, _, C } = require('../lib/db')
-const { weekRange, fail } = require('../lib/utils')
+const { db,_,C } = require('../lib/db')
+const { weekRange,fail } = require('../lib/utils')
 const { isBasePlanDue } = require('../domain/plan-schedule')
 const { isExecutionPlan } = require('../domain/plan-definition')
 
-async function getTodayPlans(userId, dateStr) {
-  const [planResult, todayCheckResult] = await Promise.all([
-    db.collection(C.PLANS).where({ userId, enabled: true }).get(),
-    db.collection(C.CHECKINS).where({ userId, date: dateStr }).get()
-  ])
-  const todayCheckMap = Object.fromEntries(todayCheckResult.data.map(c => [c.planId, c]))
-  const basePlans = planResult.data.filter(p => isExecutionPlan(p) && isBasePlanDue(p, dateStr))
-  if (!basePlans.length) return []
-
-  const weeklyPlans = basePlans.filter(p => p.repeatType === 'WEEKLY_COUNT')
-  let weeklyCounts = {}
-  if (weeklyPlans.length) {
-    const { startDate, endDate } = weekRange(dateStr)
-    const r = await db.collection(C.CHECKINS).where({
-      userId,
-      date: _.gte(startDate).and(_.lte(endDate)),
-      completed: true
-    }).get()
-    weeklyCounts = r.data.filter(c => c.date <= dateStr).reduce((acc, c) => {
-      acc[c.planId] = (acc[c.planId] || 0) + 1
-      return acc
-    }, {})
+async function rows(collection,where) {
+  const output = []
+  for (let offset = 0; ; offset += 100) {
+    const result = await db.collection(collection).where(where).orderBy('_id','asc').skip(offset).limit(100).get()
+    output.push(...result.data)
+    if (result.data.length < 100) return output
   }
-
-  return basePlans
-    .map(plan => {
-      const checkin = todayCheckMap[plan._id] || null
-      if (plan.repeatType !== 'WEEKLY_COUNT') {
-        return { ...plan, checkin, completed: !!checkin?.completed }
-      }
-      const completedThisWeek = weeklyCounts[plan._id] || 0
-      const weeklyTarget = Math.max(1, Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1))
-      const due = !!checkin || completedThisWeek < weeklyTarget
-      if (!due) return null
-      return {
-        ...plan,
-        checkin,
-        completed: !!checkin?.completed,
-        weeklyProgress: { completed: completedThisWeek, target: weeklyTarget }
-      }
+}
+async function getTodayPlans(userId,dateStr,suppliedPlans) {
+  const [allPlans,todayCheckins] = await Promise.all([
+    suppliedPlans || rows(C.PLANS,{ userId,enabled:true }),rows(C.CHECKINS,{ userId,date:dateStr })
+  ])
+  const todayCheckMap = new Map()
+  todayCheckins.forEach(checkin => {
+    const previous = todayCheckMap.get(checkin.planId)
+    if (!previous || checkin.completed && !previous.completed) todayCheckMap.set(checkin.planId,checkin)
+  })
+  const basePlans = allPlans.filter(plan => !plan.deletedAt && plan.enabled !== false && isExecutionPlan(plan) && isBasePlanDue(plan,dateStr))
+  if (!basePlans.length) return []
+  let weeklyCounts = {}
+  if (basePlans.some(plan => plan.repeatType === 'WEEKLY_COUNT')) {
+    const { startDate } = weekRange(dateStr)
+    const checkins = await rows(C.CHECKINS,{ userId,date:_.gte(startDate).and(_.lte(dateStr)),completed:true })
+    const keys = new Set()
+    checkins.forEach(item => {
+      const key = `${item.planId}:${item.date}`
+      if (keys.has(key)) return
+      keys.add(key); weeklyCounts[item.planId] = (weeklyCounts[item.planId] || 0) + 1
     })
-    .filter(Boolean)
-    .sort((a, b) => {
-      if (!a.executionTime && !b.executionTime) return 0
-      if (!a.executionTime) return -1
-      if (!b.executionTime) return 1
-      return a.executionTime.localeCompare(b.executionTime)
-    })
+  }
+  return basePlans.map(plan => {
+    const checkin = todayCheckMap.get(plan._id) || null
+    // Historical versions are needed in reports, not in every rendered task.
+    const { scheduleHistory,linkedPlanHistory,...visible } = plan
+    if (plan.repeatType !== 'WEEKLY_COUNT') return { ...visible,checkin,completed:Boolean(checkin?.completed) }
+    const completed = weeklyCounts[plan._id] || 0
+    const target = Math.max(1,Number(plan.repeatConfig?.weeklyCount || plan.targetValue || 1))
+    if (!checkin && completed >= target) return null
+    return { ...visible,checkin,completed:Boolean(checkin?.completed),weeklyProgress:{ completed,target } }
+  }).filter(Boolean).sort((a,b) => (a.executionTime || '').localeCompare(b.executionTime || ''))
+}
+async function assertNoActiveTimer(userId,planId,dateStr) {
+  const result = await db.collection(C.CHECKINS).where({ userId,planId,timerStatus:_.in(['RUNNING','PAUSED']) }).limit(1).get()
+  if (result.data.length) throw fail('TIMER_ACTIVE','请先在“今日”页结束该计划的计时')
 }
 
-async function assertNoActiveTimer(userId, planId, dateStr) {
-  const result = await db.collection(C.CHECKINS)
-    .where({ userId, planId, timerStatus: _.in(['RUNNING', 'PAUSED']) })
-    .limit(1).get()
-  if (result.data.length) throw fail('TIMER_ACTIVE', '请先在“今日”页结束该计划的计时')
-}
-
-module.exports = { isBasePlanDue, getTodayPlans, assertNoActiveTimer }
+module.exports = { isBasePlanDue,getTodayPlans,assertNoActiveTimer }

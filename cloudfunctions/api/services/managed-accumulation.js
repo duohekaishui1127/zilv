@@ -116,10 +116,10 @@ async function syncManagedAccumulationTargets(context,localDate) {
   await Promise.all(updates)
 }
 
-async function archiveManagedAccumulationPlan(goal,status,timestamp=now()) {
+async function archiveManagedAccumulationPlan(goal,status,timestamp=now(),date=localDateOf(timestamp)) {
   const plan = goal.managedExecutionPlanId
     ? await db.collection(C.PLANS).doc(goal.managedExecutionPlanId).get().then(r => r.data).catch(() => null) : null
-  const scheduleHistory = plan ? recordExecutionHistory(plan, { enabled:false,deletedAt:timestamp }, localDateOf(timestamp)) : []
+  const scheduleHistory = plan ? recordExecutionHistory(plan,{ enabled:false,deletedAt:timestamp },date) : []
   if(!goal.managedExecutionPlanId)return
   const bindings=(await allMatches(C.PLAN_GROUPS,{ planId:goal.managedExecutionPlanId })).filter(item => item.enabled)
   await Promise.all([
@@ -132,10 +132,10 @@ async function archiveManagedAccumulationPlan(goal,status,timestamp=now()) {
   ])
 }
 
-async function reopenManagedAccumulationPlan(goal,timestamp=now()) {
+async function reopenManagedAccumulationPlan(goal,timestamp=now(),date=localDateOf(timestamp)) {
   const plan = goal.managedExecutionPlanId
     ? await db.collection(C.PLANS).doc(goal.managedExecutionPlanId).get().then(r => r.data).catch(() => null) : null
-  const scheduleHistory = plan ? recordExecutionHistory(plan, { enabled:true,deletedAt:null }, localDateOf(timestamp)) : []
+  const scheduleHistory = plan ? recordExecutionHistory(plan,{ enabled:true,deletedAt:null },date) : []
   if(!goal.managedExecutionPlanId)return
   const bindings=await allMatches(C.PLAN_GROUPS,{ planId:goal.managedExecutionPlanId })
   await Promise.all([

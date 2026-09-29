@@ -1,6 +1,8 @@
-# 1.7.0 数据库初始化（Schema 17）
+# 数据库初始化（Schema 18）
 
 `cloudfunctions/admin-init` 是一次性管理函数。
+
+先配置云函数环境变量 `ADMIN_INIT_TOKEN`，再携带匹配的 `token` 调用；未配置时返回 `ADMIN_INIT_DISABLED`，不会初始化或迁移数据。不要把令牌放进小程序代码。
 
 执行后：
 
@@ -9,8 +11,8 @@
 - 幂等写入 15 个运动项目；
 - 幂等写入 12 个身体指标；
 - 幂等写入 7 项应用配置；
-- 将 `system_meta.schemaVersion` 更新为 16；
-- 写入 Schema 1 至 16 的 migration 记录。
+- 将 `system_meta.schemaVersion` 更新为 18；
+- 写入 Schema 1 至 18 的 migration 记录。
 
 重复执行不会无限新增同名系统数据。
 
@@ -23,7 +25,7 @@ Schema 16 不新增集合；补签卡字段保存在 `users`，新用户初始 3
 初始化完成后：
 
 1. 最推荐：停用或删除 `admin-init`；
-2. 如果需要保留，配置环境变量 `ADMIN_INIT_TOKEN`，调用时携带 token。
+2. 如果需要保留，必须继续配置环境变量 `ADMIN_INIT_TOKEN`，调用时携带 token；删除该配置会关闭初始化入口。
 
 业务客户端永远不需要直接调用 admin-init。
 

@@ -294,7 +294,8 @@ async function seedMany(collectionName, items, keyBuilder) {
 
 exports.main = async (event = {}) => {
   const configuredToken = process.env.ADMIN_INIT_TOKEN
-  if (configuredToken && event.token !== configuredToken) {
+  if (!configuredToken) return { success:false,code:'ADMIN_INIT_DISABLED',message:'初始化入口已关闭，请先配置 ADMIN_INIT_TOKEN' }
+  if (event.token !== configuredToken) {
     return { success: false, code: 'FORBIDDEN', message: '初始化令牌不正确' }
   }
 

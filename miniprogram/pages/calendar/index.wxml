@@ -24,6 +24,7 @@
     <view wx:if="{{loading && !calendar}}" class="empty compact">正在翻开这个月…</view>
     <view wx:elif="{{error && !calendar}}" class="empty compact"><view>{{error}}</view><button class="btn btn-small retry-button" bindtap="retry">重新加载</button></view>
     <block wx:elif="{{calendar}}">
+      <view wx:if="{{error}}" class="refresh-retry" bindtap="retry" aria-role="button">暂时无法更新，已保留当前内容 <text>重试 ›</text></view>
       <view class="weekday-grid"><view wx:for="{{weekdayLabels}}" wx:key="*this" class="weekday">{{item}}</view></view>
       <view class="calendar-grid">
         <view wx:for="{{calendar.cells}}" wx:key="key" data-index="{{index}}" bindtap="openDay" class="calendar-day {{item.blank ? 'calendar-blank' : item.activityClass}} {{item.today ? 'calendar-today' : ''}} {{item.checkinClass}}">
@@ -87,13 +88,14 @@
           <view class="task-chevron">{{tasksExpanded ? '⌃' : '⌄'}}</view>
         </view>
         <view wx:if="{{tasksExpanded}}" class="task-list">
+          <view wx:if="{{dayReview.historyUnavailable}}" class="history-note">部分旧排期未留存，仅展示可核实的任务和完成记录。</view>
           <view wx:for="{{dayReview.tasks}}" wx:key="_id" class="task-item {{item.completed ? 'task-item-completed' : 'task-item-incomplete'}}">
             <view class="row task-main"><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.categoryLabel}}{{item.targetLabel ? ' · 目标 ' + item.targetLabel : ''}}{{item.executionTime ? ' · ' + item.executionTime : ''}}{{item.completedTime ? ' · 完成于 ' + item.completedTime : ''}}{{item.durationLabel ? ' · ' + item.durationLabel : ''}}</view></view><view class="task-status {{item.completed ? 'task-status-complete' : 'task-status-incomplete'}}">{{item.completed ? '已完成' : '未完成'}}</view></view>
             <view class="task-description" wx:if="{{item.description}}">{{item.description}}</view>
             <view class="task-timer" wx:if="{{item.completed && item.timerSummary}}">{{item.timerSummary}}</view>
             <view class="task-note" wx:if="{{item.completed && item.note}}">{{item.note}}</view>
           </view>
-          <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">当天没有任务</view>
+          <view wx:if="{{!dayReview.tasks.length}}" class="empty compact">{{dayReview.historyUnavailable ? '当天没有可核实的任务记录' : '当天没有任务'}}</view>
         </view>
       </view>
     </block>

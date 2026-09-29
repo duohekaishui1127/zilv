@@ -18,8 +18,8 @@ async function uniqueCode(collection, field, len = 6) {
   return `${randomCode(len)}${Date.now().toString().slice(-2)}`
 }
 
-async function ensureUser(openid) {
-  const r = await db.collection(C.USERS).where({ openid }).limit(1).get()
+async function ensureUser(openid,knownUser) {
+  const r = knownUser?.openid === openid ? { data:[knownUser] } : await db.collection(C.USERS).where({ openid }).limit(1).get()
   if (r.data.length) {
     let user = r.data[0]
     user = await ensureProductIdentity(user)

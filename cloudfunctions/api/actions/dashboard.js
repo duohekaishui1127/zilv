@@ -12,16 +12,16 @@ const { presentDailyReview } = require('../domain/daily-review')
 const { membershipOf } = require('../domain/membership')
 
 async function dashboard({ user, localDate }) {
-  await ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
-  const goalContext=await longTermContext(user._id,localDate)
-  const [weight, plans, nutrition, workout, study, notifications, dailyReviewResult] = await Promise.all([
+  const announcement = ensureReleaseAnnouncement(user).catch(error => console.warn('[release-announcement]', error?.message || error))
+  const contextJob = longTermContext(user._id,localDate,{ activeOnly:true })
+  const [weight, plans, nutrition, workout, study, notifications, dailyReviewResult,goalContext] = await Promise.all([
     latestWeight(user._id),
-    getTodayPlansService(user._id, localDate),
+    contextJob.then(context => getTodayPlansService(user._id,localDate,context.plans)),
     nutritionSummary(user._id, localDate),
     workoutSummary(user._id, localDate),
     studySummary(user._id, localDate),
-    notificationWindow(user._id),
-    db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get()
+    announcement.then(() => notificationWindow(user._id,{ trim:false })),
+    db.collection(C.DAILY_REVIEWS).where({ userId: user._id, date: localDate }).limit(1).get(),contextJob
   ])
   let target = await currentNutritionTarget(user._id)
   if (!target && weight) target = await recalcNutritionTarget(user, localDate)
@@ -39,6 +39,7 @@ async function dashboard({ user, localDate }) {
     return 1
   }) : 0
   return {
+    businessDate:localDate,
     serverTime: now(),
     user: {
       _id:user._id,nickname:user.nickname,avatar:user.avatar,shareCode:user.shareCode,identityCode:user.identityCode,
@@ -72,8 +73,8 @@ async function dashboard({ user, localDate }) {
 }
 
 async function getTodayPlansAction({ user, localDate }) {
-  await longTermContext(user._id,localDate)
-  return { plans: await getTodayPlansService(user._id, localDate) }
+  const context = await longTermContext(user._id,localDate,{ activeOnly:true })
+  return { plans:await getTodayPlansService(user._id,localDate,context.plans) }
 }
 
 module.exports = { dashboard, getTodayPlans: getTodayPlansAction }
