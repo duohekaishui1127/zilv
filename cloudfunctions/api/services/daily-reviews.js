@@ -1,3 +1,4 @@
+const { executionSnapshot } = require('../domain/execution-history')
 const crypto = require('crypto')
 const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
@@ -24,6 +25,7 @@ async function ensureDailyReviewAfterCompletion(userId, date, suppliedPlans) {
       revokedAt: null,
       revokedByPlanId: '',
       completedPlanCount: plans.length,
+      taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
       totalPlanCount: plans.length,
       allPlansCompleted: true,
       checkinMode: existing.checkinMode || (existing.autoCompleted === false ? 'MANUAL' : 'AUTO'),
@@ -41,6 +43,7 @@ async function ensureDailyReviewAfterCompletion(userId, date, suppliedPlans) {
     mood: '',
     note: '',
     completedPlanCount: plans.length,
+    taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
     totalPlanCount: plans.length,
     allPlansCompleted: true,
     checkinMode: 'AUTO',
@@ -68,6 +71,7 @@ async function createManualDailyReview(userId, date, suppliedPlans) {
       revokedAt: null,
       revokedByPlanId: '',
       completedPlanCount,
+      taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
       totalPlanCount,
       allPlansCompleted: completed,
       checkinMode: active ? (existing.checkinMode || (existing.autoCompleted === false ? 'MANUAL' : 'AUTO')) : 'MANUAL',
@@ -86,6 +90,7 @@ async function createManualDailyReview(userId, date, suppliedPlans) {
     mood: '',
     note: '',
     completedPlanCount,
+    taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
     totalPlanCount,
     allPlansCompleted: completed,
     checkinMode: 'MANUAL',
@@ -121,6 +126,7 @@ async function revokeDailyReview(userId, date, planId) {
   const completedPlanCount = plans.filter(plan => plan.completed).length
   const data = {
     completedPlanCount,
+    taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
     totalPlanCount: plans.length,
     allPlansCompleted: plans.length > 0 && completedPlanCount === plans.length,
     lastIncompleteByPlanId: planId,

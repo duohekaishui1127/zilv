@@ -1,3 +1,4 @@
+const { reminderEntitlement, requireEntitlement } = require('../services/entitlements')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { notificationWindow, trimNotificationHistory } = require('../services/notification-retention')
@@ -22,6 +23,7 @@ async function getReminderConfig() {
 
 function checkinReminderSettings(user) {
   return {
+    ...reminderEntitlement(user),
     enabled:Boolean(user.checkinReminderEnabled),
     time:user.checkinReminderTime || '21:00',
     timezoneOffset:Number.isFinite(Number(user.checkinReminderTimezoneOffset)) ? Number(user.checkinReminderTimezoneOffset) : 480,
@@ -35,6 +37,7 @@ async function getCheckinReminderSettings({ user }) {
 
 async function updateCheckinReminderSettings({ user,event }) {
   const enabled=Boolean(event.enabled)
+  if (enabled && event.grantAccepted === true) requireEntitlement(user, 'CHECKIN_WECHAT')
   const time=String(event.time || user.checkinReminderTime || '21:00')
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) throw fail('INVALID_PARAMETER','提醒时间不合法')
   const timezoneOffset=Number(event.timezoneOffset ?? user.checkinReminderTimezoneOffset ?? 480)
@@ -52,6 +55,7 @@ async function updateCheckinReminderSettings({ user,event }) {
 async function renewCheckinReminderSubscription({ user, event, localDate }) {
   if (event.authorized !== true) throw fail('REMINDER_AUTH_REQUIRED', '请先允许微信订阅提醒')
   if (!user.checkinReminderEnabled) return { renewed:false,alreadyRenewed:false }
+  requireEntitlement(user, 'CHECKIN_WECHAT')
   if (user.checkinReminderPushEnabled) return { renewed:false,alreadyRenewed:false,alreadyAvailable:true }
   // A renewed grant can be consumed later on the same day. A new accepted
   // authorization must restore it instead of treating the date as a quota.

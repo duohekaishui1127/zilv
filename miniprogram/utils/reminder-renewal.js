@@ -7,6 +7,7 @@ function completesAllTasks(dashboard, plan) {
 function shouldRequestReminderRenewal({ dashboard,plan,config,promptedToday=false }) {
   return Boolean(
     config?.configured && config.subscriptionType === 'ONE_TIME' &&
+    config.wechatAllowed !== false && dashboard?.membership?.isPro !== false &&
     dashboard?.user?.checkinReminderEnabled && !dashboard.user.checkinReminderPushEnabled &&
     !promptedToday && completesAllTasks(dashboard,plan)
   )
@@ -17,12 +18,14 @@ function shouldOfferManualRenewal({ dashboard,config }) {
   const allComplete=Boolean(completion?.total) && completion.completed === completion.total
   return Boolean(
     config?.configured && config.subscriptionType === 'ONE_TIME' && allComplete &&
+    config.wechatAllowed !== false && dashboard?.membership?.isPro !== false &&
     dashboard?.user?.checkinReminderEnabled && !dashboard.user.checkinReminderPushEnabled
   )
 }
 
 function shouldRequestMakeupReminderRenewal(settings) {
   return Boolean(settings?.configured && settings.templateId &&
+    settings.wechatAllowed !== false &&
     settings.subscriptionType === 'ONE_TIME' && settings.enabled && !settings.pushEnabled)
 }
 

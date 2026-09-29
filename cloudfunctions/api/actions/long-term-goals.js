@@ -1,3 +1,4 @@
+const { recordExecutionHistory } = require('../domain/execution-history')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { normalizeLongTermGoal, isExecutionPlan, isLongTermGoal } = require('../domain/plan-definition')
@@ -62,7 +63,8 @@ async function deleteLongTermGoal({ user, event, localDate }) {
   const plans = await allMatches(C.PLANS, { userId: user._id })
   await Promise.all(plans.filter(plan => Array.isArray(plan.longTermGoalIds) && plan.longTermGoalIds.includes(goal._id))
     .map(plan => db.collection(C.PLANS).doc(plan._id).update({ data: {
-      longTermGoalIds: plan.longTermGoalIds.filter(id => id !== goal._id), updatedAt: timestamp
+      longTermGoalIds: plan.longTermGoalIds.filter(id => id !== goal._id), updatedAt: timestamp,
+      scheduleHistory:recordExecutionHistory(plan,{ longTermGoalIds:plan.longTermGoalIds.filter(id => id !== goal._id) },localDate)
     } })))
   return { deleted: true }
 }
@@ -99,7 +101,7 @@ async function setPlanLongTermGoalBinding({ user, event, localDate }) {
     ? [...new Set([...current, goal._id])].slice(0, 20)
     : current.filter(id => id !== goal._id)
   const timestamp=now()
-  const writes=[db.collection(C.PLANS).doc(plan._id).update({ data:{ longTermGoalIds:next,updatedAt:timestamp } })]
+  const writes=[db.collection(C.PLANS).doc(plan._id).update({ data:{ longTermGoalIds:next,scheduleHistory:recordExecutionHistory(plan,{ longTermGoalIds:next },localDate),updatedAt:timestamp } })]
   const history=Array.isArray(goal.linkedPlanHistory) ? goal.linkedPlanHistory : []
   if(event.bound && !history.some(item => item.planId === plan._id)) {
     writes.push(db.collection(C.PLANS).doc(goal._id).update({ data:{

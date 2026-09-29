@@ -627,6 +627,7 @@ Page({
   },
   completesAllTasks(plan) { return reminderRenewal.completesAllTasks(this.data.dashboard,plan) },
   beginReminderRenewal(plan = null, { manual = false, force = false } = {}) {
+    if(this.data.dashboard?.membership?.isPro === false)return Promise.resolve(false)
     if (!manual && !reminderRenewal.shouldRequestReminderRenewal({
       dashboard:this.data.dashboard,plan,config:this.data.reminderConfig
     })) return Promise.resolve(false)

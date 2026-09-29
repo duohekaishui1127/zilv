@@ -1,85 +1,75 @@
 <view class="container report-page">
   <view class="hero report-hero">
-    <view class="pixel-kicker">REVIEW / GROWTH</view>
-    <view class="h1">成长复盘</view>
-    <view class="sub">不是给自己打分，而是看看这一段时间究竟留下了什么</view>
+    <view class="pixel-kicker">REVIEW / GROWTH</view><view class="h1">成长复盘</view>
+    <view class="sub">看看这段时间留下了什么，再轻轻调整下一步</view>
   </view>
-
   <view class="period-tabs">
     <view wx:for="{{periods}}" wx:key="value" class="period-tab {{selectedPeriod === item.value ? 'period-tab-active' : ''}}" data-period="{{item.value}}" bindtap="selectPeriod">{{item.label}}</view>
   </view>
-
-  <view wx:if="{{loading && !report}}" class="empty">正在整理这一段时间…</view>
-  <view wx:elif="{{error && !report}}" class="card error-card"><view class="value">复盘生成失败</view><view class="sub">{{error}}</view><button class="btn btn-small" style="margin-top:20rpx" bindtap="retry">重新加载</button></view>
-
-  <block wx:if="{{report}}">
-    <view wx:if="{{report.locked}}" class="pro-lock-card">
-      <view class="pro-lock-kicker">PRO REVIEW</view><view class="h2">完整成长复盘属于 Pro</view>
-      <view class="sub">周报、月报、90 天复盘、分享海报和高级历史趋势都会保留。基础功能与原始数据始终可用。</view>
-      <view class="pro-lock-note"><block wx:if="{{report.membership.betaUser}}">你的 {{report.trialDays}} 天公测 Pro 已结束，历史数据仍然完整保留。</block><block wx:else>当前新用户可获得 {{report.trialDays}} 天完整 Pro 体验。</block></view>
-      <button class="btn pro-lock-button" bindtap="goPro">查看 Free / Pro 区别</button>
+  <view wx:if="{{loading}}" class="empty">正在整理这一段时间…</view>
+  <view wx:elif="{{error}}" class="card"><view class="value">暂时没能打开复盘</view><view class="sub">{{error}}</view><button class="btn btn-small retry-button" bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{report}}">
+    <view wx:if="{{report.locked}}" class="card pro-lock-card">
+      <view class="row"><view class="h2">深入看看长期变化</view><text class="pro-mark">PRO</text></view>
+      <view class="sub">月报、90 天复盘、历史周期对比与分享海报属于 Pro。周度概览和原始记录始终可用。</view>
+      <view class="lock-actions"><button class="btn btn-light" data-period="WEEK" bindtap="selectPeriod">查看周度概览</button><button class="btn" bindtap="goPro">了解 Pro</button></view>
     </view>
-
     <block wx:else>
       <view class="report-period-card">
         <view><view class="report-period-label">{{report.period.label}}</view><view class="sub">{{report.period.startDate}} ～ {{report.period.endDate}}</view></view>
-        <view class="identity-stamp">{{report.identityCode}}</view>
+        <picker wx:if="{{!report.basic && report.periods.length > 1}}" mode="selector" range="{{report.periods}}" range-key="label" value="{{offset}}" bindchange="historyChange"><view class="history-button">历史 ›</view></picker>
       </view>
-
       <view class="big-stat-grid">
-        <view class="big-stat"><view class="big-stat-number">{{report.current.summary.activeDays}}</view><view class="big-stat-label">天有行动</view></view>
-        <view class="big-stat"><view class="big-stat-number">{{report.current.summary.completedTasks}}</view><view class="big-stat-label">项计划完成</view></view>
-        <view class="big-stat"><view class="big-stat-number">{{report.current.summary.focusText}}</view><view class="big-stat-label">累计专注</view></view>
-        <view class="big-stat"><view class="big-stat-number">{{report.completedGoals.length}}</view><view class="big-stat-label">个长期目标</view></view>
+        <view class="big-stat"><view class="big-stat-number">{{report.current.summary.completedTasks}}</view><view class="big-stat-label">次任务完成</view></view>
+        <view class="big-stat"><view class="big-stat-number stat-time">{{report.current.summary.focusText}}</view><view class="big-stat-label">累计专注</view></view>
+        <view class="big-stat"><view class="big-stat-number">{{report.current.summary.reviewDays}}</view><view class="big-stat-label">天留下打卡</view></view>
+        <view class="big-stat"><view class="big-stat-number">{{report.basic ? report.current.summary.longestStreak : report.completedGoals.length}}</view><view class="big-stat-label">{{report.basic ? '天最长连续记录' : '个目标归档'}}</view></view>
       </view>
-
-      <view class="card pixel-card">
-        <view class="row"><view class="h2">和上一段相比</view><view class="tag">仅作观察</view></view>
-        <view class="compare-grid">
-          <view wx:for="{{report.comparisonView}}" wx:key="label" class="compare-item"><view class="label">{{item.label}}</view><view class="compare-value compare-{{item.tone}}">{{item.text}}</view></view>
-        </view>
-      </view>
-
-      <view class="card pixel-card">
-        <view class="h2">这段时间，值得记住</view>
+      <view class="card pixel-card summary-card">
+        <view class="h2">{{selectedPeriod === 'WEEK' ? '这一周行动小结' : '这段时间，值得记住'}}</view>
         <view wx:for="{{report.highlights}}" wx:key="*this" class="highlight-line"><view class="pixel-dot"></view><view>{{item}}</view></view>
-        <view class="review-quote">“{{report.posterQuote}}”</view>
+        <view wx:if="{{!report.basic}}" class="next-step"><view class="next-step-label">下一步，可以试试</view><view>{{report.details.suggestion}}</view></view>
       </view>
-
-      <view wx:if="{{report.unlockedBadges.length}}" class="card pixel-card" bindtap="goProgress">
-        <view class="row"><view><view class="h2">新获得的纪念章</view><view class="sub">这一段时间新增 {{report.unlockedBadges.length}} 枚</view></view><view class="more-arrow">›</view></view>
-        <view class="report-badges"><view wx:for="{{report.unlockedBadges}}" wx:key="id" class="mini-badge"><view class="mini-badge-symbol">{{item.symbol}}</view><view>{{item.title}}</view></view></view>
-      </view>
-
-      <view class="card pixel-card">
-        <view class="row"><view class="h2">行动趋势</view><view class="sub">运动 / 学习</view></view>
-        <canvas wx:if="{{hasActivity}}" type="2d" id="activityChart" class="trend-chart"></canvas>
-        <view wx:else class="empty compact">这段时间还没有运动或学习时长记录</view>
-      </view>
-
-      <view class="card pixel-card" wx:if="{{hasWeight}}">
-        <view class="row"><view class="h2">身体趋势</view><view class="tag" wx:if="{{report.current.summary.weightChange !== null}}">{{report.current.summary.weightChange > 0 ? '+' : ''}}{{report.current.summary.weightChange}} kg</view></view>
-        <canvas type="2d" id="weightChart" class="trend-chart"></canvas>
-        <view class="sub">趋势只用于个人记录，不代表医学或健康结论。</view>
-      </view>
-
-      <view class="poster-preview">
-        <view class="poster-preview-kicker">MY PROGRESS / ZILV</view>
-        <view class="poster-preview-title">{{report.period.label}}</view>
-        <view class="poster-preview-grid">
-          <view><text>{{report.current.summary.activeDays}}</text><view class="poster-small">天有行动</view></view>
-          <view><text>{{report.current.summary.completedTasks}}</text><view class="poster-small">计划完成</view></view>
-          <view><text>{{report.current.summary.focusText}}</text><view class="poster-small">累计专注</view></view>
-          <view><text>{{report.completedGoals.length}}</text><view class="poster-small">长期目标</view></view>
+      <view wx:if="{{report.basic}}" class="basic-pro-entry" bindtap="goPro"><view><view class="value">更详细的任务分析与长期进步</view><view class="sub">Pro 提供周期对比、目标推进和历史复盘</view></view><text class="pro-mark">PRO ›</text></view>
+      <block wx:else>
+        <view class="card pixel-card detail-card">
+          <view class="row section-toggle" data-section="execution" bindtap="toggleSection"><view><view class="h2">执行与节奏</view><view class="sub">{{report.current.summary.unknownScheduleDays ? '可核实完成率' : '完成率'}} {{report.current.summary.completionRate === null ? '暂无' : report.current.summary.completionRate + '%'}} · 展开看任务表现</view></view><view class="more-arrow">{{expanded.execution ? '⌃' : '⌄'}}</view></view>
+          <view wx:if="{{expanded.execution}}" class="detail-content">
+            <view class="coverage-note">排期或当日快照覆盖 {{report.details.coverage}} 天。{{report.current.summary.unknownScheduleDays ? '缺少历史排期的日期不按漏做计算。' : ''}}按周次数任务只在完整周结算未完成量，跨周期边界仅计实际完成次数。</view>
+            <view class="execution-counts">固定排期：全部完成 {{report.current.summary.taskCompleteDays}} 天 · 部分完成 {{report.current.summary.taskPartialDays}} 天 · 未完成 {{report.current.summary.missedDays}} 天 · 无固定任务 {{report.current.summary.noTaskDays}} 天</view>
+            <view class="compare-title">与上一周期相比</view><view class="sub">{{report.previousPeriod.startDate}} ～ {{report.previousPeriod.endDate}}；日均指标便于比较不同长度的月份</view>
+            <view class="compare-grid"><view wx:for="{{report.comparisonView}}" wx:key="label" class="compare-item"><view class="label">{{item.label}}</view><view class="compare-value">{{item.text}}</view></view></view>
+            <view wx:if="{{report.details.categories.length}}" class="category-list"><view wx:for="{{report.details.categories}}" wx:key="key" class="row category-row"><view>{{item.label}}</view><view class="sub">{{item.completed}}/{{item.expected}} 次 · {{item.rate}}%</view></view></view>
+            <view wx:for="{{report.tasks}}" wx:key="planId" class="task-performance"><view class="row"><view class="value flex-1">{{item.name}}</view><view class="sub">{{item.expected === null ? '记录完成 ' + item.completed + ' 次' : item.completed + '/' + item.expected + ' 次'}}</view></view><view wx:if="{{item.rate !== null}}" class="task-track"><view style="width:{{item.rate}}%"></view></view><view wx:else class="sub">排期不足或不是完整周，暂不计算完成率</view></view>
+            <button wx:if="{{report.tasksMore}}" class="text-button" bindtap="showAllTasks">查看全部任务</button>
+          </view>
         </view>
-        <view class="poster-preview-quote">“{{report.posterQuote}}”</view>
-        <view class="poster-preview-footer"><text>{{report.identityCode}}</text><text>自律 ZILV · 把长期目标，落实到今天</text></view>
-      </view>
-
-      <view class="poster-actions"><button class="btn btn-light" bindtap="savePoster" loading="{{posterRendering}}">保存海报</button><button class="btn btn-light" bindtap="sharePoster" loading="{{posterRendering}}">分享海报</button><button class="btn" open-type="share">分享小程序</button></view>
-      <view class="share-note">海报只展示汇总数据，不会包含你的笔记正文、体重明细等私密内容；底部会保留轻量品牌水印。</view>
+        <view wx:if="{{report.details.contributions.length || report.details.timeline.length || report.unlockedBadges.length}}" class="card pixel-card detail-card">
+          <view class="row section-toggle" data-section="goals" bindtap="toggleSection"><view><view class="h2">长期目标与里程碑</view><view class="sub">{{report.details.contributions.length}} 个目标有推进 · {{report.completedGoals.length}} 个目标归档</view></view><view class="more-arrow">{{expanded.goals ? '⌃' : '⌄'}}</view></view>
+          <view wx:if="{{expanded.goals}}" class="detail-content">
+            <view wx:for="{{report.details.contributions}}" wx:key="_id" class="goal-contribution"><view class="row"><view class="value">{{item.name}}</view><view class="tag">{{item.typeLabel}}</view></view><view class="goal-increment">{{item.incrementValue !== null ? '+' + item.incrementValue + item.unit : '完成 ' + item.completedCount + ' 次关联任务'}}</view><view class="sub">本期完成 {{item.completedCount}} 次{{item.durationMinutes ? ' · 用时 ' + item.durationText : ''}}</view></view>
+            <view wx:for="{{report.details.timeline}}" wx:key="_id" class="milestone-row" data-id="{{item._id}}" bindtap="openGoal"><view class="milestone-dot"></view><view class="flex-1"><view class="value">{{item.name}}</view><view class="sub">{{item.date}} · {{item.label}}</view></view><view class="more-arrow">›</view></view>
+            <view wx:if="{{report.unlockedBadges.length}}" class="report-badges" bindtap="goProgress"><view wx:for="{{report.unlockedBadges}}" wx:key="id" class="mini-badge"><view class="mini-badge-symbol">{{item.symbol}}</view><view>{{item.title}}</view></view></view>
+          </view>
+        </view>
+        <view wx:if="{{hasFocus || hasActivity || hasWeight || (report.details.weeks.length > 1 && report.current.summary.completedTasks)}}" class="card pixel-card detail-card">
+          <view class="row section-toggle" data-section="trends" bindtap="toggleSection"><view><view class="h2">专注与趋势</view><view class="sub">有记录的项目才展示，学习和专注不重复相加</view></view><view class="more-arrow">{{expanded.trends ? '⌃' : '⌄'}}</view></view>
+          <view wx:if="{{expanded.trends}}" class="detail-content">
+            <view wx:if="{{hasFocus && hasActivity}}" class="chart-options"><view class="chart-option {{chartMode === 'FOCUS' ? 'selected' : ''}}" data-mode="FOCUS" bindtap="selectChart">专注</view><view class="chart-option {{chartMode === 'ACTIVITY' ? 'selected' : ''}}" data-mode="ACTIVITY" bindtap="selectChart">学习 / 运动</view></view>
+            <block wx:if="{{hasFocus || hasActivity}}"><view wx:if="{{chartMode === 'FOCUS'}}" class="chart-legend">已完成任务的有效专注时长</view><view wx:else class="chart-legend"><text class="study-dot"></text>学习 {{report.current.summary.studyText}}<text class="workout-dot"></text>运动 {{report.current.summary.workoutText}}</view><canvas type="2d" id="activityChart" class="trend-chart"></canvas></block>
+            <view wx:if="{{report.details.weeks.length > 1}}" class="weekly-breakdown"><view class="compare-title">每周留下的变化</view><view wx:for="{{report.details.weeks}}" wx:key="key" class="row week-summary"><view class="sub">{{item.startDate}} ～ {{item.endDate}}</view><view class="sub">{{item.completedTasks}} 次 · 专注 {{item.focusText}}</view></view></view>
+            <block wx:if="{{hasWeight}}"><view class="compare-title">体重记录</view><canvas type="2d" id="weightChart" class="trend-chart"></canvas><view class="sub">仅用于个人记录，不代表医学或健康结论。</view></block>
+          </view>
+        </view>
+        <view wx:if="{{hasWellbeing}}" class="card pixel-card detail-card">
+          <view class="row section-toggle" data-section="wellbeing" bindtap="toggleSection"><view><view class="h2">心情与日常记录</view><view class="sub">只整理你已经留下的记录</view></view><view class="more-arrow">{{expanded.wellbeing ? '⌃' : '⌄'}}</view></view>
+          <view wx:if="{{expanded.wellbeing}}" class="detail-content"><view wx:if="{{report.details.moods.length}}" class="mood-list"><view wx:for="{{report.details.moods}}" wx:key="key" class="mood-pill">{{item.label}} {{item.count}} 天</view></view><view wx:if="{{report.current.summary.calorieTrackedDays}}" class="sub">饮食记录 {{report.current.summary.calorieTrackedDays}} 天 · 有记录日平均摄入 {{report.current.summary.averageCalorieIntake}} kcal</view><view class="coverage-note">未记录不等于零；心情分布不用于判断原因或心理状态。</view></view>
+        </view>
+        <view class="poster-actions"><button class="btn btn-light" loading="{{posterRendering}}" disabled="{{posterRendering}}" bindtap="savePoster">保存总结海报</button><button class="btn btn-light" loading="{{posterRendering}}" disabled="{{posterRendering}}" bindtap="sharePoster">分享海报</button></view>
+        <view class="share-note">海报仅包含汇总数据，不含任务名称、心情、小记或身体明细。</view>
+      </block>
+      <view class="report-footer">数据截至 {{report.period.endDate}} · 只作回顾，不给自己打分</view>
     </block>
   </block>
-
   <canvas type="2d" id="reportPoster" class="poster-canvas"></canvas>
 </view>

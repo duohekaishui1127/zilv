@@ -32,7 +32,7 @@ function badgeView(item,membership) {
   const target=Math.max(1,Number(item.target || 1))
   const progress=Math.min(target,Number(item.progress || 0))
   const detailLocked=Boolean(item.pro && !membership?.isPro)
-  return { ...item,detailLocked,progressPct:Math.round(progress / target * 100),progressLabel:item.unlocked ? '已获得' : `${progress}/${target}` }
+  return { ...item,detailLocked,progressPct:Math.round(progress / target * 100),progressLabel:item.unlocked ? `已获得${item.earnedAt ? ' · ' + item.earnedAt : ''}` : detailLocked ? '尚未获得' : `${progress}/${target}` }
 }
 
 Page({

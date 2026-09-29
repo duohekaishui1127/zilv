@@ -1,3 +1,5 @@
+const { buildExecutionLedger } = require('./execution-history')
+const { buildReviewDetails } = require('./review-details')
 const { presentDailyReview } = require('./daily-review')
 const { longestStreak } = require('./achievements')
 
@@ -148,18 +150,22 @@ function average(values) {
 
 function buildProgressReport(input) {
   const daily = buildDailySeries(input)
+  const ledger = buildExecutionLedger(input)
+  const ledgerByDate = new Map(ledger.daily.map(day => [day.date, day]))
   const bodyPoints = daily.filter(day => day.weightKg != null)
   const firstWeight = bodyPoints[0]?.weightKg ?? null
   const latestWeight = bodyPoints[bodyPoints.length - 1]?.weightKg ?? null
   const balanceDays = daily.filter(day => day.calorieBalance != null)
   const reviewDays = daily.filter(day => day.dailyCheckedIn)
-  const totalPlans = reviewDays.reduce((sum, day) => sum + day.totalPlanCount, 0)
-  const completedPlans = reviewDays.reduce((sum, day) => sum + day.completedPlanCount, 0)
-  return {
+  const knownDays = ledger.daily.filter(day => day.known)
+  const totalPlans = ledger.expected
+  const completedPlans = ledger.completed
+  const result = {
     startDate: daily[0]?.date || null,
     endDate: daily[daily.length - 1]?.date || null,
     days: daily.length,
-    daily,
+    daily: daily.map(day => ({ ...day, execution: ledgerByDate.get(day.date) })),
+    tasks: ledger.tasks,
     summary: {
       firstWeight,
       latestWeight,
@@ -181,9 +187,19 @@ function buildProgressReport(input) {
       completeDays: reviewDays.filter(day => day.allPlansCompleted).length,
       partialDays: reviewDays.filter(day => !day.allPlansCompleted).length,
       completionRate: totalPlans > 0 ? Math.round(completedPlans / totalPlans * 100) : null,
+      scheduledTasks: totalPlans, scheduledCompletedTasks: completedPlans,
+      knownScheduleDays: knownDays.length,
+      unknownScheduleDays: daily.length - knownDays.length,
+      noTaskDays: knownDays.filter(day => !day.total).length,
+      missedDays: knownDays.filter(day => day.total > 0 && !day.completed).length,
+      taskCompleteDays: knownDays.filter(day => day.total > 0 && day.completed === day.total).length,
+      taskPartialDays: knownDays.filter(day => day.completed > 0 && day.completed < day.total).length,
+      averageFocusMinutes: Math.round(daily.reduce((sum,day) => sum + day.focusMinutes,0) / Math.max(1,daily.length)),
       longestStreak: longestStreak(reviewDays.map(day => day.date))
     }
   }
+  result.details = buildReviewDetails(result, input.plans || [], input.checkins || [])
+  return result
 }
 
 function buildActivityCalendar(input) {

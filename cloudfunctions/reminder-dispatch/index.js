@@ -1,3 +1,4 @@
+const { proActive } = require('./pro-rules')
 const crypto = require('crypto')
 const cloud = require('wx-server-sdk')
 const { checkinReminderContext, isPlanDue, weekRange, normalizeReminderSubscriptionType, localParts } = require('./reminder-rules')
@@ -134,6 +135,10 @@ async function trimNotificationHistory(userId) {
 }
 
 async function sendWechatReminder(user, notification) {
+  if (!proActive(user)) {
+    await updateNotification(notification._id, { pushStatus: 'PRO_REQUIRED' })
+    return 'internal-only'
+  }
   const templateId = String(process.env.PLAN_REMINDER_TEMPLATE_ID || '').trim()
   const subscriptionType = normalizeReminderSubscriptionType(process.env.PLAN_REMINDER_SUBSCRIPTION_TYPE)
   if (!user.checkinReminderPushEnabled) {
@@ -271,6 +276,10 @@ async function processSocialNotification(notification) {
     return 'failed'
   }
   const subscriptionType=normalizeReminderSubscriptionType(process.env.SOCIAL_CHECKIN_SUBSCRIPTION_TYPE)
+  if (!proActive(recipient)) {
+    await updateNotification(latest._id, { pushStatus: 'PRO_REQUIRED' })
+    return 'internal-only'
+  }
   try {
     const result=await cloud.openapi.subscribeMessage.send({
       touser:recipient.openid,templateId,page:String(latest.page || '/pages/circle/index').replace(/^\//,''),

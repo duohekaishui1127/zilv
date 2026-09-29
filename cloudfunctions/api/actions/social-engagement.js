@@ -1,3 +1,4 @@
+const { requireEntitlement, hasEntitlement } = require('../domain/entitlements')
 const { db, _, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { getUserById } = require('../services/users')
@@ -52,14 +53,15 @@ async function setSpecialCareWechat({ user, event }) {
   const existing = await specialCareOf(user._id, event.targetUserId)
   if (!existing?.enabled) throw fail('INVALID_PARAMETER', '请先设为特别关心')
   const enabled = Boolean(event.enabled && event.grantAccepted)
+  if (event.enabled) requireEntitlement(user, 'SPECIAL_CARE_WECHAT')
   await db.collection(C.SPECIAL_CARES).doc(existing._id).update({ data: {
     wechatEnabled: enabled, wechatAuthorizedAt: enabled ? now() : (existing.wechatAuthorizedAt || null), updatedAt: now()
   } })
   return { enabled }
 }
 
-async function getSocialNotificationConfig() {
-  return socialNotificationConfig()
+async function getSocialNotificationConfig({ user }) {
+  return { ...socialNotificationConfig(), wechatAllowed: hasEntitlement(user, 'SPECIAL_CARE_WECHAT') }
 }
 
 async function getSpecialCareFeed({ user }) {

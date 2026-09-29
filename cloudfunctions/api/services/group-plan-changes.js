@@ -1,3 +1,4 @@
+const { recordExecutionHistory } = require('../domain/execution-history')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
 const { assertNoActiveTimer } = require('./plans')
@@ -78,6 +79,7 @@ async function applyPlanChange(change, localDate) {
   const timestamp=now()
   if(change.type === 'UPDATE') {
     const data={ ...change.payload.plan,updatedAt:timestamp }
+    data.scheduleHistory = recordExecutionHistory(plan, data, localDate)
     await db.collection(C.PLANS).doc(plan._id).update({ data })
     const bindings=await activeBindings(plan._id,plan.userId)
     const commitment=publicCommitment(change.payload.plan)
@@ -86,11 +88,13 @@ async function applyPlanChange(change, localDate) {
   }
   if(change.type === 'SET_ENABLED') {
     const enabled=Boolean(change.payload.enabled)
-    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled,updatedAt:timestamp } })
+    const scheduleHistory = recordExecutionHistory(plan, { enabled }, localDate)
+    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled,scheduleHistory,updatedAt:timestamp } })
     return { enabled }
   }
   if(change.type === 'DELETE') {
-    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled:false,deletedAt:timestamp,updatedAt:timestamp } })
+    const scheduleHistory = recordExecutionHistory(plan, { enabled:false,deletedAt:timestamp }, localDate)
+    await db.collection(C.PLANS).doc(plan._id).update({ data:{ enabled:false,deletedAt:timestamp,scheduleHistory,updatedAt:timestamp } })
     const bindings=await activeBindings(plan._id,plan.userId)
     await Promise.all(bindings.map(item => db.collection(C.PLAN_GROUPS).doc(item._id).update({ data:{ enabled:false,updatedAt:timestamp } })))
     return { deleted:true }

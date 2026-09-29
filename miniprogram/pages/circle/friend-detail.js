@@ -103,13 +103,17 @@ Page({
       return this.setData({ 'settings.specialCareWechat':false })
     }
     const config=this.data.notificationConfig
+    if(config?.wechatAllowed===false){
+      this.setData({'settings.specialCareWechat':false})
+      return this.goPro()
+    }
     if (!config?.configured) {
       wx.showToast({ title:'微信提醒模板尚未配置',icon:'none' })
       return this.setData({ 'settings.specialCareWechat':false })
     }
     try {
       const result=await wx.requestSubscribeMessage({ tmplIds:[config.templateId] })
-      const accepted=result[config.templateId] === 'accept'
+      const accepted=['accept','acceptWithAudio'].includes(result[config.templateId])
       await api.call('setSpecialCareWechat',{ targetUserId:this.data.friendUserId,enabled:accepted,grantAccepted:accepted })
       this.setData({ 'settings.specialCareWechat':accepted })
       const title=accepted ? (this.data.isLongTerm ? '已开启长期提醒' : '已订阅下次提醒') : '未开启提醒'
@@ -119,6 +123,7 @@ Page({
       wx.showToast({ title:'未开启提醒',icon:'none' })
     }
   },
+  goPro(){wx.navigateTo({url:'/pages/pro/index'})},
   async removeFriend(){
     if (!await api.confirm('删除后双方将无法查看好友动态，特别关心也会关闭。','删除好友')) return
     await api.call('removeFriend',{ friendUserId:this.data.friendUserId })

@@ -55,7 +55,7 @@ Page({
     this._reminderRevision=Number(this._reminderRevision || 0)+1
     this.setData({reminderSaving:true,reminderFeedback:'',reminderFeedbackError:false,'profile.user.checkinReminderEnabled':enabled})
     // Invoke the native API in this tap, before any cloud request or await.
-    const authorization=enabled&&config?.configured&&!config.pushEnabled
+    const authorization=enabled&&config?.configured&&config.wechatAllowed!==false&&this.data.profile.membership?.isPro!==false&&!config.pushEnabled
       ? getCheckinReminderClient(wx,api).authorize(config.templateId) : Promise.resolve(false)
     try{
       const grantAccepted=await authorization
@@ -64,7 +64,8 @@ Page({
         timezoneOffset:-new Date().getTimezoneOffset(),grantAccepted
       },{silent:true})
       this.applyReminderSettings(settings)
-      if(enabled&&settings.configured&&!settings.pushEnabled)this.setData({reminderFeedback:'未获得微信授权，打卡记录不受影响。可点击下方允许提醒。'})
+      if(enabled&&settings.wechatAllowed===false)this.setData({reminderFeedback:'已开启消息中心提醒，微信通知属于 Pro。'})
+      else if(enabled&&settings.configured&&!settings.pushEnabled)this.setData({reminderFeedback:'未获得微信授权，打卡记录不受影响。可点击下方允许提醒。'})
     }catch(error){
       this.setData({'profile.user.checkinReminderEnabled':previous,reminderFeedback:api.messageOf(error),reminderFeedbackError:true})
     }finally{this.setData({reminderSaving:false})}
@@ -72,6 +73,7 @@ Page({
   async renewReminderFromSettings(){
     if(this.data.reminderSaving||!this.data.profile.user.checkinReminderEnabled)return
     const config=this.data.reminderConfig
+    if(config?.wechatAllowed===false || this.data.profile.membership?.isPro===false)return this.goPro()
     if(!config?.configured)return this.setData({reminderFeedback:'微信通知暂不可用，打卡记录不受影响。'})
     if(config.pushEnabled)return
     if(config.subscriptionType==='LONG_TERM')return this.reminderToggle({detail:{value:true}})
@@ -88,6 +90,7 @@ Page({
       }
     }finally{this.setData({reminderSaving:false})}
   },
+  goPro(){wx.navigateTo({url:'/pages/pro/index'})},
   async reminderTimeChange(e){
     if(this.data.reminderSaving||!this.data.profile.user.checkinReminderEnabled)return
     const previous=this.data.profile.user.checkinReminderTime || '21:00'

@@ -1,3 +1,4 @@
+const { executionSnapshot } = require('../domain/execution-history')
 const crypto = require('crypto')
 const { db, C } = require('../lib/db')
 const { now, fail } = require('../lib/utils')
@@ -90,6 +91,8 @@ async function makeupDailyCheckin({ user, event }) {
       const actualValue = Number(plan.targetValue ?? 1)
       const data = {
         userId: user._id, planId, date, completed: true,
+        planSnapshot: executionSnapshot(plan),
+        longTermGoalIdsSnapshot: plan.longTermGoalIds || [],
         actualValue: Number.isFinite(actualValue) ? actualValue : 1,
         durationMinutes: checkin?.durationMinutes ?? (plan.targetType === 'DURATION' ? actualValue : null),
         completedAt: timestamp, makeupAt: timestamp, completionSource: 'MAKEUP',
@@ -104,6 +107,7 @@ async function makeupDailyCheckin({ user, event }) {
     const reviewData = {
       userId: user._id, date, status: 'ACTIVE', mood, note,
       completedPlanCount: completedCount, totalPlanCount: plans.length,
+      taskSnapshot: plans.map(plan => ({ planId:plan._id,...executionSnapshot(plan) })),
       allPlansCompleted: plans.length > 0 && completedCount === plans.length,
       checkinMode: 'MAKEUP', autoCompleted: false, checkedInAt: timestamp,
       makeupAt: timestamp, makeupCardSpent: 1, revokedAt: null, updatedAt: timestamp

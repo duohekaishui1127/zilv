@@ -65,7 +65,7 @@ function notificationActions(db) {
 
 function reminderUser(overrides = {}) {
   return {
-    _id: 'user-1', openid: 'wechat-user', checkinReminderEnabled: true,
+    _id: 'user-1', openid: 'wechat-user', proLifetime: true, checkinReminderEnabled: true,
     checkinReminderTime: '10:00', checkinReminderTimezoneOffset: 480,
     checkinReminderPushEnabled: false, lastReminderRenewalDate: '2026-09-28', ...overrides
   }

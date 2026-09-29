@@ -1,3 +1,4 @@
+const { hasEntitlement } = require('../domain/entitlements')
 const crypto = require('crypto')
 const { db, C } = require('../lib/db')
 const { now } = require('../lib/utils')
@@ -84,13 +85,15 @@ async function notifyRecipients(recipients, actor, plan, checkin) {
     let notification = await document(C.NOTIFICATIONS, id)
     const page = entry.groupIds.length ? `/pages/circle/group-detail?id=${entry.groupIds[0]}` : '/pages/circle/index'
     if (!notification) {
+      const recipient = entry.sources.length ? await document(C.USERS,entry.userId) : null
+      const pushSources = hasEntitlement(recipient || {},'SPECIAL_CARE_WECHAT') ? entry.sources : []
       const data = {
         userId: entry.userId, type: 'SOCIAL_CHECKIN', title: `${actor.nickname || '好友'}刚刚完成了一项计划`,
         content: `完成了「${text(plan.name, 60)}」`, actorUserId: actor._id, planId: plan._id,
         checkinId: checkin._id, completionVersion: Number(checkin.completionVersion || 1),
         groupIds: entry.groupIds, specialCare: entry.specialCare, page,
-        status: 'UNREAD', pushStatus: entry.sources.length ? 'PENDING' : 'NOT_SUBSCRIBED',
-        pushSources:entry.sources,
+        status: 'UNREAD', pushStatus: pushSources.length ? 'PENDING' : 'NOT_SUBSCRIBED',
+        pushSources,
         createdAt: now(), updatedAt: now()
       }
       await db.collection(C.NOTIFICATIONS).doc(id).set({ data })

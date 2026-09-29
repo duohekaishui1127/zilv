@@ -1,3 +1,4 @@
+const { recordExecutionHistory, completionSnapshots } = require('../domain/execution-history')
 const { db, _, C } = require('../lib/db')
 const { now, fail, weekRange } = require('../lib/utils')
 const { isBasePlanDue, getTodayPlans } = require('../services/plans')
@@ -13,6 +14,7 @@ const { prepareManagedAccumulationPlanUpdate } = require('../services/managed-ac
 const { todayForUser } = require('../domain/makeup-cards')
 async function createPlan({ user, event, localDate }) {
   const data = { userId: user._id, ...normalizePlan(event.plan, localDate), enabled: true, createdAt: now(), updatedAt: now() }
+  data.scheduleHistory = recordExecutionHistory(data, {}, localDate)
   const add = await db.collection(C.PLANS).add({ data })
   return { plan: { _id: add._id, ...data } }
 }
@@ -95,7 +97,7 @@ async function completePlan({ user, event, localDate }) {
     ? (existingCheckin?.mood || '')
     : (allowedMoods.includes(event.mood) ? event.mood : '')
   const note = event.note === undefined ? (existingCheckin?.note || '') : String(event.note || '').slice(0, 500)
-  const actualValue = Number(event.actualValue ?? plan.targetValue ?? 1)
+  const actualValue = Number(event.actualValue ?? (existingCheckin?.completed ? existingCheckin.actualValue : null) ?? plan.targetValue ?? 1)
   if (!Number.isFinite(actualValue) || actualValue < 0 || actualValue > 1000000000) {
     throw fail('INVALID_PARAMETER', '实际完成量不合法')
   }
@@ -103,6 +105,7 @@ async function completePlan({ user, event, localDate }) {
   const shouldEmitGroupEvent = !existingCheckin?.completed
   const completionVersion = shouldEmitGroupEvent ? Number(existingCheckin?.completionVersion || 0) + 1 : Number(existingCheckin?.completionVersion || 1)
   const data = {
+    ...completionSnapshots(plan, existingCheckin),
     actualValue, completed: true,
     durationMinutes: timerDurationMinutes, mood, completedAt: shouldEmitGroupEvent ? completionTime : (existingCheckin?.completedAt || completionTime),
     completionVersion, revokedAt: null,

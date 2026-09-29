@@ -21,7 +21,7 @@ test('90天复盘以昨天为结束日', () => {
 })
 
 test('月初优先提示月报，周初其他时间提示周报，已读后不重复', () => {
-  const monthly=reportPrompt({ reportViewMarks:{} },'2026-10-05')
+  const monthly=reportPrompt({ proLifetime:true,reportViewMarks:{} },'2026-10-05')
   assert.equal(monthly.type,'MONTH')
   const weekly=reportPrompt({ reportViewMarks:{ MONTH:'MONTH:2026-09' } },'2026-10-05')
   assert.equal(weekly.type,'WEEK')

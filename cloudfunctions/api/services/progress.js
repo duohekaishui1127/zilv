@@ -7,9 +7,10 @@ const { getTodayPlans } = require('./plans')
 async function fetchAll(collection, where, orderField) {
   const rows = []
   const pageSize = 100
-  for (let offset = 0; offset < 1000; offset += pageSize) {
+  for (let offset = 0; ; offset += pageSize) {
     let query = db.collection(collection).where(where)
     if (orderField) query = query.orderBy(orderField, 'asc')
+    if (orderField !== '_id') query = query.orderBy('_id', 'asc')
     const result = await query.skip(offset).limit(pageSize).get()
     rows.push(...result.data)
     if (result.data.length < pageSize) break
@@ -21,19 +22,20 @@ function between(userId, field, startDate, endDate) {
   return { userId, [field]: _.gte(startDate).and(_.lte(endDate)) }
 }
 
-async function loadRangeData(userId, dates, includeTargets = true) {
+async function loadRangeData(userId, dates, includeTargets = true, suppliedPlans) {
   const startDate = dates[0]
   const endDate = dates[dates.length - 1]
-  const [bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets] = await Promise.all([
+  const [bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets, plans] = await Promise.all([
     fetchAll(C.BODY, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.MEAL_ITEMS, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.WORKOUTS, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.STUDY, between(userId, 'recordDate', startDate, endDate), 'recordDate'),
     fetchAll(C.CHECKINS, between(userId, 'date', startDate, endDate), 'date'),
     fetchAll(C.DAILY_REVIEWS, between(userId, 'date', startDate, endDate), 'date'),
-    includeTargets ? fetchAll(C.NUTRITION_TARGETS, { userId }) : []
+    includeTargets ? fetchAll(C.NUTRITION_TARGETS, { userId }) : [],
+    suppliedPlans || (includeTargets ? fetchAll(C.PLANS, { userId }) : [])
   ])
-  return { dates, bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets }
+  return { dates, bodies, mealItems, workouts, studySessions, checkins, dailyReviews, targets, plans }
 }
 
 async function loadProgressReport(userId, endDate, days) {
@@ -41,20 +43,19 @@ async function loadProgressReport(userId, endDate, days) {
   return buildProgressReport(await loadRangeData(userId, dates, true))
 }
 
-async function loadProgressReportRange(userId, startDate, endDate) {
+async function loadProgressReportRange(userId, startDate, endDate, plans) {
   const days = Math.max(1, Math.round((new Date(`${endDate}T12:00:00Z`) - new Date(`${startDate}T12:00:00Z`)) / 86400000) + 1)
   const dates = dateRange(endDate, days).filter(date => date >= startDate)
-  return buildProgressReport(await loadRangeData(userId, dates, true))
+  return buildProgressReport(await loadRangeData(userId, dates, true, plans))
 }
 
 async function loadActivityCalendar(userId, month) {
   const dates = monthRange(month)
-  const [rangeData, notes, dailyReviews] = await Promise.all([
+  const [rangeData, notes] = await Promise.all([
     loadRangeData(userId, dates, false),
-    fetchAll(C.NOTES, { userId, recordDate: _.gte(dates[0]).and(_.lte(dates[dates.length - 1])), status: 'ACTIVE' }, 'recordDate'),
-    fetchAll(C.DAILY_REVIEWS, between(userId, 'date', dates[0], dates[dates.length - 1]), 'date')
+    fetchAll(C.NOTES, { userId, recordDate: _.gte(dates[0]).and(_.lte(dates[dates.length - 1])), status: 'ACTIVE' }, 'recordDate')
   ])
-  return buildActivityCalendar({ ...rangeData, notes, dailyReviews })
+  return buildActivityCalendar({ ...rangeData, notes })
 }
 
 async function loadDayReview(userId, date) {

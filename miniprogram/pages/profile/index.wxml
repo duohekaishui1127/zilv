@@ -17,7 +17,7 @@
     </view>
     <view class="list-item row" data-url="/pages/notes/index" bindtap="go"><view><view class="value">我的历程</view><view class="sub">体态照片、学习笔记和训练复盘</view></view><view>›</view></view>
     <view class="list-item row" data-url="/pages/record/body" bindtap="go"><view><view class="value">身体数据</view><view class="sub {{profile.weightStatus.needUpdate ? 'danger' : ''}}">{{profile.weightSummary}} · 可附备注留作复盘</view></view><view>›</view></view>
-    <view class="list-item row" data-url="/pages/report/week" bindtap="go"><view><view class="value">成长复盘 <text class="pro-inline">PRO</text></view><view class="sub">周报、月报、90 天总结与分享海报</view></view><view>›</view></view>
+    <view class="list-item row" data-url="/pages/report/week" bindtap="go"><view><view class="value">成长复盘</view><view class="sub">免费周度概览 · Pro 深度周/月报与历史对比</view></view><view>›</view></view>
   </view>
   <view class="card other-card">
     <view class="row other-toggle" bindtap="toggleOther"><view><view class="value">其他</view><view class="sub">档案、显示、隐私与帮助</view></view><view class="other-chevron">{{otherExpanded ? '⌃' : '⌄'}}</view></view>
@@ -43,7 +43,7 @@
     <view class="reminder-sheet-handle"></view>
     <view class="row"><view class="h2">打卡提醒</view><view class="reminder-sheet-close" bindtap="closeReminderSettings" aria-label="关闭">×</view></view>
     <view class="row reminder-sheet-row">
-      <view><view class="value">提醒我打卡</view><view class="sub">今日任务未全部完成时提醒</view></view>
+      <view><view class="value">提醒我打卡</view><view class="sub">今日任务未全部完成时记录到消息中心</view></view>
       <switch checked="{{profile.user.checkinReminderEnabled}}" disabled="{{reminderSaving}}" bindchange="reminderToggle" color="#315f4a"/>
     </view>
     <picker wx:if="{{profile.user.checkinReminderEnabled}}" mode="time" value="{{profile.user.checkinReminderTime || '21:00'}}" disabled="{{reminderSaving}}" bindchange="reminderTimeChange">
@@ -51,7 +51,8 @@
     </picker>
     <view wx:if="{{reminderFeedback}}" class="reminder-feedback {{reminderFeedbackError ? 'danger' : ''}}" aria-role="status">{{reminderFeedback}}</view>
     <block wx:if="{{profile.user.checkinReminderEnabled}}">
-      <view wx:if="{{!reminderConfig || !reminderConfig.configured}}" class="reminder-feedback">微信通知暂不可用，打卡记录不受影响。</view>
+      <view wx:if="{{reminderConfig.wechatAllowed === false}}" class="row reminder-sheet-row" bindtap="goPro"><view><view class="value">微信打卡提醒 <text class="pro-inline">PRO</text></view><view class="sub">消息中心提醒和打卡记录仍可免费使用</view></view><view>›</view></view>
+      <view wx:elif="{{!reminderConfig || !reminderConfig.configured}}" class="reminder-feedback">微信通知暂不可用，消息中心提醒不受影响。</view>
       <view wx:elif="{{!reminderConfig.pushEnabled}}" class="reminder-permission">
         <button class="btn btn-light" loading="{{reminderSaving}}" disabled="{{reminderSaving}}" bindtap="renewReminderFromSettings">允许微信提醒</button>
         <view class="sub">微信授权时可选择“总是保持以上选择”，之后打卡时尽量免弹窗。</view>
