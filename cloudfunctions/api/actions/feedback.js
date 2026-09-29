@@ -14,7 +14,7 @@ const CATEGORY_LABELS = Object.freeze({
   FEATURE: '功能建议',
   EXPERIENCE: '体验问题',
   BUG: '问题反馈',
-  OTHER: '其他'
+  OTHER: '用户反馈'
 })
 const STATUS_LABELS = Object.freeze({
   NEW: '待处理',
@@ -38,7 +38,7 @@ function deviceInfoOf(value) {
 
 async function submitFeedback({ user, event, requestId }) {
   if (isFeedbackAdmin(user)) throw fail('FORBIDDEN', '管理员请使用反馈管理')
-  const category = validate.enumValue(event.category, Object.keys(CATEGORY_LABELS), { name: '反馈类型' })
+  const category = validate.enumValue(event.category == null ? 'OTHER' : event.category, Object.keys(CATEGORY_LABELS), { name: '反馈类型' })
   const content = validate.string(event.content, { name: '反馈内容', required: true, max: 2000 })
   const contact = validate.string(event.contact, { name: '联系方式', max: 100 })
   const images = validate.stringArray(event.images, { name: '截图', maxItems: 3, maxItemLength: 500 })

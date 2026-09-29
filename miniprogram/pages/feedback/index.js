@@ -1,12 +1,6 @@
 const api = require('../../utils/api')
 const { APP_VERSION } = require('../../config/version')
 
-const CATEGORIES = [
-  { value: 'FEATURE', label: '功能建议' },
-  { value: 'EXPERIENCE', label: '体验问题' },
-  { value: 'BUG', label: '问题反馈' },
-  { value: 'OTHER', label: '其他' }
-]
 const STATUS_LABELS = {
   NEW: '待处理', REVIEWED: '已查看', PLANNED: '计划优化', COMPLETED: '已完成', DECLINED: '暂不处理'
 }
@@ -22,12 +16,20 @@ function mutationId() {
   return `feedback-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+function presentFeedback(item) {
+  return {
+    ...item,
+    images: item.images || [],
+    statusLabel: STATUS_LABELS[item.status] || '处理中',
+    statusClass: item.status === 'COMPLETED' ? 'tag-active' : '',
+    displayTime: displayTime(item.createdAt),
+    replyDisplayTime: displayTime(item.repliedAt)
+  }
+}
+
 Page({
   data: {
-    categories: CATEGORIES,
-    categoryIndex: 0,
     content: '',
-    contact: '',
     attachments: [],
     feedbacks: [],
     clientMutationId: mutationId(),
@@ -36,9 +38,9 @@ Page({
   },
   onLoad() { this.load() },
   onPullDownRefresh() { this.load().finally(() => wx.stopPullDownRefresh()) },
-  input(e) { this.setData({ [e.currentTarget.dataset.key]: e.detail.value }) },
-  changeCategory(e) { this.setData({ categoryIndex: Number(e.detail.value) }) },
+  input(e) { if (!this.data.saving) this.setData({ content: e.detail.value }) },
   async chooseImages() {
+    if (this.data.saving) return
     const remain = 3 - this.data.attachments.length
     if (remain <= 0) return wx.showToast({ title: '最多添加3张截图', icon: 'none' })
     try {
@@ -50,6 +52,7 @@ Page({
     }
   },
   async removeImage(e) {
+    if (this.data.saving) return
     const index = Number(e.currentTarget.dataset.index)
     const item = this.data.attachments[index]
     this.setData({ attachments: this.data.attachments.filter((_, i) => i !== index) })
@@ -64,24 +67,17 @@ Page({
     if (item?.images?.length) wx.previewImage({ urls: item.images, current: e.currentTarget.dataset.photo || item.images[0] })
   },
   async load() {
+    const loadId = Number(this._feedbackLoadId || 0) + 1
+    this._feedbackLoadId = loadId
     this.setData({ loading: true })
     try {
       const result = await api.call('getMyFeedbacks', { limit: 30 }, { silent: true })
-      this.setData({
-        feedbacks: (result.feedbacks || []).map(item => ({
-          ...item,
-          images: item.images || [],
-          categoryLabel: item.categoryLabel || CATEGORIES.find(category => category.value === item.category)?.label || '反馈',
-          statusLabel: STATUS_LABELS[item.status] || '处理中',
-          statusClass: item.status === 'COMPLETED' ? 'tag-active' : '',
-          displayTime: displayTime(item.createdAt),
-          replyDisplayTime: displayTime(item.repliedAt)
-        }))
-      })
+      if (loadId !== this._feedbackLoadId) return
+      this.setData({ feedbacks: (result.feedbacks || []).map(presentFeedback) })
     } catch (error) {
-      wx.showToast({ title: api.messageOf(error), icon: 'none' })
+      if (loadId === this._feedbackLoadId) wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
-      this.setData({ loading: false })
+      if (loadId === this._feedbackLoadId) this.setData({ loading: false })
     }
   },
   async submit() {
@@ -98,11 +94,14 @@ Page({
           this.setData({ attachments })
         }
       }
-      const system = wx.getSystemInfoSync()
-      await api.call('submitFeedback', {
-        category: CATEGORIES[this.data.categoryIndex].value,
+      let system = {}
+      try { system = wx.getSystemInfoSync() || {} } catch (error) {
+        console.warn('[feedback-device-info]', '设备信息暂不可用')
+      }
+      const result = await api.call('submitFeedback', {
+        // A fixed legacy category keeps older cloud versions compatible.
+        category: 'OTHER',
         content,
-        contact: this.data.contact,
         images: attachments.map(item => item.fileId).filter(Boolean),
         clientMutationId: this.data.clientMutationId,
         deviceInfo: {
@@ -113,10 +112,18 @@ Page({
           sdkVersion: system.SDKVersion,
           appVersion: APP_VERSION
         }
-      })
+      }, { silent: true })
       wx.showToast({ title: '反馈已提交', icon: 'success' })
-      this.setData({ content: '', contact: '', attachments: [], categoryIndex: 0, clientMutationId: mutationId() })
-      await this.load()
+      this.setData({ content: '', attachments: [], clientMutationId: mutationId() })
+      if (result?.feedback) {
+        this._feedbackLoadId = Number(this._feedbackLoadId || 0) + 1
+        this.setData({
+          loading: false,
+          feedbacks: [presentFeedback(result.feedback), ...this.data.feedbacks.filter(item => item._id !== result.feedback._id)].slice(0, 30)
+        })
+      } else await this.load()
+    } catch (error) {
+      wx.showToast({ title: api.messageOf(error), icon: 'none' })
     } finally {
       this.setData({ saving: false })
     }
